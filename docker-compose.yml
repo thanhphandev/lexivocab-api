@@ -1,0 +1,62 @@
+# ──────────────────────────────────────────────────────────────────
+# LexiVocab Docker Compose — Full Stack Development Environment
+# Usage: docker-compose up --build -d
+# ──────────────────────────────────────────────────────────────────
+
+services:
+  # ─── PostgreSQL 16 ───────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: lexivocab-db
+    environment:
+      POSTGRES_DB: lexivocab_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis 7 ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: lexivocab-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── LexiVocab API (.NET 10) ─────────────────────────────────
+  api:
+    build: .
+    container_name: lexivocab-api
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=lexivocab_dev;Username=postgres;Password=postgres
+      - ConnectionStrings__Redis=redis:6379
+      - Jwt__Secret=LexiVocab_Docker_Secret_Key_Must_Be_At_Least_32_Characters_Long!
+      - Jwt__Issuer=LexiVocab.API
+      - Jwt__Audience=LexiVocab.Clients
+      - Jwt__AccessTokenExpiryMinutes=120
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

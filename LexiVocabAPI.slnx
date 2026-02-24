@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LexiVocab.Domain/LexiVocab.Domain.csproj" />
+    <Project Path="src/LexiVocab.Application/LexiVocab.Application.csproj" />
+    <Project Path="src/LexiVocab.Infrastructure/LexiVocab.Infrastructure.csproj" />
+    <Project Path="src/LexiVocab.API/LexiVocab.API.csproj" />
+  </Folder>
+</Solution>
