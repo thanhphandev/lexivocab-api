@@ -1,0 +1,19 @@
+# Prevent copying bin/obj/node_modules etc. into container
+**/bin/
+**/obj/
+**/.git
+**/.vs
+**/node_modules
+**/logs
+**/*.user
+**/*.suo
+docker-compose.yml
+Dockerfile
+.dockerignore
+*.md
+LexiVocabAPI/
+build_output.txt
+build.log
+errs.txt
+err.log
+errors.txt

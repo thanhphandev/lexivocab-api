@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>LexiVocab.API</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0-*" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.12.46" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LexiVocab.Application\LexiVocab.Application.csproj" />
+    <ProjectReference Include="..\LexiVocab.Infrastructure\LexiVocab.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
