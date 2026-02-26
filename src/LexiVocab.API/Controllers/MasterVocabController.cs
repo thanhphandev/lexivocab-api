@@ -1,5 +1,5 @@
 using LexiVocab.Application.Common;
-using LexiVocab.Domain.Interfaces;
+using LexiVocab.Application.Features.MasterVocabularies.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,9 +10,9 @@ namespace LexiVocab.API.Controllers;
 [Produces("application/json")]
 public class MasterVocabController : ControllerBase
 {
-    private readonly IUnitOfWork _uow;
+    private readonly IMediator _mediator;
 
-    public MasterVocabController(IUnitOfWork uow) => _uow = uow;
+    public MasterVocabController(IMediator mediator) => _mediator = mediator;
 
     /// <summary>
     /// Lookup a word in the master dictionary. Returns phonetics, audio URL, etc.
@@ -21,26 +21,8 @@ public class MasterVocabController : ControllerBase
     [HttpGet("lookup")]
     public async Task<IActionResult> Lookup([FromQuery] string word, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(word))
-            return BadRequest(new { success = false, error = "Word parameter is required." });
-
-        var result = await _uow.MasterVocabularies.GetByWordAsync(word.ToLowerInvariant().Trim(), ct);
-        if (result is null)
-            return NotFound(new { success = false, error = $"Word '{word}' not found in master dictionary." });
-
-        return Ok(new
-        {
-            success = true,
-            data = new
-            {
-                result.Word,
-                result.PartOfSpeech,
-                result.PhoneticUk,
-                result.PhoneticUs,
-                result.AudioUrl,
-                result.PopularityRank
-            }
-        });
+        var result = await _mediator.Send(new LookupMasterVocabQuery(word), ct);
+        return ToActionResult(result);
     }
 
     /// <summary>Search master dictionary with prefix matching (for autocomplete).</summary>
@@ -50,21 +32,14 @@ public class MasterVocabController : ControllerBase
         [FromQuery] int limit = 10,
         CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(q))
-            return BadRequest(new { success = false, error = "Query parameter 'q' is required." });
+        var result = await _mediator.Send(new SearchMasterVocabQuery(q, limit), ct);
+        return ToActionResult(result);
+    }
 
-        var results = await _uow.MasterVocabularies.SearchAsync(q.ToLowerInvariant().Trim(), limit, ct);
-
-        return Ok(new
-        {
-            success = true,
-            data = results.Select(r => new
-            {
-                r.Word,
-                r.PartOfSpeech,
-                r.PhoneticUs,
-                r.PopularityRank
-            })
-        });
+    private IActionResult ToActionResult<T>(Result<T> result)
+    {
+        if (result.IsSuccess)
+            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
+        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
     }
 }

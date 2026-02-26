@@ -181,3 +181,31 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
         return Result<int>.Created(entities.Count);
     }
 }
+
+// ─── Hard Delete (Permanent Removal) ────────────────────────────
+public record DeleteVocabularyCommand(Guid Id) : IRequest<Result>;
+
+public class DeleteVocabularyHandler : IRequestHandler<DeleteVocabularyCommand, Result>
+{
+    private readonly IUnitOfWork _uow;
+    private readonly ICurrentUserService _currentUser;
+
+    public DeleteVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    {
+        _uow = uow;
+        _currentUser = currentUser;
+    }
+
+    public async Task<Result> Handle(DeleteVocabularyCommand request, CancellationToken ct)
+    {
+        var entity = await _uow.Vocabularies.GetByIdAsync(request.Id, ct);
+        if (entity is null || entity.UserId != _currentUser.UserId)
+            return Result.NotFound("Vocabulary not found.");
+
+        // Hard delete — cascade removes associated ReviewLogs
+        _uow.Vocabularies.Remove(entity);
+        await _uow.SaveChangesAsync(ct);
+
+        return Result.Success();
+    }
+}

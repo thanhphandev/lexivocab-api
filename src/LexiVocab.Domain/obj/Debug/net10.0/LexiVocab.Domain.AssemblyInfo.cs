@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LexiVocab.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3d06c581a40a0d100b5f59c527377e0ee44bf611")]
 [assembly: System.Reflection.AssemblyProductAttribute("LexiVocab.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LexiVocab.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

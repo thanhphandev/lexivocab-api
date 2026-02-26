@@ -142,3 +142,81 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             accessToken, newRefreshToken, DateTime.UtcNow.AddHours(1)));
     }
 }
+
+// ─── Google OAuth Login ────────────────────────────────────────
+public record GoogleLoginCommand(string IdToken)
+    : IRequest<Result<AuthResponse>>;
+
+public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Result<AuthResponse>>
+{
+    private readonly IUnitOfWork _uow;
+    private readonly IJwtTokenService _jwt;
+    private readonly IPasswordHasher _hasher;
+    private readonly IGoogleAuthService _googleAuth;
+
+    public GoogleLoginCommandHandler(
+        IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IGoogleAuthService googleAuth)
+    {
+        _uow = uow;
+        _jwt = jwt;
+        _hasher = hasher;
+        _googleAuth = googleAuth;
+    }
+
+    public async Task<Result<AuthResponse>> Handle(GoogleLoginCommand request, CancellationToken ct)
+    {
+        var googleUser = await _googleAuth.ValidateIdTokenAsync(request.IdToken, ct);
+        if (googleUser is null)
+            return Result<AuthResponse>.Unauthorized("Invalid Google ID token.");
+
+        // 1. Check if user already exists with this Google account
+        var user = await _uow.Users.GetByAuthProviderAsync("Google", googleUser.Subject, ct);
+
+        if (user is null)
+        {
+            // 2. Check if email already registered with email/password — link accounts
+            user = await _uow.Users.GetByEmailAsync(googleUser.Email.ToLowerInvariant(), ct);
+            if (user is not null)
+            {
+                // Link Google provider to existing email account
+                user.AuthProvider = "Google";
+                user.AuthProviderId = googleUser.Subject;
+            }
+            else
+            {
+                // 3. Brand new user — register with Google
+                user = new Domain.Entities.User
+                {
+                    Email = googleUser.Email.ToLowerInvariant(),
+                    FullName = googleUser.FullName,
+                    AuthProvider = "Google",
+                    AuthProviderId = googleUser.Subject,
+                    LastLogin = DateTime.UtcNow
+                };
+
+                await _uow.Users.AddAsync(user, ct);
+
+                // Auto-create default settings
+                user.UserSetting = new Domain.Entities.UserSetting { UserId = user.Id };
+            }
+        }
+
+        if (!user.IsActive)
+            return Result<AuthResponse>.Forbidden("Account is deactivated.");
+
+        user.LastLogin = DateTime.UtcNow;
+
+        var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
+        var refreshToken = _jwt.GenerateRefreshToken();
+
+        user.RefreshTokenHash = _hasher.Hash(refreshToken);
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+        _uow.Users.Update(user);
+        await _uow.SaveChangesAsync(ct);
+
+        return Result<AuthResponse>.Success(new AuthResponse(
+            user.Id, user.Email, user.FullName, user.Role.ToString(),
+            accessToken, refreshToken, DateTime.UtcNow.AddHours(1)));
+    }
+}

@@ -68,12 +68,24 @@ public class VocabulariesController : ControllerBase
     }
 
     /// <summary>Toggle archive status (soft delete / mark as mastered).</summary>
-    [HttpDelete("{id:guid}")]
+    [HttpPatch("{id:guid}/archive")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Archive(Guid id, CancellationToken ct)
     {
         var result = await _mediator.Send(new ArchiveVocabularyCommand(id), ct);
+        if (result.IsSuccess)
+            return Ok(new { success = true });
+        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+    }
+
+    /// <summary>Permanently delete a vocabulary card and all its review history.</summary>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new DeleteVocabularyCommand(id), ct);
         if (result.IsSuccess)
             return Ok(new { success = true });
         return StatusCode(result.StatusCode, new { success = false, error = result.Error });

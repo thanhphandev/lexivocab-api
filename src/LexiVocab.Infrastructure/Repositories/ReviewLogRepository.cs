@@ -107,4 +107,59 @@ public class ReviewLogRepository : GenericRepository<ReviewLog>, IReviewLogRepos
 
         return stats is null ? (0, 0, 0) : (stats.Total, Math.Round(stats.AvgQuality, 2), stats.TotalTime);
     }
+
+    public async Task<(IReadOnlyList<ReviewLog> Items, int TotalCount)> GetPaginatedByUserAsync(
+        Guid userId, int page, int pageSize, CancellationToken ct)
+    {
+        var query = _dbSet
+            .Include(r => r.UserVocabulary)
+            .Where(r => r.UserId == userId);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderByDescending(r => r.ReviewedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
+
+    public async Task<int> GetLongestStreakAsync(Guid userId, CancellationToken ct)
+    {
+        // Get ALL distinct review dates, sorted ascending
+        var reviewDates = await _dbSet
+            .Where(r => r.UserId == userId)
+            .Select(r => new { r.ReviewedAt.Year, r.ReviewedAt.Month, r.ReviewedAt.Day })
+            .Distinct()
+            .OrderBy(d => d.Year).ThenBy(d => d.Month).ThenBy(d => d.Day)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        if (reviewDates.Count == 0)
+            return 0;
+
+        var dates = reviewDates.Select(d => new DateOnly(d.Year, d.Month, d.Day)).ToList();
+
+        int longestStreak = 1;
+        int currentStreak = 1;
+
+        for (int i = 1; i < dates.Count; i++)
+        {
+            if (dates[i] == dates[i - 1].AddDays(1))
+            {
+                currentStreak++;
+                longestStreak = Math.Max(longestStreak, currentStreak);
+            }
+            else
+            {
+                currentStreak = 1;
+            }
+        }
+
+        return longestStreak;
+    }
 }
+

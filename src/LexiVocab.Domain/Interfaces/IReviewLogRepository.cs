@@ -37,4 +37,18 @@ public interface IReviewLogRepository : IRepository<ReviewLog>
         DateTime from,
         DateTime to,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Get paginated review history for a user, including vocabulary word text.
+    /// </summary>
+    Task<(IReadOnlyList<ReviewLog> Items, int TotalCount)> GetPaginatedByUserAsync(
+        Guid userId,
+        int page,
+        int pageSize,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Get the longest consecutive-day streak ever achieved by a user.
+    /// </summary>
+    Task<int> GetLongestStreakAsync(Guid userId, CancellationToken ct = default);
 }
