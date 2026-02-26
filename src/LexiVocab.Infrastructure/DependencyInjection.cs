@@ -50,6 +50,12 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddHttpContextAccessor();
 
+        // ─── Google OAuth ─────────────────────────────────────
+        services.AddHttpClient<IGoogleAuthService, GoogleAuthService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+
         var jwtSecret = configuration["Jwt:Secret"]
             ?? throw new InvalidOperationException("Jwt:Secret is not configured");
 

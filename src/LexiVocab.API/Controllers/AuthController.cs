@@ -39,6 +39,16 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
+    /// <summary>Login or register with a Google ID token. Auto-links existing email accounts.</summary>
+    [HttpPost("google")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GoogleLoginCommand(request.IdToken), ct);
+        return ToActionResult(result);
+    }
+
     /// <summary>Refresh an expired access token using a valid refresh token.</summary>
     [HttpPost("refresh")]
     [Authorize]

@@ -97,10 +97,25 @@ public class GetStreakHandler : IRequestHandler<GetStreakQuery, Result<StreakDto
     {
         var userId = _currentUser.UserId!.Value;
         var currentStreak = await _uow.ReviewLogs.GetCurrentStreakAsync(userId, ct);
+        var longestStreak = await _uow.ReviewLogs.GetLongestStreakAsync(userId, ct);
+
+        // Determine last active date from heatmap data
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var heatmap = await _uow.ReviewLogs.GetHeatmapDataAsync(
+            userId,
+            today.AddDays(-365),
+            today,
+            ct);
+
+        var lastActiveDate = heatmap
+            .Where(h => h.Count > 0)
+            .Select(h => h.Date)
+            .OrderByDescending(d => d)
+            .FirstOrDefault();
 
         return Result<StreakDto>.Success(new StreakDto(
             currentStreak,
-            currentStreak, // Longest streak requires more complex tracking — simplified for now
-            DateOnly.FromDateTime(DateTime.UtcNow)));
+            longestStreak,
+            lastActiveDate == default ? null : lastActiveDate));
     }
 }

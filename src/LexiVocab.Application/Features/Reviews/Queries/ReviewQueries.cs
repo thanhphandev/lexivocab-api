@@ -48,7 +48,7 @@ public class GetReviewSessionHandler : IRequestHandler<GetReviewSessionQuery, Re
     }
 }
 
-// ─── Get Review History ─────────────────────────────────────────
+// ─── Get Review History (Paginated) ─────────────────────────────
 public record GetReviewHistoryQuery(
     int Page = 1,
     int PageSize = 20
@@ -67,11 +67,23 @@ public class GetReviewHistoryHandler : IRequestHandler<GetReviewHistoryQuery, Re
 
     public async Task<Result<PagedResult<ReviewHistoryDto>>> Handle(GetReviewHistoryQuery request, CancellationToken ct)
     {
-        // For now, return empty — will be enhanced with full pagination later
+        var userId = _currentUser.UserId!.Value;
+
+        var (items, totalCount) = await _uow.ReviewLogs.GetPaginatedByUserAsync(
+            userId, request.Page, request.PageSize, ct);
+
+        var dtos = items.Select(r => new ReviewHistoryDto(
+            r.Id,
+            r.UserVocabularyId,
+            r.UserVocabulary?.WordText ?? "Unknown",
+            r.QualityScore,
+            r.TimeSpentMs,
+            r.ReviewedAt)).ToList();
+
         return Result<PagedResult<ReviewHistoryDto>>.Success(new PagedResult<ReviewHistoryDto>
         {
-            Items = [],
-            TotalCount = 0,
+            Items = dtos,
+            TotalCount = totalCount,
             Page = request.Page,
             PageSize = request.PageSize
         });
