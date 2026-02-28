@@ -76,4 +76,7 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
 
         return stats is null ? (0, 0, 0, 0) : (stats.Total, stats.Active, stats.Archived, stats.DueToday);
     }
+
+    public async Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct)
+        => await _dbSet.CountAsync(v => v.UserId == userId, ct);
 }

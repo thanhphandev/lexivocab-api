@@ -59,7 +59,6 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
-
         // ─── Google OAuth ─────────────────────────────────────
         services.AddHttpClient<IGoogleAuthService, GoogleAuthService>(client =>
         {

@@ -9,4 +9,6 @@ namespace LexiVocab.Domain.Interfaces;
 public interface ISubscriptionRepository : IRepository<Subscription>
 {
     Task<Subscription?> GetActiveByUserIdAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<Subscription>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
+    Task<int> CountActiveAsync(CancellationToken ct = default);
 }

@@ -161,5 +161,8 @@ public class ReviewLogRepository : GenericRepository<ReviewLog>, IReviewLogRepos
 
         return longestStreak;
     }
+
+    public async Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct)
+        => await _dbSet.CountAsync(r => r.UserId == userId, ct);
 }
 

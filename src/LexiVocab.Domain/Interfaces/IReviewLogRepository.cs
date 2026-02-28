@@ -51,4 +51,6 @@ public interface IReviewLogRepository : IRepository<ReviewLog>
     /// Get the longest consecutive-day streak ever achieved by a user.
     /// </summary>
     Task<int> GetLongestStreakAsync(Guid userId, CancellationToken ct = default);
+
+    Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct = default);
 }

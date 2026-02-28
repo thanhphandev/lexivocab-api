@@ -23,4 +23,29 @@ public class UserRepository : GenericRepository<User>, IUserRepository
 
     public async Task<bool> EmailExistsAsync(string email, CancellationToken ct = default)
         => await _dbSet.AnyAsync(u => u.Email == email, ct);
+
+    public async Task<(IReadOnlyList<User> Items, int TotalCount)> GetPaginatedAsync(
+        int page, int pageSize, string? search, CancellationToken ct = default)
+    {
+        var query = _dbSet.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            search = search.ToLower();
+            query = query.Where(u => u.Email.ToLower().Contains(search) || u.FullName.ToLower().Contains(search));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
+
+    public async Task<int> CountPremiumUsersAsync(CancellationToken ct = default)
+        => await _dbSet.CountAsync(u => u.Role == LexiVocab.Domain.Enums.UserRole.Premium, ct);
 }
