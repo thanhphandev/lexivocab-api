@@ -11,7 +11,7 @@ public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TReque
     where TRequest : IRequest<TResponse>
 {
     private readonly ILogger<PerformanceBehavior<TRequest, TResponse>> _logger;
-    private const int SlowRequestThresholdMs = 500;
+    private const int SlowRequestThresholdMs = 1000;
 
     public PerformanceBehavior(ILogger<PerformanceBehavior<TRequest, TResponse>> logger)
     {
@@ -29,11 +29,29 @@ public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TReque
 
         if (sw.ElapsedMilliseconds > SlowRequestThresholdMs)
         {
+            var requestName = typeof(TRequest).Name;
+
+            // Simple reflection to extract properties safely without exposing sensitive info
+            var safePayload = new Dictionary<string, object?>();
+            foreach (var prop in typeof(TRequest).GetProperties())
+            {
+                var name = prop.Name;
+                if (name.Contains("Password", StringComparison.OrdinalIgnoreCase) || 
+                    name.Contains("Token", StringComparison.OrdinalIgnoreCase))
+                {
+                    safePayload[name] = "***MASKED***";
+                }
+                else
+                {
+                    safePayload[name] = prop.GetValue(request);
+                }
+            }
+
             _logger.LogWarning(
-                "⚠️ Slow Request: {RequestName} took {ElapsedMs}ms — {@Request}",
-                typeof(TRequest).Name,
+                "⚠️ Slow Request: {RequestName} took {ElapsedMs}ms — Payload: {@RequestPayload}",
+                requestName,
                 sw.ElapsedMilliseconds,
-                request);
+                safePayload);
         }
 
         return response;

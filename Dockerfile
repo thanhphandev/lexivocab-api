@@ -22,8 +22,8 @@ RUN dotnet publish src/LexiVocab.API/LexiVocab.API.csproj -c Release -o /out --n
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
 WORKDIR /app
 
-# Install ICU for globalization support
-RUN apk add --no-cache icu-libs
+# Install ICU for globalization + Kerberos libs for PostgreSQL GSSAPI
+RUN apk add --no-cache icu-libs krb5-libs
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 COPY --from=build /out .

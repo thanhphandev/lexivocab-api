@@ -77,13 +77,39 @@ try
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 10
                 }));
+
+        // Auth endpoints: strict 5 requests per minute per IP (anti brute-force)
+        options.AddPolicy("AuthLimit", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0 // No queueing — reject immediately
+                }));
+    });
+
+    // ─── Kestrel Hardening ────────────────────────────────────
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.AddServerHeader = false; // Hide "Server: Kestrel" from responses
     });
 
     // ────────────────────────────────────────────────────────────
     var app = builder.Build();
 
     // ─── Middleware Pipeline ──────────────────────────────────
+    // Order matters: Exception → Security Headers → HTTPS → CORS → RateLimit → Auth → Controllers
     app.UseMiddleware<GlobalExceptionMiddleware>();
+    app.UseMiddleware<SecurityHeadersMiddleware>();
+
+    // HSTS: enforce HTTPS via browser cache (Production only)
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHsts();
+    }
 
     if (app.Environment.IsDevelopment())
     {
@@ -91,8 +117,18 @@ try
         app.MapScalarApiReference(); // Beautiful API testing UI at /scalar/v1
     }
 
+    // Support reverse proxy (Nginx, Azure, AWS ALB) — trust X-Forwarded-For headers
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                           Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+    });
+
     app.UseSerilogRequestLogging();
-    app.UseHttpsRedirection();
+    
+    // In Docker behind a reverse proxy (or local dev), HTTPS is handled by the host/load balancer.
+    // app.UseHttpsRedirection(); 
+
     app.UseCors("LexiVocabPolicy");
     app.UseRateLimiter();
     app.UseAuthentication();
@@ -113,6 +149,14 @@ try
     {
         status = "healthy",
         timestamp = DateTime.UtcNow,
+        version = "1.0.0"
+    }));
+
+    // Root endpoint to prevent 404 on base URL pings
+    app.MapGet("/", () => Results.Ok(new
+    {
+        app = "LexiVocab API",
+        docs = "/scalar/v1",
         version = "1.0.0"
     }));
 
