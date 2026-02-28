@@ -44,7 +44,11 @@ public static class DependencyInjection
         services.AddScoped<IMasterVocabularyRepository, MasterVocabularyRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // ─── Audit Logging ────────────────────────────────────
+        services.AddScoped<IAuditLogService, Services.AuditLogService>();
 
         // ─── Authentication (JWT Bearer) ──────────────────────
         services.AddScoped<IJwtTokenService, JwtTokenService>();

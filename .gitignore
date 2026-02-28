@@ -5,7 +5,11 @@
 
 # dotenv files
 .env
-
+[Bb]in/
+[Oo]bj/
+*.dll
+*.pdb
+*.exe
 # User-specific files
 *.rsuser
 *.suo

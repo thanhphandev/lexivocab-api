@@ -5,12 +5,14 @@ using LexiVocab.Application.Features.Auth.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LexiVocab.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Produces("application/json")]
+[EnableRateLimiting("AuthLimit")]
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;

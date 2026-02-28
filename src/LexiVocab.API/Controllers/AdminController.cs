@@ -2,6 +2,8 @@ using LexiVocab.Application.Common;
 using LexiVocab.Application.DTOs.Admin;
 using LexiVocab.Application.Features.Admin.Commands;
 using LexiVocab.Application.Features.Admin.Queries;
+using LexiVocab.Domain.Enums;
+using LexiVocab.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,10 +17,12 @@ namespace LexiVocab.API.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IAuditLogRepository _auditLogRepository;
 
-    public AdminController(IMediator mediator)
+    public AdminController(IMediator mediator, IAuditLogRepository auditLogRepository)
     {
         _mediator = mediator;
+        _auditLogRepository = auditLogRepository;
     }
 
     /// <summary>Get paginated list of all users, with optional email/name search.</summary>
@@ -86,6 +90,56 @@ public class AdminController : ControllerBase
     {
         var result = await _mediator.Send(new GetSystemStatsQuery(), ct);
         return ToActionResult(result);
+    }
+
+    /// <summary>Query audit logs with filtering by user, action, entity type, and date range.</summary>
+    [HttpGet("audit-logs")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAuditLogs(
+        [FromQuery] Guid? userId = null,
+        [FromQuery] AuditAction? action = null,
+        [FromQuery] string? entityType = null,
+        [FromQuery] DateTime? fromDate = null,
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken ct = default)
+    {
+        // Clamp page size to prevent excessive data retrieval
+        pageSize = Math.Clamp(pageSize, 1, 200);
+        page = Math.Max(1, page);
+
+        var (items, totalCount) = await _auditLogRepository.GetPagedAsync(
+            userId, action, entityType, fromDate, toDate, page, pageSize, ct);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                items = items.Select(a => new
+                {
+                    a.Id,
+                    a.UserId,
+                    a.UserEmail,
+                    action = a.Action.ToString(),
+                    a.EntityType,
+                    a.EntityId,
+                    a.IpAddress,
+                    a.UserAgent,
+                    a.RequestName,
+                    a.TraceId,
+                    a.AdditionalInfo,
+                    a.IsSuccess,
+                    a.DurationMs,
+                    a.Timestamp
+                }),
+                totalCount,
+                page,
+                pageSize,
+                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            }
+        });
     }
 
     private IActionResult ToActionResult<T>(Result<T> result)

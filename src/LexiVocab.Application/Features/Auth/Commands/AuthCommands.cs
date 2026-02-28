@@ -1,14 +1,23 @@
+using System.Text.Json.Serialization;
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
+using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
 // ─── Register ──────────────────────────────────────────────────
-public record RegisterCommand(string Email, string Password, string FullName)
-    : IRequest<Result<AuthResponse>>;
+public record RegisterCommand(
+    string Email,
+    [property: JsonIgnore] string Password,
+    string FullName)
+    : IRequest<Result<AuthResponse>>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.Register;
+    public string? EntityType => "User";
+}
 
 public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<AuthResponse>>
 {
@@ -57,8 +66,14 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 }
 
 // ─── Login ─────────────────────────────────────────────────────
-public record LoginCommand(string Email, string Password)
-    : IRequest<Result<AuthResponse>>;
+public record LoginCommand(
+    string Email,
+    [property: JsonIgnore] string Password)
+    : IRequest<Result<AuthResponse>>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.Login;
+    public string? EntityType => "User";
+}
 
 public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResponse>>
 {
@@ -103,8 +118,14 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
 }
 
 // ─── Refresh Token ─────────────────────────────────────────────
-public record RefreshTokenCommand(Guid UserId, string RefreshToken)
-    : IRequest<Result<AuthResponse>>;
+public record RefreshTokenCommand(
+    Guid UserId,
+    [property: JsonIgnore] string RefreshToken)
+    : IRequest<Result<AuthResponse>>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.TokenRefresh;
+    public string? EntityType => "User";
+}
 
 public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, Result<AuthResponse>>
 {
@@ -144,8 +165,13 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
 }
 
 // ─── Google OAuth Login ────────────────────────────────────────
-public record GoogleLoginCommand(string IdToken)
-    : IRequest<Result<AuthResponse>>;
+public record GoogleLoginCommand(
+    [property: JsonIgnore] string IdToken)
+    : IRequest<Result<AuthResponse>>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.GoogleLogin;
+    public string? EntityType => "User";
+}
 
 public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Result<AuthResponse>>
 {

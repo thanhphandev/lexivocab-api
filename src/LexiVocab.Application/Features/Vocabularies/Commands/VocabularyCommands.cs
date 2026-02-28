@@ -2,6 +2,7 @@ using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Vocabulary;
 using LexiVocab.Domain.Entities;
+using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
 
@@ -13,7 +14,11 @@ public record CreateVocabularyCommand(
     string? CustomMeaning,
     string? ContextSentence,
     string? SourceUrl
-) : IRequest<Result<VocabularyDto>>;
+) : IRequest<Result<VocabularyDto>>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.VocabularyCreated;
+    public string? EntityType => "UserVocabulary";
+}
 
 public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, Result<VocabularyDto>>
 {
@@ -76,7 +81,12 @@ public record UpdateVocabularyCommand(
     Guid Id,
     string? CustomMeaning,
     string? ContextSentence
-) : IRequest<Result<VocabularyDto>>;
+) : IRequest<Result<VocabularyDto>>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.VocabularyUpdated;
+    public string? EntityType => "UserVocabulary";
+    public string? EntityId => Id.ToString();
+}
 
 public class UpdateVocabularyHandler : IRequestHandler<UpdateVocabularyCommand, Result<VocabularyDto>>
 {
@@ -114,7 +124,13 @@ public class UpdateVocabularyHandler : IRequestHandler<UpdateVocabularyCommand, 
 }
 
 // ─── Archive (Soft Delete / Mark as Mastered) ───────────────────
-public record ArchiveVocabularyCommand(Guid Id) : IRequest<Result>;
+public record ArchiveVocabularyCommand(Guid Id) : IRequest<Result>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.VocabularyUpdated;
+    public string? EntityType => "UserVocabulary";
+    public string? EntityId => Id.ToString();
+    public string? AdditionalInfo => "Archive toggled";
+}
 
 public class ArchiveVocabularyHandler : IRequestHandler<ArchiveVocabularyCommand, Result>
 {
@@ -144,7 +160,11 @@ public class ArchiveVocabularyHandler : IRequestHandler<ArchiveVocabularyCommand
 }
 
 // ─── Batch Import ───────────────────────────────────────────────
-public record BatchImportCommand(List<CreateVocabularyCommand> Words) : IRequest<Result<int>>;
+public record BatchImportCommand(List<CreateVocabularyCommand> Words) : IRequest<Result<int>>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.VocabularyBulkImported;
+    public string? EntityType => "UserVocabulary";
+}
 
 public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int>>
 {
@@ -205,7 +225,12 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
 }
 
 // ─── Hard Delete (Permanent Removal) ────────────────────────────
-public record DeleteVocabularyCommand(Guid Id) : IRequest<Result>;
+public record DeleteVocabularyCommand(Guid Id) : IRequest<Result>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.VocabularyDeleted;
+    public string? EntityType => "UserVocabulary";
+    public string? EntityId => Id.ToString();
+}
 
 public class DeleteVocabularyHandler : IRequestHandler<DeleteVocabularyCommand, Result>
 {
