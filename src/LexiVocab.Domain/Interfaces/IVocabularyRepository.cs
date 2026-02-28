@@ -37,4 +37,6 @@ public interface IVocabularyRepository : IRepository<UserVocabulary>
     /// </summary>
     Task<(int Total, int Active, int Archived, int DueToday)> GetStatsAsync(
         Guid userId, CancellationToken ct = default);
+
+    Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct = default);
 }

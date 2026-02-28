@@ -1,8 +1,13 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/LexiVocab.Domain/LexiVocab.Domain.csproj" />
-    <Project Path="src/LexiVocab.Application/LexiVocab.Application.csproj" />
-    <Project Path="src/LexiVocab.Infrastructure/LexiVocab.Infrastructure.csproj" />
+    <File Path=".dockerignore" />
+    <File Path=".gitignore" />
+    <File Path="ARCHITECTURE.md" />
+    <File Path="docker-compose.yml" />
+    <File Path="Dockerfile" />
     <Project Path="src/LexiVocab.API/LexiVocab.API.csproj" />
+    <Project Path="src/LexiVocab.Application/LexiVocab.Application.csproj" />
+    <Project Path="src/LexiVocab.Domain/LexiVocab.Domain.csproj" />
+    <Project Path="src/LexiVocab.Infrastructure/LexiVocab.Infrastructure.csproj" />
   </Folder>
 </Solution>
