@@ -111,6 +111,20 @@ public class VocabulariesController : ControllerBase
         return ToActionResult(result);
     }
 
+    /// <summary>Export vocabulary data to CSV or JSON (Premium Only).</summary>
+    [HttpGet("export")]
+    [Authorize(Policy = "RequirePremium")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Export([FromQuery] string format = "json", CancellationToken ct = default)
+    {
+        var result = await _mediator.Send(new ExportVocabulariesQuery(format), ct);
+        if (result.IsSuccess)
+            return File(result.Data!.Bytes, result.Data.ContentType, result.Data.FileName);
+
+        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+    }
+
     private IActionResult ToActionResult<T>(Result<T> result)
     {
         if (result.IsSuccess)

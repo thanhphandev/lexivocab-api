@@ -77,6 +77,83 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.ToTable("master_vocabularies", (string)null);
                 });
 
+            modelBuilder.Entity("LexiVocab.Domain.Entities.PaymentTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("USD")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("ExternalOrderId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("external_order_id");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("RawPayload")
+                        .HasColumnType("text")
+                        .HasColumnName("raw_payload");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Pending")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExternalOrderId")
+                        .IsUnique();
+
+                    b.HasIndex("SubscriptionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("payment_transactions", (string)null);
+                });
+
             modelBuilder.Entity("LexiVocab.Domain.Entities.ReviewLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -132,6 +209,71 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.ToTable("review_logs", (string)null);
                 });
 
+            modelBuilder.Entity("LexiVocab.Domain.Entities.Subscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("NOW()");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("ExternalSubscriptionId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("external_subscription_id");
+
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Free")
+                        .HasColumnName("plan");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Mock")
+                        .HasColumnName("provider");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Active")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("subscriptions", (string)null);
+                });
+
             modelBuilder.Entity("LexiVocab.Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -181,6 +323,10 @@ namespace LexiVocab.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("password_hash");
+
+                    b.Property<DateTime?>("PlanExpirationDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("plan_expiration_date");
 
                     b.Property<DateTime?>("RefreshTokenExpiryTime")
                         .HasColumnType("timestamp with time zone")
@@ -360,6 +506,25 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.ToTable("user_vocabularies", (string)null);
                 });
 
+            modelBuilder.Entity("LexiVocab.Domain.Entities.PaymentTransaction", b =>
+                {
+                    b.HasOne("LexiVocab.Domain.Entities.Subscription", "Subscription")
+                        .WithMany("PaymentTransactions")
+                        .HasForeignKey("SubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("LexiVocab.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Subscription");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("LexiVocab.Domain.Entities.ReviewLog", b =>
                 {
                     b.HasOne("LexiVocab.Domain.Entities.User", "User")
@@ -377,6 +542,17 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.Navigation("User");
 
                     b.Navigation("UserVocabulary");
+                });
+
+            modelBuilder.Entity("LexiVocab.Domain.Entities.Subscription", b =>
+                {
+                    b.HasOne("LexiVocab.Domain.Entities.User", "User")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("LexiVocab.Domain.Entities.UserSetting", b =>
@@ -413,9 +589,16 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.Navigation("UserVocabularies");
                 });
 
+            modelBuilder.Entity("LexiVocab.Domain.Entities.Subscription", b =>
+                {
+                    b.Navigation("PaymentTransactions");
+                });
+
             modelBuilder.Entity("LexiVocab.Domain.Entities.User", b =>
                 {
                     b.Navigation("ReviewLogs");
+
+                    b.Navigation("Subscriptions");
 
                     b.Navigation("UserSetting");
 

@@ -19,16 +19,26 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IFeatureGatingService _featureGating;
 
-    public CreateVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public CreateVocabularyHandler(
+        IUnitOfWork uow, 
+        ICurrentUserService currentUser, 
+        IFeatureGatingService featureGating)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _featureGating = featureGating;
     }
 
     public async Task<Result<VocabularyDto>> Handle(CreateVocabularyCommand request, CancellationToken ct)
     {
         var userId = _currentUser.UserId!.Value;
+
+        if (!await _featureGating.CanCreateVocabularyAsync(userId, ct))
+        {
+            return Result<VocabularyDto>.Failure("ERR_QUOTA_EXCEEDED", 403);
+        }
 
         // Duplicate check (case-insensitive)
         if (await _uow.Vocabularies.WordExistsForUserAsync(userId, request.WordText, ct))
@@ -140,16 +150,28 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IFeatureGatingService _featureGating;
 
-    public BatchImportHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public BatchImportHandler(
+        IUnitOfWork uow, 
+        ICurrentUserService currentUser,
+        IFeatureGatingService featureGating)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _featureGating = featureGating;
     }
 
     public async Task<Result<int>> Handle(BatchImportCommand request, CancellationToken ct)
     {
         var userId = _currentUser.UserId!.Value;
+        
+        var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
+        if (!permissions.CanBatchImport)
+        {
+            return Result<int>.Failure("ERR_PREMIUM_REQUIRED", 403);
+        }
+
         var entities = new List<UserVocabulary>();
 
         foreach (var word in request.Words)

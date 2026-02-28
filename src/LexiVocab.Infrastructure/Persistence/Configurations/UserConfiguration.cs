@@ -65,6 +65,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.RefreshTokenExpiryTime)
             .HasColumnName("refresh_token_expiry_time");
 
+        builder.Property(u => u.PlanExpirationDate)
+            .HasColumnName("plan_expiration_date");
+
         // 1-1 relationship with UserSetting
         builder.HasOne(u => u.UserSetting)
             .WithOne(s => s.User)
@@ -81,6 +84,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasMany(u => u.ReviewLogs)
             .WithOne(r => r.User)
             .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // 1-N relationship with Subscription
+        builder.HasMany(u => u.Subscriptions)
+            .WithOne(s => s.User)
+            .HasForeignKey(s => s.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

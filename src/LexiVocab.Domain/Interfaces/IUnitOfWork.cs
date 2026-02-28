@@ -10,6 +10,8 @@ public interface IUnitOfWork : IDisposable
     IVocabularyRepository Vocabularies { get; }
     IReviewLogRepository ReviewLogs { get; }
     IMasterVocabularyRepository MasterVocabularies { get; }
+    ISubscriptionRepository Subscriptions { get; }
+    IPaymentTransactionRepository PaymentTransactions { get; }
 
     /// <summary>
     /// Persist all changes made through repositories as a single atomic transaction.

@@ -73,6 +73,17 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
+    /// <summary>Get the current user's feature permissions and quotas.</summary>
+    [HttpGet("permissions")]
+    [Authorize]
+    [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetPermissions(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetUserPermissionsQuery(), ct);
+        return ToActionResult(result);
+    }
+
     private IActionResult ToActionResult<T>(Result<T> result)
     {
         if (result.IsSuccess)

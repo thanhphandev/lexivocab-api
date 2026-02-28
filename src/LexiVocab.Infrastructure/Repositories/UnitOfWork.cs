@@ -14,19 +14,25 @@ public class UnitOfWork : IUnitOfWork
     public IVocabularyRepository Vocabularies { get; }
     public IReviewLogRepository ReviewLogs { get; }
     public IMasterVocabularyRepository MasterVocabularies { get; }
+    public ISubscriptionRepository Subscriptions { get; }
+    public IPaymentTransactionRepository PaymentTransactions { get; }
 
     public UnitOfWork(
         AppDbContext context,
         IUserRepository users,
         IVocabularyRepository vocabularies,
         IReviewLogRepository reviewLogs,
-        IMasterVocabularyRepository masterVocabularies)
+        IMasterVocabularyRepository masterVocabularies,
+        ISubscriptionRepository subscriptions,
+        IPaymentTransactionRepository paymentTransactions)
     {
         _context = context;
         Users = users;
         Vocabularies = vocabularies;
         ReviewLogs = reviewLogs;
         MasterVocabularies = masterVocabularies;
+        Subscriptions = subscriptions;
+        PaymentTransactions = paymentTransactions;
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LexiVocab.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3d06c581a40a0d100b5f59c527377e0ee44bf611")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+49b5542a2eb09715f1581c76d0011f8efbff487a")]
 [assembly: System.Reflection.AssemblyProductAttribute("LexiVocab.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LexiVocab.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -16,6 +16,8 @@ public class AppDbContext : DbContext
     public DbSet<UserVocabulary> UserVocabularies => Set<UserVocabulary>();
     public DbSet<ReviewLog> ReviewLogs => Set<ReviewLog>();
     public DbSet<UserSetting> UserSettings => Set<UserSetting>();
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
