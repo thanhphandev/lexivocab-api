@@ -42,6 +42,8 @@ public static class DependencyInjection
         services.AddScoped<IVocabularyRepository, VocabularyRepository>();
         services.AddScoped<IReviewLogRepository, ReviewLogRepository>();
         services.AddScoped<IMasterVocabularyRepository, MasterVocabularyRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // ─── Authentication (JWT Bearer) ──────────────────────
@@ -49,6 +51,14 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddHttpContextAccessor();
+        
+        // ─── Freemium & Permissions ───────────────────────────
+        services.AddScoped<IFeatureGatingService, Services.FeatureGatingService>();
+        services.AddHttpClient<IPaymentService, Services.PayPalService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
 
         // ─── Google OAuth ─────────────────────────────────────
         services.AddHttpClient<IGoogleAuthService, GoogleAuthService>(client =>
@@ -80,7 +90,11 @@ public static class DependencyInjection
                 };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("RequirePremium", policy =>
+                policy.RequireRole("Premium", "Admin"));
+        });
 
         // ─── Redis Distributed Cache ──────────────────────────
         var redisConnection = configuration.GetConnectionString("Redis");
