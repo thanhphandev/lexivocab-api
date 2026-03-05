@@ -1,11 +1,11 @@
 #!/usr/bin/env pwsh
 # ──────────────────────────────────────────────────────────────────
 # LexiVocab EF Core Migration Helper
-# Chạy migration bên trong Docker SDK container để bypass file lock.
+# Runs migration inside Docker SDK container to bypass file locks.
 #
 # Usage:
-#   .\migrate.ps1 <MigrationName>         # Tạo migration mới
-#   .\migrate.ps1 <MigrationName> -Remove # Xóa migration cuối
+#   .\migrate.ps1 <MigrationName>         # Create a new migration
+#   .\migrate.ps1 <MigrationName> -Remove # Remove last migration
 #
 # Examples:
 #   .\migrate.ps1 AddAuditLogs
@@ -28,9 +28,9 @@ Write-Host "  LexiVocab EF Migration Tool (Docker)" -ForegroundColor Cyan
 Write-Host "══════════════════════════════════════════════════════" -ForegroundColor Cyan
 Write-Host ""
 
-# Kiểm tra Docker đang chạy
+# Check Docker is running
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-    Write-Host "❌ Docker chưa được cài đặt hoặc chưa có trong PATH!" -ForegroundColor Red
+    Write-Host "[-] Docker is not installed or not in PATH!" -ForegroundColor Red
     exit 1
 }
 
@@ -39,21 +39,21 @@ $PROJECT = "src/LexiVocab.Infrastructure"
 $STARTUP = "src/LexiVocab.API"
 
 if ($Remove) {
-    Write-Host "🗑️  Đang xóa migration cuối cùng..." -ForegroundColor Yellow
+    Write-Host "[*] Removing the last migration..." -ForegroundColor Yellow
     $efCommand = "dotnet ef migrations remove --project $PROJECT --startup-project $STARTUP --force"
 } else {
-    Write-Host "📦 Đang tạo migration: " -NoNewline -ForegroundColor Green
+    Write-Host "[*] Creating migration: " -NoNewline -ForegroundColor Green
     Write-Host "$MigrationName" -ForegroundColor White
     $efCommand = "dotnet ef migrations add $MigrationName --project $PROJECT --startup-project $STARTUP"
 }
 
-Write-Host "🐳 Khởi động Docker SDK container..." -ForegroundColor DarkGray
+Write-Host "[*] Starting Docker SDK container..." -ForegroundColor DarkGray
 Write-Host ""
 
-# Chạy trong Docker SDK container:
-# 1. Cài dotnet-ef tool
+# Run inside Docker SDK container:
+# 1. Install dotnet-ef tool
 # 2. Restore NuGet packages
-# 3. Chạy lệnh EF migration
+# 3. Run EF migration command
 docker run --rm `
     -v "${PWD}:/app" `
     -w /app `
@@ -64,17 +64,17 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "══════════════════════════════════════════════════════" -ForegroundColor Green
     if ($Remove) {
-        Write-Host "  ✅ Migration cuối cùng đã được xóa!" -ForegroundColor Green
+        Write-Host "  [+] Last migration was successfully removed!" -ForegroundColor Green
     } else {
-        Write-Host "  ✅ Migration '$MigrationName' đã tạo thành công!" -ForegroundColor Green
+        Write-Host "  [+] Migration '$MigrationName' created successfully!" -ForegroundColor Green
         Write-Host ""
-        Write-Host "  📋 Bước tiếp theo:" -ForegroundColor Yellow
+        Write-Host "  [?] Next steps:" -ForegroundColor Yellow
         Write-Host "     docker-compose up -d --build" -ForegroundColor White
-        Write-Host "     (Migration tự động apply khi container khởi động)" -ForegroundColor DarkGray
+        Write-Host "     (Migrations are automatically applied on container startup)" -ForegroundColor DarkGray
     }
     Write-Host "══════════════════════════════════════════════════════" -ForegroundColor Green
 } else {
     Write-Host ""
-    Write-Host "  ❌ Migration thất bại! Kiểm tra lỗi ở trên." -ForegroundColor Red
+    Write-Host "  [-] Migration failed! Check the error log above." -ForegroundColor Red
     exit 1
 }

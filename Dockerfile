@@ -12,7 +12,7 @@ COPY src/LexiVocab.Domain/LexiVocab.Domain.csproj src/LexiVocab.Domain/
 COPY src/LexiVocab.Application/LexiVocab.Application.csproj src/LexiVocab.Application/
 COPY src/LexiVocab.Infrastructure/LexiVocab.Infrastructure.csproj src/LexiVocab.Infrastructure/
 COPY src/LexiVocab.API/LexiVocab.API.csproj src/LexiVocab.API/
-RUN dotnet restore LexiVocabAPI.slnx
+RUN dotnet restore src/LexiVocab.API/LexiVocab.API.csproj
 
 # Copy full source and publish
 COPY . .

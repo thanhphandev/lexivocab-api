@@ -44,6 +44,9 @@ public static class DependencyInjection
         services.AddScoped<IMasterVocabularyRepository, MasterVocabularyRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
+
+        // ─── Background Jobs ──────────────────────────────────
+        services.AddHostedService<Services.SubscriptionExpirationJob>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -61,13 +64,15 @@ public static class DependencyInjection
         services.AddHttpClient<IPaymentService, Services.PayPalService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
-        });
+        })
+        .AddStandardResilienceHandler();
 
         // ─── Google OAuth ─────────────────────────────────────
         services.AddHttpClient<IGoogleAuthService, GoogleAuthService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(10);
-        });
+        })
+        .AddStandardResilienceHandler();
 
         var jwtSecret = configuration["Jwt:Secret"]
             ?? throw new InvalidOperationException("Jwt:Secret is not configured");

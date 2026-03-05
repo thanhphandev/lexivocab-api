@@ -63,6 +63,12 @@ public class PayPalService : IPaymentService
     {
         var token = await GetAccessTokenAsync(ct);
 
+        var isYearly = planId.Contains("yearly", StringComparison.OrdinalIgnoreCase);
+        var isMonthly = planId.Contains("monthly", StringComparison.OrdinalIgnoreCase);
+        
+        var amount = isYearly ? "99.99" : (isMonthly ? "9.99" : "199.99");
+        var description = isYearly ? "LexiVocab Premium - 1 Year" : (isMonthly ? "LexiVocab Premium - 1 Month" : "LexiVocab Premium - Lifetime");
+
         var payload = new
         {
             intent = "CAPTURE",
@@ -74,9 +80,9 @@ public class PayPalService : IPaymentService
                     amount = new
                     {
                         currency_code = CurrencyCode,
-                        value = PremiumPrice
+                        value = amount
                     },
-                    description = "LexiVocab Premium - Lifetime Upgrade"
+                    description = description
                 }
             },
             application_context = new
@@ -117,8 +123,9 @@ public class PayPalService : IPaymentService
                 {
                     UserId = userId,
                     Plan = SubscriptionPlan.Premium,
-                    Status = SubscriptionStatus.Active, // Assuming lifetime for now
+                    Status = SubscriptionStatus.Active, 
                     StartDate = DateTime.UtcNow,
+                    EndDate = isYearly ? DateTime.UtcNow.AddYears(1) : (isMonthly ? DateTime.UtcNow.AddMonths(1) : null),
                     Provider = PaymentProvider.PayPal
                 };
                 
@@ -128,7 +135,7 @@ public class PayPalService : IPaymentService
                     Subscription = sub,
                     Provider = PaymentProvider.PayPal,
                     ExternalOrderId = orderId,
-                    Amount = decimal.Parse(PremiumPrice),
+                    Amount = decimal.Parse(amount),
                     Currency = CurrencyCode,
                     Status = PaymentStatus.Pending
                 };
@@ -184,8 +191,8 @@ public class PayPalService : IPaymentService
             
             // Upgrade User
             tx.Subscription.User.Role = UserRole.Premium;
-            // Empty expiration date = lifetime. If 1 year: .AddYears(1)
-            tx.Subscription.User.PlanExpirationDate = null; 
+            // Set expiration date matching the subscription's computed EndDate
+            tx.Subscription.User.PlanExpirationDate = tx.Subscription.EndDate; 
 
             await _db.SaveChangesAsync(ct);
             return true;
@@ -196,9 +203,64 @@ public class PayPalService : IPaymentService
 
     public async Task<bool> VerifyWebhookSignatureAsync(string body, IDictionary<string, string> headers)
     {
-        // For Sandbox testing, basic validation or true.
-        // In production, implement full Verify Webhook Signature API call:
-        // POST /v1/notifications/verify-webhook-signature
-        return await Task.FromResult(true);
+        if (string.IsNullOrEmpty(_webhookId))
+        {
+            _logger.LogWarning("PayPal Webhook ID is not configured. Trusting webhook by default (Only for local dev).");
+            return true;
+        }
+
+        try 
+        {
+            var token = await GetAccessTokenAsync(CancellationToken.None);
+
+            // PayPal expects specific header names (case-insensitive usually, but let's parse safely)
+            var authAlgo = headers.FirstOrDefault(x => x.Key.Equals("PAYPAL-AUTH-ALGO", StringComparison.OrdinalIgnoreCase)).Value;
+            var certUrl = headers.FirstOrDefault(x => x.Key.Equals("PAYPAL-CERT-URL", StringComparison.OrdinalIgnoreCase)).Value;
+            var transmissionId = headers.FirstOrDefault(x => x.Key.Equals("PAYPAL-TRANSMISSION-ID", StringComparison.OrdinalIgnoreCase)).Value;
+            var transmissionSig = headers.FirstOrDefault(x => x.Key.Equals("PAYPAL-TRANSMISSION-SIG", StringComparison.OrdinalIgnoreCase)).Value;
+            var transmissionTime = headers.FirstOrDefault(x => x.Key.Equals("PAYPAL-TRANSMISSION-TIME", StringComparison.OrdinalIgnoreCase)).Value;
+
+            if (string.IsNullOrEmpty(authAlgo) || string.IsNullOrEmpty(transmissionSig))
+            {
+                _logger.LogWarning("Missing required PayPal headers for signature verification.");
+                return false;
+            }
+
+            var verifyPayload = new
+            {
+                auth_algo = authAlgo,
+                cert_url = certUrl,
+                transmission_id = transmissionId,
+                transmission_sig = transmissionSig,
+                transmission_time = transmissionTime,
+                webhook_id = _webhookId,
+                webhook_event = JsonSerializer.Deserialize<object>(body)
+            };
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "/v1/notifications/verify-webhook-signature")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(verifyPayload), Encoding.UTF8, "application/json")
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("PayPal webhook verification request failed: {StatusCode} - {Body}", response.StatusCode, errorBody);
+                return false;
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(json);
+            var status = doc.RootElement.GetProperty("verification_status").GetString();
+
+            return status == "SUCCESS";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying PayPal webhook signature.");
+            return false;
+        }
     }
 }
