@@ -5,9 +5,15 @@ using MediatR;
 
 namespace LexiVocab.Application.Features.MasterVocabularies.Queries;
 
+using LexiVocab.Application.Common.Interfaces;
+
 // ─── Lookup Word in Master Dictionary ───────────────────────────
 public record LookupMasterVocabQuery(string Word)
-    : IRequest<Result<MasterVocabularyDto>>;
+    : IRequest<Result<MasterVocabularyDto>>, ICacheableQuery<Result<MasterVocabularyDto>>
+{
+    public string CacheKey => $"MasterVocab_{Word.ToLowerInvariant().Trim()}";
+    public TimeSpan? CacheDuration => TimeSpan.FromDays(7);
+}
 
 public class LookupMasterVocabHandler : IRequestHandler<LookupMasterVocabQuery, Result<MasterVocabularyDto>>
 {
@@ -36,7 +42,11 @@ public class LookupMasterVocabHandler : IRequestHandler<LookupMasterVocabQuery, 
 
 // ─── Search Master Dictionary (Autocomplete) ────────────────────
 public record SearchMasterVocabQuery(string Query, int Limit = 10)
-    : IRequest<Result<IReadOnlyList<MasterVocabularySearchResultDto>>>;
+    : IRequest<Result<IReadOnlyList<MasterVocabularySearchResultDto>>>, ICacheableQuery<Result<IReadOnlyList<MasterVocabularySearchResultDto>>>
+{
+    public string CacheKey => $"SearchVocab_{Query?.ToLowerInvariant().Trim()}_{Limit}";
+    public TimeSpan? CacheDuration => TimeSpan.FromHours(24);
+}
 
 public class SearchMasterVocabHandler
     : IRequestHandler<SearchMasterVocabQuery, Result<IReadOnlyList<MasterVocabularySearchResultDto>>>

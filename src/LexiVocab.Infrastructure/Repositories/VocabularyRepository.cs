@@ -25,8 +25,11 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
             query = query.Where(v => v.IsArchived == isArchived.Value);
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
-            query = query.Where(v => EF.Functions.ILike(v.WordText, $"%{searchTerm}%")
-                || (v.CustomMeaning != null && EF.Functions.ILike(v.CustomMeaning, $"%{searchTerm}%")));
+        {
+            var lowerTerm = searchTerm.ToLower();
+            query = query.Where(v => v.WordText.ToLower().Contains(lowerTerm)
+                || (v.CustomMeaning != null && v.CustomMeaning.ToLower().Contains(lowerTerm)));
+        }
 
         var totalCount = await query.CountAsync(ct);
 
@@ -56,8 +59,11 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
     }
 
     public async Task<bool> WordExistsForUserAsync(Guid userId, string wordText, CancellationToken ct)
-        => await _dbSet.AnyAsync(
-            v => v.UserId == userId && EF.Functions.ILike(v.WordText, wordText), ct);
+    {
+        var lowerWord = wordText.ToLower();
+        return await _dbSet.AnyAsync(
+            v => v.UserId == userId && v.WordText.ToLower() == lowerWord, ct);
+    }
 
     public async Task<(int Total, int Active, int Archived, int DueToday)> GetStatsAsync(
         Guid userId, CancellationToken ct)

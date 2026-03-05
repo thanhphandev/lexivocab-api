@@ -1,10 +1,15 @@
 namespace LexiVocab.Application.Common;
 
+public interface IResult
+{
+    bool IsSuccess { get; }
+}
+
 /// <summary>
 /// Generic result wrapper for all CQRS operations.
 /// Eliminates exceptions for expected business failures — use pattern matching instead.
 /// </summary>
-public class Result<T>
+public class Result<T> : IResult
 {
     public bool IsSuccess { get; }
     public T? Data { get; }
@@ -31,7 +36,7 @@ public class Result<T>
 /// <summary>
 /// Non-generic result for commands that don't return data.
 /// </summary>
-public class Result
+public class Result : IResult
 {
     public bool IsSuccess { get; }
     public string? Error { get; }

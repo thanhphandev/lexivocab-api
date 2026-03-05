@@ -5,6 +5,7 @@ using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace LexiVocab.Application.Features.Reviews.Commands;
 
@@ -23,12 +24,18 @@ public class SubmitReviewHandler : IRequestHandler<SubmitReviewCommand, Result<R
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly ISrsAlgorithm _srs;
+    private readonly IDistributedCache _cache;
 
-    public SubmitReviewHandler(IUnitOfWork uow, ICurrentUserService currentUser, ISrsAlgorithm srs)
+    public SubmitReviewHandler(
+        IUnitOfWork uow, 
+        ICurrentUserService currentUser, 
+        ISrsAlgorithm srs,
+        IDistributedCache cache)
     {
         _uow = uow;
         _currentUser = currentUser;
         _srs = srs;
+        _cache = cache;
     }
 
     public async Task<Result<ReviewResultDto>> Handle(SubmitReviewCommand request, CancellationToken ct)
@@ -68,6 +75,9 @@ public class SubmitReviewHandler : IRequestHandler<SubmitReviewCommand, Result<R
 
         await _uow.ReviewLogs.AddAsync(log, ct);
         await _uow.SaveChangesAsync(ct);
+
+        // Bust user's paginated/stats vocab cache
+        await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
 
         return Result<ReviewResultDto>.Success(new ReviewResultDto(
             vocab.Id,

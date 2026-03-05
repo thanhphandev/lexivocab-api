@@ -10,4 +10,10 @@
     <Project Path="src/LexiVocab.Domain/LexiVocab.Domain.csproj" />
     <Project Path="src/LexiVocab.Infrastructure/LexiVocab.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LexiVocab.API.IntegrationTests/LexiVocab.API.IntegrationTests.csproj" />
+    <Project Path="tests/LexiVocab.Application.UnitTests/LexiVocab.Application.UnitTests.csproj" />
+    <Project Path="tests/LexiVocab.Domain.UnitTests/LexiVocab.Domain.UnitTests.csproj" />
+    <Project Path="tests/LexiVocab.Infrastructure.IntegrationTests/LexiVocab.Infrastructure.IntegrationTests.csproj" />
+  </Folder>
 </Solution>

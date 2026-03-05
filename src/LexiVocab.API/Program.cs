@@ -5,6 +5,7 @@ using LexiVocab.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Serilog;
+using Serilog.Sinks.OpenTelemetry;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -15,6 +16,15 @@ using System.Threading.RateLimiting;
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .WriteTo.File("logs/lexivocab-.log", rollingInterval: RollingInterval.Day)
+    .WriteTo.OpenTelemetry(options =>
+    {
+        options.Endpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT") ?? "http://localhost:5341/ingest/otlp/v1/logs";
+        options.Protocol = OtlpProtocol.HttpProtobuf;
+        options.ResourceAttributes = new Dictionary<string, object>
+        {
+            ["service.name"] = "lexivocab-api"
+        };
+    })
     .Enrich.FromLogContext()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
@@ -33,6 +43,17 @@ try
     // ─── Application & Infrastructure DI Registration ─────────
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+
+    // ─── Health Checks ────────────────────────────────────────
+    var healthChecks = builder.Services.AddHealthChecks();
+    
+    var dbConnStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (!string.IsNullOrWhiteSpace(dbConnStr))
+        healthChecks.AddNpgSql(dbConnStr);
+        
+    var redisConnStr = builder.Configuration.GetConnectionString("Redis");
+    if (!string.IsNullOrWhiteSpace(redisConnStr))
+        healthChecks.AddRedis(redisConnStr);
 
     // ─── Controllers ──────────────────────────────────────────
     builder.Services.AddControllers()
@@ -140,17 +161,33 @@ try
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
+        if (db.Database.IsRelational())
+        {
+            var executionStrategy = db.Database.CreateExecutionStrategy();
+            await executionStrategy.ExecuteAsync(async () =>
+            {
+                await db.Database.MigrateAsync();
+            });
+        }
         Log.Information("✅ Database migration applied.");
     }
 
     // ─── Health Check Endpoint ────────────────────────────────
-    app.MapGet("/health", () => Results.Ok(new
+    app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
-        status = "healthy",
-        timestamp = DateTime.UtcNow,
-        version = "1.0.0"
-    }));
+        ResponseWriter = async (context, report) =>
+        {
+            context.Response.ContentType = "application/json";
+            var result = JsonSerializer.Serialize(new
+            {
+                status = report.Status.ToString(),
+                timestamp = DateTime.UtcNow,
+                version = "1.0.0",
+                checks = report.Entries.Select(e => new { name = e.Key, status = e.Value.Status.ToString() })
+            });
+            await context.Response.WriteAsync(result);
+        }
+    });
 
     // Root endpoint to prevent 404 on base URL pings
     app.MapGet("/", () => Results.Ok(new
@@ -166,8 +203,11 @@ try
 catch (Exception ex)
 {
     Log.Fatal(ex, "❌ Application terminated unexpectedly");
+    throw;
 }
 finally
 {
     Log.CloseAndFlush();
 }
+
+public partial class Program { }

@@ -5,6 +5,7 @@ using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace LexiVocab.Application.Features.Vocabularies.Commands;
 
@@ -25,15 +26,18 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IFeatureGatingService _featureGating;
+    private readonly IDistributedCache _cache;
 
     public CreateVocabularyHandler(
         IUnitOfWork uow, 
         ICurrentUserService currentUser, 
-        IFeatureGatingService featureGating)
+        IFeatureGatingService featureGating,
+        IDistributedCache cache)
     {
         _uow = uow;
         _currentUser = currentUser;
         _featureGating = featureGating;
+        _cache = cache;
     }
 
     public async Task<Result<VocabularyDto>> Handle(CreateVocabularyCommand request, CancellationToken ct)
@@ -65,6 +69,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
 
         await _uow.Vocabularies.AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
+        await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
 
         return Result<VocabularyDto>.Created(MapToDto(entity, masterVocab));
     }
@@ -92,11 +97,13 @@ public class UpdateVocabularyHandler : IRequestHandler<UpdateVocabularyCommand, 
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDistributedCache _cache;
 
-    public UpdateVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public UpdateVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async Task<Result<VocabularyDto>> Handle(UpdateVocabularyCommand request, CancellationToken ct)
@@ -111,6 +118,7 @@ public class UpdateVocabularyHandler : IRequestHandler<UpdateVocabularyCommand, 
 
         _uow.Vocabularies.Update(entity);
         await _uow.SaveChangesAsync(ct);
+        await _cache.SetStringAsync($"vocab-v:{_currentUser.UserId}", Guid.NewGuid().ToString(), ct);
 
         return Result<VocabularyDto>.Success(MapToDto(entity));
     }
@@ -136,11 +144,13 @@ public class ArchiveVocabularyHandler : IRequestHandler<ArchiveVocabularyCommand
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDistributedCache _cache;
 
-    public ArchiveVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public ArchiveVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async Task<Result> Handle(ArchiveVocabularyCommand request, CancellationToken ct)
@@ -154,6 +164,7 @@ public class ArchiveVocabularyHandler : IRequestHandler<ArchiveVocabularyCommand
 
         _uow.Vocabularies.Update(entity);
         await _uow.SaveChangesAsync(ct);
+        await _cache.SetStringAsync($"vocab-v:{_currentUser.UserId}", Guid.NewGuid().ToString(), ct);
 
         return Result.Success();
     }
@@ -171,15 +182,18 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IFeatureGatingService _featureGating;
+    private readonly IDistributedCache _cache;
 
     public BatchImportHandler(
         IUnitOfWork uow, 
         ICurrentUserService currentUser,
-        IFeatureGatingService featureGating)
+        IFeatureGatingService featureGating,
+        IDistributedCache cache)
     {
         _uow = uow;
         _currentUser = currentUser;
         _featureGating = featureGating;
+        _cache = cache;
     }
 
     public async Task<Result<int>> Handle(BatchImportCommand request, CancellationToken ct)
@@ -218,6 +232,7 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
         {
             await _uow.Vocabularies.AddRangeAsync(entities, ct);
             await _uow.SaveChangesAsync(ct);
+            await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
         }
 
         return Result<int>.Created(entities.Count);
@@ -236,11 +251,13 @@ public class DeleteVocabularyHandler : IRequestHandler<DeleteVocabularyCommand, 
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDistributedCache _cache;
 
-    public DeleteVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public DeleteVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async Task<Result> Handle(DeleteVocabularyCommand request, CancellationToken ct)
@@ -252,6 +269,7 @@ public class DeleteVocabularyHandler : IRequestHandler<DeleteVocabularyCommand, 
         // Hard delete — cascade removes associated ReviewLogs
         _uow.Vocabularies.Remove(entity);
         await _uow.SaveChangesAsync(ct);
+        await _cache.SetStringAsync($"vocab-v:{_currentUser.UserId}", Guid.NewGuid().ToString(), ct);
 
         return Result.Success();
     }
