@@ -95,3 +95,66 @@ public class GetPaymentHistoryHandler : IRequestHandler<GetPaymentHistoryQuery, 
         });
     }
 }
+
+// ─── Get Subscription Plans ───────────────────────────────────────
+public record GetSubscriptionPlansQuery() : IRequest<Result<List<SubscriptionPlanDto>>>;
+
+public class GetSubscriptionPlansHandler : IRequestHandler<GetSubscriptionPlansQuery, Result<List<SubscriptionPlanDto>>>
+{
+    private readonly IFeatureGatingService _featureGating;
+
+    public GetSubscriptionPlansHandler(IFeatureGatingService featureGating)
+    {
+        _featureGating = featureGating;
+    }
+
+    public Task<Result<List<SubscriptionPlanDto>>> Handle(GetSubscriptionPlansQuery request, CancellationToken ct)
+    {
+        var freeFeatures = new List<PlanFeatureDto>
+        {
+            new("Pricing.features.save_words", true),
+            new("Pricing.features.spaced_repetition", true),
+            new("Pricing.features.chrome_extension", true),
+            new("Pricing.features.dashboard", true),
+            new("Pricing.features.batch_import", false),
+            new("Pricing.features.ai_features", false),
+            new("Pricing.features.unlimited_vocab", false),
+            new("Pricing.features.priority_support", false),
+            new("Pricing.features.data_export", false),
+        };
+
+        var premiumFeatures = new List<PlanFeatureDto>
+        {
+            new("Pricing.features.unlimited_vocab", true),
+            new("Pricing.features.spaced_repetition", true),
+            new("Pricing.features.chrome_extension", true),
+            new("Pricing.features.dashboard", true),
+            new("Pricing.features.batch_import", true),
+            new("Pricing.features.ai_features", true),
+            new("Pricing.features.data_export", true),
+            new("Pricing.features.priority_support", true),
+        };
+
+        var plans = new List<SubscriptionPlanDto>
+        {
+            new(
+                "free",
+                "Pricing.free_plan",
+                "Pricing.free_price",
+                "Pricing.forever",
+                "Pricing.free_desc",
+                false,
+                freeFeatures),
+            new(
+                "premium",
+                "Pricing.premium_plan",
+                "Pricing.premium_price",
+                "Pricing.lifetime",
+                "Pricing.premium_desc",
+                true,
+                premiumFeatures)
+        };
+
+        return Task.FromResult(Result<List<SubscriptionPlanDto>>.Success(plans));
+    }
+}

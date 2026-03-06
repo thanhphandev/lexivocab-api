@@ -12,7 +12,7 @@ jobs:
     
     services:
       postgres:
-        image: postgres:15
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -21,7 +21,7 @@ jobs:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
       redis:
-        image: redis:alpine
+        image: redis:7-alpine
         ports:
           - 6379:6379
 
@@ -31,16 +31,31 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '10.0.x' # Update to match your target framework
+        dotnet-version: '10.0.x'
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: ${{ runner.os }}-nuget-
         
     - name: Restore dependencies
-      run: dotnet restore ./LexiVocabAPI.sln
+      run: dotnet restore ./LexiVocabAPI.slnx
 
     - name: Build
-      run: dotnet build ./LexiVocabAPI.sln --no-restore --configuration Release
+      run: dotnet build ./LexiVocabAPI.slnx --no-restore --configuration Release
 
     - name: Test
-      run: dotnet test ./LexiVocabAPI.sln --no-build --verbosity normal --configuration Release
+      run: dotnet test ./LexiVocabAPI.slnx --no-build --verbosity normal --configuration Release
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=LexiVocabDB_Test;Username=postgres;Password=password"
+        ConnectionStrings__Redis: "localhost:6379"
+        Jwt__Secret: "CI_Test_Secret_Key_Must_Be_At_Least_32_Characters_Long!"
+
+    - name: Security scan (SCA)
+      run: dotnet list ./LexiVocabAPI.slnx package --vulnerable --include-transitive
+      continue-on-error: true
 
   docker-build:
     needs: build-and-test
@@ -63,6 +78,10 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./src/LexiVocab.API/Dockerfile
+        file: ./Dockerfile
         push: true
-        tags: ${{ secrets.DOCKERHUB_USERNAME }}/lexivocab-api:latest
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/lexivocab-api:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/lexivocab-api:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max

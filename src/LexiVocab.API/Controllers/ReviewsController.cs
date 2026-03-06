@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LexiVocab.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize]
 [Produces("application/json")]
 public class ReviewsController : ControllerBase
@@ -26,6 +26,8 @@ public class ReviewsController : ControllerBase
     [ProducesResponseType(typeof(ReviewSessionDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSession([FromQuery] int limit = 50, CancellationToken ct = default)
     {
+        limit = Math.Clamp(limit, 1, 200);
+
         var result = await _mediator.Send(new GetReviewSessionQuery(limit), ct);
         return ToActionResult(result);
     }

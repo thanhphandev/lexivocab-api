@@ -22,7 +22,7 @@ public class CreateVocabularyHandlerTests
 
     public CreateVocabularyHandlerTests()
     {
-        _mockUow = new Mock<IUnitOfWork>();
+        _mockUow = new Mock<IUnitOfWork> { DefaultValue = DefaultValue.Mock };
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockFeatureGating = new Mock<IFeatureGatingService>();
         _mockCache = new Mock<IDistributedCache>();

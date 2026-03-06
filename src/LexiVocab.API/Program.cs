@@ -4,8 +4,10 @@ using LexiVocab.Infrastructure;
 using LexiVocab.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
+using Microsoft.AspNetCore.ResponseCompression;
 using Serilog;
 using Serilog.Sinks.OpenTelemetry;
+using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -15,7 +17,11 @@ using System.Threading.RateLimiting;
 // ────────────────────────────────────────────────────────────────
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/lexivocab-.log", rollingInterval: RollingInterval.Day)
+    .WriteTo.File("logs/lexivocab-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        fileSizeLimitBytes: 100_000_000,
+        rollOnFileSizeLimit: true)
     .WriteTo.OpenTelemetry(options =>
     {
         options.Endpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT") ?? "http://localhost:5341/ingest/otlp/v1/logs";
@@ -87,6 +93,21 @@ try
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+        // Return structured JSON response on rate limit rejection
+        options.OnRejected = async (context, cancellationToken) =>
+        {
+            context.HttpContext.Response.ContentType = "application/json";
+            var response = JsonSerializer.Serialize(new
+            {
+                success = false,
+                error = "Too many requests. Please slow down.",
+                statusCode = 429,
+                retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+                    ? retryAfter.TotalSeconds : 60
+            }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            await context.HttpContext.Response.WriteAsync(response, cancellationToken);
+        };
+
         // Global: 100 requests per minute per IP
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
             RateLimitPartition.GetFixedWindowLimiter(
@@ -112,10 +133,22 @@ try
                 }));
     });
 
+    // ─── Response Compression ─────────────────────────────────
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+        options.Providers.Add<BrotliCompressionProvider>();
+        options.Providers.Add<GzipCompressionProvider>();
+        options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(["application/json"]);
+    });
+    builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
+    builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.SmallestSize);
+
     // ─── Kestrel Hardening ────────────────────────────────────
     builder.WebHost.ConfigureKestrel(options =>
     {
-        options.AddServerHeader = false; // Hide "Server: Kestrel" from responses
+        options.AddServerHeader = false;
+        options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB max request body
     });
 
     // ────────────────────────────────────────────────────────────
@@ -145,6 +178,7 @@ try
                            Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
     });
 
+    app.UseResponseCompression();
     app.UseSerilogRequestLogging();
     
     // In Docker behind a reverse proxy (or local dev), HTTPS is handled by the host/load balancer.

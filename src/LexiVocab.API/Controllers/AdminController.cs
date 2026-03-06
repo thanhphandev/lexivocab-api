@@ -11,7 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LexiVocab.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize(Roles = "Admin")]
 [Produces("application/json")]
 public class AdminController : ControllerBase

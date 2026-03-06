@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LexiVocab.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize]
 [Produces("application/json")]
 public class VocabulariesController : ControllerBase
@@ -28,6 +28,9 @@ public class VocabulariesController : ControllerBase
         [FromQuery] string? search = null,
         CancellationToken ct = default)
     {
+        pageSize = Math.Clamp(pageSize, 1, 100);
+        page = Math.Max(1, page);
+
         var result = await _mediator.Send(
             new GetVocabularyListQuery(page, pageSize, isArchived, search), ct);
         return ToActionResult(result);

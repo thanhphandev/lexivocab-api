@@ -7,6 +7,7 @@ using LexiVocab.Domain.Enums;
 using LexiVocab.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Infrastructure.Services;
@@ -23,23 +24,32 @@ public class PayPalService : IPaymentService
     private readonly string _clientId;
     private readonly string _clientSecret;
     private readonly string _webhookId;
-    
-    // Hardcoded Premium Plan Price for demonstration
-    private const string PremiumPrice = "9.99";
+    private readonly string _returnUrl;
+    private readonly string _cancelUrl;
+    private readonly bool _isProduction;
+
     private const string CurrencyCode = "USD";
 
     public PaymentProvider Provider => PaymentProvider.PayPal;
 
-    public PayPalService(HttpClient httpClient, AppDbContext db, IConfiguration config, ILogger<PayPalService> logger)
+    public PayPalService(
+        HttpClient httpClient,
+        AppDbContext db,
+        IConfiguration config,
+        IHostEnvironment env,
+        ILogger<PayPalService> logger)
     {
         _httpClient = httpClient;
         _db = db;
         _logger = logger;
+        _isProduction = env.IsProduction();
 
         _clientId = config["PayPal:ClientId"] ?? "";
         _clientSecret = config["PayPal:ClientSecret"] ?? "";
         _webhookId = config["PayPal:WebhookId"] ?? "";
-        
+        _returnUrl = config["PayPal:ReturnUrl"] ?? "http://localhost:3000/checkout/success";
+        _cancelUrl = config["PayPal:CancelUrl"] ?? "http://localhost:3000/pricing";
+
         var baseUrl = config["PayPal:BaseUrl"] ?? "https://api-m.sandbox.paypal.com";
         _httpClient.BaseAddress = new Uri(baseUrl);
     }
@@ -88,8 +98,8 @@ public class PayPalService : IPaymentService
             application_context = new
             {
                 user_action = "PAY_NOW",
-                return_url = "http://localhost:3000/checkout/success", // TODO: Move to config
-                cancel_url = "http://localhost:3000/pricing"
+                return_url = _returnUrl,
+                cancel_url = _cancelUrl
             }
         };
 
@@ -117,13 +127,12 @@ public class PayPalService : IPaymentService
             {
                 var orderId = doc.RootElement.GetProperty("id").GetString()!;
 
-                // Log the pending transaction to DB
-                var user = await _db.Users.FirstAsync(u => u.Id == userId, ct);
+                // Create Subscription as PENDING — will be activated only after capture
                 var sub = new Subscription
                 {
                     UserId = userId,
                     Plan = SubscriptionPlan.Premium,
-                    Status = SubscriptionStatus.Active, 
+                    Status = SubscriptionStatus.Pending,
                     StartDate = DateTime.UtcNow,
                     EndDate = isYearly ? DateTime.UtcNow.AddYears(1) : (isMonthly ? DateTime.UtcNow.AddMonths(1) : null),
                     Provider = PaymentProvider.PayPal
@@ -135,7 +144,7 @@ public class PayPalService : IPaymentService
                     Subscription = sub,
                     Provider = PaymentProvider.PayPal,
                     ExternalOrderId = orderId,
-                    Amount = decimal.Parse(amount),
+                    Amount = decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture),
                     Currency = CurrencyCode,
                     Status = PaymentStatus.Pending
                 };
@@ -174,27 +183,7 @@ public class PayPalService : IPaymentService
 
         if (status == "COMPLETED")
         {
-            // Update Database Idempotently
-            var tx = await _db.PaymentTransactions
-                .Include(t => t.Subscription)
-                .ThenInclude(s => s.User)
-                .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);
-
-            if (tx == null) return false;
-
-            // If already processed via Webhook before UI redirect
-            if (tx.Status == PaymentStatus.Completed) return true;
-
-            tx.Status = PaymentStatus.Completed;
-            tx.PaidAt = DateTime.UtcNow;
-            tx.RawPayload = json;
-            
-            // Upgrade User
-            tx.Subscription.User.Role = UserRole.Premium;
-            // Set expiration date matching the subscription's computed EndDate
-            tx.Subscription.User.PlanExpirationDate = tx.Subscription.EndDate; 
-
-            await _db.SaveChangesAsync(ct);
+            await ActivateSubscriptionByOrderIdAsync(orderId, json, ct);
             return true;
         }
 
@@ -203,9 +192,16 @@ public class PayPalService : IPaymentService
 
     public async Task<bool> VerifyWebhookSignatureAsync(string body, IDictionary<string, string> headers)
     {
+        // In production, webhook verification is mandatory
         if (string.IsNullOrEmpty(_webhookId))
         {
-            _logger.LogWarning("PayPal Webhook ID is not configured. Trusting webhook by default (Only for local dev).");
+            if (_isProduction)
+            {
+                _logger.LogError("PayPal Webhook ID is not configured in production. Rejecting webhook.");
+                return false;
+            }
+            
+            _logger.LogWarning("PayPal Webhook ID is not configured. Trusting webhook by default (Development only).");
             return true;
         }
 
@@ -213,7 +209,6 @@ public class PayPalService : IPaymentService
         {
             var token = await GetAccessTokenAsync(CancellationToken.None);
 
-            // PayPal expects specific header names (case-insensitive usually, but let's parse safely)
             var authAlgo = headers.FirstOrDefault(x => x.Key.Equals("PAYPAL-AUTH-ALGO", StringComparison.OrdinalIgnoreCase)).Value;
             var certUrl = headers.FirstOrDefault(x => x.Key.Equals("PAYPAL-CERT-URL", StringComparison.OrdinalIgnoreCase)).Value;
             var transmissionId = headers.FirstOrDefault(x => x.Key.Equals("PAYPAL-TRANSMISSION-ID", StringComparison.OrdinalIgnoreCase)).Value;
@@ -253,14 +248,201 @@ public class PayPalService : IPaymentService
 
             var json = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(json);
-            var status = doc.RootElement.GetProperty("verification_status").GetString();
+            var verifyStatus = doc.RootElement.GetProperty("verification_status").GetString();
 
-            return status == "SUCCESS";
+            return verifyStatus == "SUCCESS";
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error verifying PayPal webhook signature.");
             return false;
         }
+    }
+
+    public async Task ProcessWebhookEventAsync(string body, CancellationToken ct)
+    {
+        using var doc = JsonDocument.Parse(body);
+        var eventType = doc.RootElement.GetProperty("event_type").GetString();
+
+        _logger.LogInformation("Processing PayPal webhook event: {EventType}", eventType);
+
+        switch (eventType)
+        {
+            case "PAYMENT.CAPTURE.COMPLETED":
+                await HandlePaymentCaptureCompletedAsync(doc.RootElement, ct);
+                break;
+
+            case "PAYMENT.CAPTURE.REFUNDED":
+                await HandlePaymentRefundedAsync(doc.RootElement, ct);
+                break;
+
+            case "PAYMENT.CAPTURE.DENIED":
+            case "PAYMENT.CAPTURE.DECLINED":
+                await HandlePaymentFailedAsync(doc.RootElement, ct);
+                break;
+
+            default:
+                _logger.LogInformation("Unhandled PayPal webhook event type: {EventType}", eventType);
+                break;
+        }
+    }
+
+    // ─── Webhook Event Handlers ─────────────────────────────────────
+
+    private async Task HandlePaymentCaptureCompletedAsync(JsonElement root, CancellationToken ct)
+    {
+        try
+        {
+            var resource = root.GetProperty("resource");
+            
+            // The supplementary_data contains the order_id
+            string? orderId = null;
+            if (resource.TryGetProperty("supplementary_data", out var suppData) &&
+                suppData.TryGetProperty("related_ids", out var relatedIds) &&
+                relatedIds.TryGetProperty("order_id", out var orderIdElement))
+            {
+                orderId = orderIdElement.GetString();
+            }
+
+            // Fallback: try to get from resource.id (capture id) and look up by it
+            if (string.IsNullOrEmpty(orderId))
+            {
+                _logger.LogWarning("Could not extract order_id from PAYMENT.CAPTURE.COMPLETED webhook. Skipping.");
+                return;
+            }
+
+            await ActivateSubscriptionByOrderIdAsync(orderId, root.GetRawText(), ct);
+            _logger.LogInformation("Successfully processed PAYMENT.CAPTURE.COMPLETED for order {OrderId}", orderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing PAYMENT.CAPTURE.COMPLETED webhook");
+        }
+    }
+
+    private async Task HandlePaymentRefundedAsync(JsonElement root, CancellationToken ct)
+    {
+        try
+        {
+            var resource = root.GetProperty("resource");
+            string? orderId = null;
+
+            if (resource.TryGetProperty("supplementary_data", out var suppData) &&
+                suppData.TryGetProperty("related_ids", out var relatedIds) &&
+                relatedIds.TryGetProperty("order_id", out var orderIdElement))
+            {
+                orderId = orderIdElement.GetString();
+            }
+
+            if (string.IsNullOrEmpty(orderId))
+            {
+                _logger.LogWarning("Could not extract order_id from PAYMENT.CAPTURE.REFUNDED webhook. Skipping.");
+                return;
+            }
+
+            var tx = await _db.PaymentTransactions
+                .Include(t => t.Subscription)
+                .ThenInclude(s => s.User)
+                .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);
+
+            if (tx == null)
+            {
+                _logger.LogWarning("PaymentTransaction not found for refunded order {OrderId}", orderId);
+                return;
+            }
+
+            tx.Status = PaymentStatus.Refunded;
+            tx.Subscription.Status = SubscriptionStatus.Cancelled;
+            tx.Subscription.User.Role = UserRole.User;
+
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("Successfully processed refund for order {OrderId}, user {UserId} downgraded to Free",
+                orderId, tx.UserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing PAYMENT.CAPTURE.REFUNDED webhook");
+        }
+    }
+
+    private async Task HandlePaymentFailedAsync(JsonElement root, CancellationToken ct)
+    {
+        try
+        {
+            var resource = root.GetProperty("resource");
+            string? orderId = null;
+
+            if (resource.TryGetProperty("supplementary_data", out var suppData) &&
+                suppData.TryGetProperty("related_ids", out var relatedIds) &&
+                relatedIds.TryGetProperty("order_id", out var orderIdElement))
+            {
+                orderId = orderIdElement.GetString();
+            }
+
+            if (string.IsNullOrEmpty(orderId))
+            {
+                _logger.LogWarning("Could not extract order_id from payment failed webhook. Skipping.");
+                return;
+            }
+
+            var tx = await _db.PaymentTransactions
+                .Include(t => t.Subscription)
+                .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);
+
+            if (tx == null) return;
+
+            tx.Status = PaymentStatus.Failed;
+            tx.Subscription.Status = SubscriptionStatus.Cancelled;
+
+            await _db.SaveChangesAsync(ct);
+            _logger.LogInformation("Marked payment as failed for order {OrderId}", orderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing payment failed webhook");
+        }
+    }
+
+    // ─── Shared Logic ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Activates a subscription by its PayPal order ID. Used by both CaptureOrderAsync and webhook handler.
+    /// Idempotent: skips if already completed.
+    /// </summary>
+    private async Task ActivateSubscriptionByOrderIdAsync(string orderId, string rawPayload, CancellationToken ct)
+    {
+        var tx = await _db.PaymentTransactions
+            .Include(t => t.Subscription)
+            .ThenInclude(s => s.User)
+            .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);
+
+        if (tx == null)
+        {
+            _logger.LogWarning("PaymentTransaction not found for order {OrderId}", orderId);
+            return;
+        }
+
+        // Idempotent — if already processed via Webhook or UI redirect
+        if (tx.Status == PaymentStatus.Completed) return;
+
+        tx.Status = PaymentStatus.Completed;
+        tx.PaidAt = DateTime.UtcNow;
+        tx.RawPayload = rawPayload;
+        
+        // Activate the subscription (was Pending)
+        tx.Subscription.Status = SubscriptionStatus.Active;
+        tx.Subscription.StartDate = DateTime.UtcNow;
+        // Re-calculate EndDate from now (not from when order was created)
+        if (tx.Subscription.EndDate.HasValue)
+        {
+            var duration = tx.Subscription.EndDate.Value - tx.Subscription.StartDate;
+            tx.Subscription.EndDate = DateTime.UtcNow + duration;
+        }
+        
+        // Upgrade User
+        tx.Subscription.User.Role = UserRole.Premium;
+        tx.Subscription.User.PlanExpirationDate = tx.Subscription.EndDate;
+
+        await _db.SaveChangesAsync(ct);
     }
 }

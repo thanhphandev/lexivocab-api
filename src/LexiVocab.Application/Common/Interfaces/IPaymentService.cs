@@ -27,4 +27,10 @@ public interface IPaymentService
     /// Verifies the authenticity of an incoming webhook from the payment provider.
     /// </summary>
     Task<bool> VerifyWebhookSignatureAsync(string body, IDictionary<string, string> headers);
+
+    /// <summary>
+    /// Processes a verified webhook event (e.g., PAYMENT.CAPTURE.COMPLETED, PAYMENT.CAPTURE.REFUNDED).
+    /// Should be called only after signature verification succeeds.
+    /// </summary>
+    Task ProcessWebhookEventAsync(string body, CancellationToken ct);
 }

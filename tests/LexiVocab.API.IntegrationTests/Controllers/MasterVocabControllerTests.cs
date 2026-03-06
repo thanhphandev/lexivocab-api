@@ -39,7 +39,7 @@ public class MasterVocabControllerTests : IClassFixture<CustomWebApplicationFact
         }
 
         // Act
-        var response = await _client.GetAsync("/api/master-vocab/lookup?word=test");
+        var response = await _client.GetAsync("/api/v1/master-vocab/lookup?word=test");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
