@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LexiVocab.API.Controllers;
 
 [ApiController]
-[Route("api/master-vocab")]
+[Route("api/v1/master-vocab")]
 [Produces("application/json")]
 public class MasterVocabController : ControllerBase
 {

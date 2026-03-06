@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace LexiVocab.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 [Authorize]
 [Produces("application/json")]
 public class PaymentsController : ControllerBase
@@ -42,7 +42,20 @@ public class PaymentsController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
+        pageSize = Math.Clamp(pageSize, 1, 100);
+        page = Math.Max(1, page);
+
         var result = await _mediator.Send(new GetPaymentHistoryQuery(page, pageSize), ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Get available subscription plans dynamically.</summary>
+    [HttpGet("plans")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(List<SubscriptionPlanDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetSubscriptionPlans(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetSubscriptionPlansQuery(), ct);
         return ToActionResult(result);
     }
 
@@ -70,10 +83,10 @@ public class PaymentsController : ControllerBase
     [HttpPost("webhook")]
     [AllowAnonymous]
     [Consumes("application/json")]
-    public async Task<IActionResult> PayPalWebhook()
+    public async Task<IActionResult> PayPalWebhook(CancellationToken ct)
     {
         using var reader = new StreamReader(Request.Body);
-        var body = await reader.ReadToEndAsync();
+        var body = await reader.ReadToEndAsync(ct);
 
         var headers = Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString());
 
@@ -84,7 +97,8 @@ public class PaymentsController : ControllerBase
             return BadRequest();
         }
 
-        _logger.LogInformation("Received verified PayPal webhook.");
+        _logger.LogInformation("Received verified PayPal webhook. Processing event...");
+        await _paymentService.ProcessWebhookEventAsync(body, ct);
         return Ok();
     }
 

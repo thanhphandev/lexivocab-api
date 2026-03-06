@@ -18,3 +18,25 @@ public class CreateVocabularyValidator : AbstractValidator<CreateVocabularyComma
             .MaximumLength(2048).When(x => x.SourceUrl is not null);
     }
 }
+
+public class BatchImportValidator : AbstractValidator<BatchImportCommand>
+{
+    public BatchImportValidator()
+    {
+        RuleFor(x => x.Words)
+            .NotEmpty().WithMessage("Words list cannot be empty.")
+            .Must(w => w.Count <= 200)
+            .WithMessage("Batch import is limited to 200 words per request.");
+
+        RuleForEach(x => x.Words).ChildRules(word =>
+        {
+            word.RuleFor(w => w.WordText)
+                .NotEmpty().WithMessage("Word text is required.")
+                .MaximumLength(100).WithMessage("Word text must not exceed 100 characters.");
+
+            word.RuleFor(w => w.CustomMeaning)
+                .MaximumLength(500).When(w => w.CustomMeaning is not null);
+        });
+    }
+}
+

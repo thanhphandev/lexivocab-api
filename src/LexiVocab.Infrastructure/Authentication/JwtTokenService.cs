@@ -85,4 +85,38 @@ public class JwtTokenService : IJwtTokenService
             return null;
         }
     }
+
+    public Guid? GetUserIdFromExpiredToken(string token)
+    {
+        var handler = new JwtSecurityTokenHandler();
+        try
+        {
+            var principal = handler.ValidateToken(token, new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = _signingKey,
+                ValidateIssuer = true,
+                ValidIssuer = _config["Jwt:Issuer"],
+                ValidateAudience = true,
+                ValidAudience = _config["Jwt:Audience"],
+                ValidateLifetime = false, // Allow expired token
+                ClockSkew = TimeSpan.Zero
+            }, out var securityToken);
+
+            if (securityToken is not JwtSecurityToken jwtSecurityToken ||
+                !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return null;
+            }
+
+            var userIdClaim = principal.FindFirst(JwtRegisteredClaimNames.Sub)
+                ?? principal.FindFirst(ClaimTypes.NameIdentifier);
+
+            return userIdClaim is not null ? Guid.Parse(userIdClaim.Value) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

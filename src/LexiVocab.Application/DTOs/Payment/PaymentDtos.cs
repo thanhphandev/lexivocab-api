@@ -29,6 +29,19 @@ public record BillingOverviewDto(
     DateTime? PlanExpiresAt,
     int TotalTransactions);
 
+public record PlanFeatureDto(
+    string TextKey,
+    bool Included);
+
+public record SubscriptionPlanDto(
+    string Id,
+    string NameKey,
+    string Price,
+    string IntervalKey,
+    string DescriptionKey,
+    bool IsRecommended,
+    List<PlanFeatureDto> Features);
+
 // ─── Requests ────────────────────────────────────────────────
 public record CreateOrderRequest(string PlanId);
 public record CaptureOrderRequest(string OrderId);

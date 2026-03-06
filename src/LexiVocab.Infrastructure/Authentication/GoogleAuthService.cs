@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using LexiVocab.Application.Common.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Infrastructure.Authentication;
@@ -16,11 +17,13 @@ public class GoogleAuthService : IGoogleAuthService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GoogleAuthService> _logger;
+    private readonly string? _expectedClientId;
 
-    public GoogleAuthService(HttpClient httpClient, ILogger<GoogleAuthService> logger)
+    public GoogleAuthService(HttpClient httpClient, IConfiguration config, ILogger<GoogleAuthService> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _expectedClientId = config["Google:ClientId"];
     }
 
     public async Task<GoogleUserInfo?> ValidateIdTokenAsync(string idToken, CancellationToken ct = default)
@@ -40,6 +43,15 @@ public class GoogleAuthService : IGoogleAuthService
             if (payload is null || string.IsNullOrEmpty(payload.Sub))
             {
                 _logger.LogWarning("Google token payload missing 'sub' claim");
+                return null;
+            }
+
+            // Verify audience (aud) matches our Google Client ID to prevent token reuse attacks
+            if (!string.IsNullOrEmpty(_expectedClientId) && payload.Aud != _expectedClientId)
+            {
+                _logger.LogWarning(
+                    "Google token audience mismatch. Expected: {Expected}, Got: {Actual}",
+                    _expectedClientId, payload.Aud);
                 return null;
             }
 
@@ -73,5 +85,6 @@ public class GoogleAuthService : IGoogleAuthService
         public string? Name { get; init; }
         public string? Picture { get; init; }
         public string? EmailVerified { get; init; }
+        public string? Aud { get; init; }
     }
 }

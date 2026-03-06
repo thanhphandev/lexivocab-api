@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace LexiVocab.Application.DTOs.Auth;
 
 public record RegisterRequest(
@@ -13,7 +15,7 @@ public record GoogleLoginRequest(
     string IdToken);
 
 public record RefreshTokenRequest(
-    string RefreshToken);
+    string AccessToken);
 
 public record AuthResponse(
     Guid UserId,
@@ -21,7 +23,7 @@ public record AuthResponse(
     string FullName,
     string Role,
     string AccessToken,
-    string RefreshToken,
+    [property: JsonIgnore] string RefreshToken,
     DateTime ExpiresAt);
 
 public record UserProfileDto(
