@@ -11,6 +11,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Hangfire;
 
 // ────────────────────────────────────────────────────────────────
 // Bootstrap Serilog (before anything else can crash)
@@ -188,6 +189,15 @@ try
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
+    
+    // Hangfire Dashboard (In production, you should add an Authorization filter here to restrict to Admins)
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        DashboardTitle = "LexiVocab Email Queue",
+        Authorization = new[] { new Hangfire.Dashboard.LocalRequestsOnlyAuthorizationFilter() } 
+        // NOTE: LocalRequestsOnly allows viewing without auth strictly on localhost. 
+    });
+
     app.MapControllers();
 
     // ─── Auto-Migrate Database in Development ─────────────────
