@@ -12,6 +12,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Hangfire;
+using Hangfire.Dashboard;
 
 // ────────────────────────────────────────────────────────────────
 // Bootstrap Serilog (before anything else can crash)
@@ -190,12 +191,14 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     
-    // Hangfire Dashboard (In production, you should add an Authorization filter here to restrict to Admins)
+    // Hangfire Dashboard — restricted to Admin users in production
     app.UseHangfireDashboard("/hangfire", new DashboardOptions
     {
         DashboardTitle = "LexiVocab Email Queue",
-        Authorization = new[] { new Hangfire.Dashboard.LocalRequestsOnlyAuthorizationFilter() } 
-        // NOTE: LocalRequestsOnly allows viewing without auth strictly on localhost. 
+        Authorization = new Hangfire.Dashboard.IDashboardAuthorizationFilter[]
+        {
+            new HangfireAdminAuthorizationFilter(app.Environment.IsDevelopment())
+        }
     });
 
     app.MapControllers();
@@ -255,3 +258,30 @@ finally
 }
 
 public partial class Program { }
+
+/// <summary>
+/// Hangfire Dashboard authorization filter.
+/// Development: allows any authenticated user.
+/// Production: requires Admin role.
+/// </summary>
+public class HangfireAdminAuthorizationFilter : Hangfire.Dashboard.IDashboardAuthorizationFilter
+{
+    private readonly bool _isDevelopment;
+
+    public HangfireAdminAuthorizationFilter(bool isDevelopment)
+    {
+        _isDevelopment = isDevelopment;
+    }
+
+    public bool Authorize(Hangfire.Dashboard.DashboardContext context)
+    {
+        // In development, allow all access (same as LocalRequestsOnly before)
+        if (_isDevelopment)
+            return true;
+
+        // In production, require authenticated Admin user
+        var httpContext = context.GetHttpContext();
+        return httpContext.User.Identity?.IsAuthenticated == true
+            && httpContext.User.IsInRole("Admin");
+    }
+}
