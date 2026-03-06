@@ -21,6 +21,8 @@ public class PayPalService : IPaymentService
     private readonly HttpClient _httpClient;
     private readonly AppDbContext _db;
     private readonly ILogger<PayPalService> _logger;
+    private readonly IEmailQueueService _emailQueue;
+    private readonly IEmailTemplateService _templateService;
     private readonly string _clientId;
     private readonly string _clientSecret;
     private readonly string _webhookId;
@@ -37,11 +39,15 @@ public class PayPalService : IPaymentService
         AppDbContext db,
         IConfiguration config,
         IHostEnvironment env,
-        ILogger<PayPalService> logger)
+        ILogger<PayPalService> logger,
+        IEmailQueueService emailQueue,
+        IEmailTemplateService templateService)
     {
         _httpClient = httpClient;
         _db = db;
         _logger = logger;
+        _emailQueue = emailQueue;
+        _templateService = templateService;
         _isProduction = env.IsProduction();
 
         _clientId = config["PayPal:ClientId"] ?? "";
@@ -358,6 +364,22 @@ public class PayPalService : IPaymentService
             await _db.SaveChangesAsync(ct);
             _logger.LogInformation("Successfully processed refund for order {OrderId}, user {UserId} downgraded to Free",
                 orderId, tx.UserId);
+
+            // Send refund email
+            try
+            {
+                var user = tx.Subscription.User;
+                var html = await _templateService.RenderTemplateAsync("PaymentRefunded", new Dictionary<string, string>
+                {
+                    { "FullName", user.FullName },
+                    { "Amount", $"${tx.Amount:F2} {tx.Currency}" }
+                });
+                _emailQueue.EnqueueEmail(user.Email, "💰 Payment Refunded", html);
+            }
+            catch (Exception ex2)
+            {
+                _logger.LogError(ex2, "Failed to send refund email for order {OrderId}", orderId);
+            }
         }
         catch (Exception ex)
         {
@@ -444,5 +466,24 @@ public class PayPalService : IPaymentService
         tx.Subscription.User.PlanExpirationDate = tx.Subscription.EndDate;
 
         await _db.SaveChangesAsync(ct);
+
+        // Send payment success email
+        try
+        {
+            var user = tx.Subscription.User;
+            var html = await _templateService.RenderTemplateAsync("PaymentSuccess", new Dictionary<string, string>
+            {
+                { "FullName", user.FullName },
+                { "PlanName", "Premium" },
+                { "Amount", $"${tx.Amount:F2} {tx.Currency}" },
+                { "ExpiryDate", tx.Subscription.EndDate?.ToString("MMMM dd, yyyy") ?? "Lifetime" },
+                { "TransactionId", tx.ExternalOrderId ?? tx.Id.ToString() }
+            });
+            _emailQueue.EnqueueEmail(user.Email, "✅ Payment Successful!", html);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send payment success email for order {OrderId}", orderId);
+        }
     }
 }

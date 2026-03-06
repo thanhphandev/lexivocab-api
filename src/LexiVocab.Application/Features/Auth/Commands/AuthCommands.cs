@@ -37,13 +37,17 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
     private readonly IJwtTokenService _jwt;
     private readonly IPasswordHasher _hasher;
     private readonly IDistributedCache _cache;
+    private readonly IEmailQueueService _emailQueue;
+    private readonly IEmailTemplateService _templateService;
 
-    public RegisterCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache)
+    public RegisterCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache, IEmailQueueService emailQueue, IEmailTemplateService templateService)
     {
         _uow = uow;
         _jwt = jwt;
         _hasher = hasher;
         _cache = cache;
+        _emailQueue = emailQueue;
+        _templateService = templateService;
     }
 
     public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken ct)
@@ -65,6 +69,18 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         user.UserSetting = new Domain.Entities.UserSetting { UserId = user.Id };
 
         await _uow.SaveChangesAsync(ct);
+
+        // Enqueue welcome email using template (returns immediately, processed in background)
+        try
+        {
+            var html = await _templateService.RenderTemplateAsync("Welcome", new Dictionary<string, string>
+            {
+                { "FullName", user.FullName },
+                { "AppUrl", "https://lexivocab.store" }
+            });
+            _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! 🚀", html);
+        }
+        catch { /* Non-critical: don't block registration if template fails */ }
 
         var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
         var refreshToken = _jwt.GenerateRefreshToken();
@@ -223,15 +239,19 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
     private readonly IPasswordHasher _hasher;
     private readonly IGoogleAuthService _googleAuth;
     private readonly IDistributedCache _cache;
+    private readonly IEmailQueueService _emailQueue;
+    private readonly IEmailTemplateService _templateService;
 
     public GoogleLoginCommandHandler(
-        IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IGoogleAuthService googleAuth, IDistributedCache cache)
+        IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IGoogleAuthService googleAuth, IDistributedCache cache, IEmailQueueService emailQueue, IEmailTemplateService templateService)
     {
         _uow = uow;
         _jwt = jwt;
         _hasher = hasher;
         _googleAuth = googleAuth;
         _cache = cache;
+        _emailQueue = emailQueue;
+        _templateService = templateService;
     }
 
     public async Task<Result<AuthResponse>> Handle(GoogleLoginCommand request, CancellationToken ct)
@@ -262,6 +282,18 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
                 };
                 await _uow.Users.AddAsync(user, ct);
                 user.UserSetting = new Domain.Entities.UserSetting { UserId = user.Id };
+
+                // Send welcome email for new Google users
+                try
+                {
+                    var html = await _templateService.RenderTemplateAsync("Welcome", new Dictionary<string, string>
+                    {
+                        { "FullName", user.FullName },
+                        { "AppUrl", "https://lexivocab.store" }
+                    });
+                    _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! 🚀", html);
+                }
+                catch { /* Non-critical */ }
             }
         }
 

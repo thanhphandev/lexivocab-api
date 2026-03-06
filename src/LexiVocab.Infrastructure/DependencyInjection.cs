@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Hangfire;
+using Hangfire.PostgreSql;
 
 namespace LexiVocab.Infrastructure;
 
@@ -47,8 +49,29 @@ public static class DependencyInjection
 
         // ─── Background Jobs ──────────────────────────────────
         services.AddHostedService<Services.SubscriptionExpirationJob>();
+        services.AddHostedService<Services.ReviewReminderJob>();
+        services.AddScoped<IFeatureGatingService, Services.FeatureGatingService>();
+        services.AddScoped<IPaymentService, Services.PayPalService>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // ─── Email Services ────────────────────────────────
+        services.AddTransient<IEmailService, Services.SmtpEmailService>();
+        services.AddScoped<IEmailQueueService, Services.HangfireEmailQueueService>();
+        services.AddSingleton<IEmailTemplateService, Services.EmailTemplateService>();
+
+        // ─── Hangfire Integration (PostgreSQL backed) ───────────
+        services.AddHangfire(config => config
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection"))));
+
+        // Add the processing server as IHostedService
+        services.AddHangfireServer(options =>
+        {
+            options.WorkerCount = Environment.ProcessorCount * 5; // e.g., 20+ concurrent jobs
+        });
 
         // ─── Audit Logging ────────────────────────────────────
         services.AddScoped<IAuditLogService, Services.AuditLogService>();

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0"
+                    style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+                    <tr>
+                        <td
+                            style="background:linear-gradient(135deg,#4299e1 0%,#3182ce 100%);padding:40px 40px 30px;text-align:center;">
+                            <h1 style="margin:0;color:#fff;font-size:28px;font-weight:700;">📚 Your Vocabulary Misses
+                                You!</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding:40px;">
+                            <p style="font-size:18px;color:#2d3748;margin:0 0 12px;">Hello
+                                <strong>{{FullName}}</strong>,</p>
+                            <p style="font-size:15px;color:#4a5568;line-height:1.7;margin:0 0 20px;">
+                                We noticed you haven't reviewed your vocabulary since
+                                <strong>{{LastReviewDate}}</strong>.
+                                Consistent review is key to long-term retention!
+                            </p>
+                            <!-- Stats Card -->
+                            <table width="100%" cellpadding="0" cellspacing="0"
+                                style="background:linear-gradient(135deg,#ebf8ff,#bee3f8);border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;">
+                                <tr>
+                                    <td style="padding:8px;">
+                                        <div style="font-size:36px;font-weight:700;color:#2b6cb0;">{{DueCount}}</div>
+                                        <div style="font-size:13px;color:#4a5568;margin-top:4px;">Cards due for review
+                                        </div>
+                                    </td>
+                                    <td style="padding:8px;">
+                                        <div style="font-size:36px;font-weight:700;color:#e53e3e;">{{DaysMissed}}</div>
+                                        <div style="font-size:13px;color:#4a5568;margin-top:4px;">Days since last review
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="font-size:15px;color:#4a5568;line-height:1.7;margin:0 0 24px;">
+                                Just 5 minutes a day can make a huge difference. Come back and keep your streak alive!
+                                🔥
+                            </p>
+                            <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                                <tr>
+                                    <td
+                                        style="background:linear-gradient(135deg,#4299e1,#3182ce);border-radius:8px;padding:14px 32px;">
+                                        <a href="{{AppUrl}}/review"
+                                            style="color:#fff;text-decoration:none;font-size:16px;font-weight:600;">Start
+                                            Review Session →</a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td
+                            style="padding:24px 40px;background:#f7fafc;text-align:center;border-top:1px solid #e2e8f0;">
+                            <p style="margin:0;font-size:13px;color:#a0aec0;">© 2026 LexiVocab. All rights reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>
