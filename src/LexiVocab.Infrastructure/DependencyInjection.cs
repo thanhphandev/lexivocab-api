@@ -50,8 +50,6 @@ public static class DependencyInjection
         // ─── Background Jobs ──────────────────────────────────
         services.AddHostedService<Services.SubscriptionExpirationJob>();
         services.AddHostedService<Services.ReviewReminderJob>();
-        services.AddScoped<IFeatureGatingService, Services.FeatureGatingService>();
-        services.AddScoped<IPaymentService, Services.PayPalService>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

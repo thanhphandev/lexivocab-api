@@ -21,4 +21,13 @@ public class MasterVocabularyRepository : GenericRepository<MasterVocabulary>, I
             .Take(limit)
             .AsNoTracking()
             .ToListAsync(ct);
+
+    public async Task<Dictionary<string, MasterVocabulary>> GetByWordsAsync(IEnumerable<string> words, CancellationToken ct = default)
+    {
+        var wordList = words.ToList();
+        var results = await _dbSet
+            .Where(m => wordList.Contains(m.Word))
+            .ToListAsync(ct);
+        return results.ToDictionary(m => m.Word, StringComparer.OrdinalIgnoreCase);
+    }
 }

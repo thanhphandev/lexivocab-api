@@ -7,6 +7,7 @@ using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
@@ -39,8 +40,9 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
     private readonly IDistributedCache _cache;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
+    private readonly string _appUrl;
 
-    public RegisterCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache, IEmailQueueService emailQueue, IEmailTemplateService templateService)
+    public RegisterCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache, IEmailQueueService emailQueue, IEmailTemplateService templateService, IConfiguration configuration)
     {
         _uow = uow;
         _jwt = jwt;
@@ -48,6 +50,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         _cache = cache;
         _emailQueue = emailQueue;
         _templateService = templateService;
+        _appUrl = configuration["App:Url"] ?? "https://lexivocab.store";
     }
 
     public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken ct)
@@ -76,7 +79,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
             var html = await _templateService.RenderTemplateAsync("Welcome", new Dictionary<string, string>
             {
                 { "FullName", user.FullName },
-                { "AppUrl", "https://lexivocab.store" }
+                { "AppUrl", _appUrl }
             });
             _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! 🚀", html);
         }
@@ -241,9 +244,10 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
     private readonly IDistributedCache _cache;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
+    private readonly string _appUrl;
 
     public GoogleLoginCommandHandler(
-        IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IGoogleAuthService googleAuth, IDistributedCache cache, IEmailQueueService emailQueue, IEmailTemplateService templateService)
+        IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IGoogleAuthService googleAuth, IDistributedCache cache, IEmailQueueService emailQueue, IEmailTemplateService templateService, IConfiguration configuration)
     {
         _uow = uow;
         _jwt = jwt;
@@ -252,6 +256,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
         _cache = cache;
         _emailQueue = emailQueue;
         _templateService = templateService;
+        _appUrl = configuration["App:Url"] ?? "https://lexivocab.store";
     }
 
     public async Task<Result<AuthResponse>> Handle(GoogleLoginCommand request, CancellationToken ct)
@@ -289,7 +294,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
                     var html = await _templateService.RenderTemplateAsync("Welcome", new Dictionary<string, string>
                     {
                         { "FullName", user.FullName },
-                        { "AppUrl", "https://lexivocab.store" }
+                        { "AppUrl", _appUrl }
                     });
                     _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! 🚀", html);
                 }

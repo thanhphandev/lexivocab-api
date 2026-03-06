@@ -85,4 +85,14 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
 
     public async Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct)
         => await _dbSet.CountAsync(v => v.UserId == userId, ct);
+
+    public async Task<HashSet<string>> GetExistingWordsAsync(Guid userId, IEnumerable<string> words, CancellationToken ct = default)
+    {
+        var lowerWords = words.Select(w => w.ToLower()).ToList();
+        var existingWords = await _dbSet
+            .Where(v => v.UserId == userId && lowerWords.Contains(v.WordText.ToLower()))
+            .Select(v => v.WordText.ToLower())
+            .ToListAsync(ct);
+        return existingWords.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
 }

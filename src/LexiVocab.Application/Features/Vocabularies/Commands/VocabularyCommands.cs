@@ -206,15 +206,30 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
             return Result<int>.Failure("ERR_PREMIUM_REQUIRED", 403);
         }
 
+        // Batch lookup: 1 query instead of N queries for duplicate check
+        var allWordTexts = request.Words.Select(w => w.WordText.ToLowerInvariant().Trim()).ToList();
+        var existingWords = await _uow.Vocabularies.GetExistingWordsAsync(userId, allWordTexts, ct);
+
+        // Batch lookup: 1 query instead of N queries for master vocabulary enrichment
+        var newWordTexts = allWordTexts.Where(w => !existingWords.Contains(w)).ToList();
+        var masterVocabMap = newWordTexts.Count > 0
+            ? await _uow.MasterVocabularies.GetByWordsAsync(newWordTexts, ct)
+            : new Dictionary<string, Domain.Entities.MasterVocabulary>();
+
         var entities = new List<UserVocabulary>();
 
         foreach (var word in request.Words)
         {
-            if (await _uow.Vocabularies.WordExistsForUserAsync(userId, word.WordText, ct))
+            var normalizedWord = word.WordText.ToLowerInvariant().Trim();
+
+            if (existingWords.Contains(normalizedWord))
                 continue; // Skip duplicates silently
 
-            var masterVocab = await _uow.MasterVocabularies.GetByWordAsync(
-                word.WordText.ToLowerInvariant().Trim(), ct);
+            // Prevent duplicates within the same batch
+            if (entities.Any(e => e.WordText.Equals(word.WordText.Trim(), StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            masterVocabMap.TryGetValue(normalizedWord, out var masterVocab);
 
             entities.Add(new UserVocabulary
             {

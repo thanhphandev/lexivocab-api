@@ -70,21 +70,20 @@ public class BatchImportHandlerTests
         _mockFeatureGating.Setup(x => x.GetPermissionsAsync(_userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UserPermissionsDto("Premium", 9999, 0, true, true, true, null)); // CanBatchImport = true
 
-        _mockUow.Setup(x => x.Vocabularies.WordExistsForUserAsync(_userId, "apple", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-        _mockUow.Setup(x => x.Vocabularies.WordExistsForUserAsync(_userId, "banana", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true); // Duplicate, should be skipped
+        // Mock batch duplicate check: "banana" already exists
+        _mockUow.Setup(x => x.Vocabularies.GetExistingWordsAsync(_userId, It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "banana" });
 
-        // Mock master vocab
-        _mockUow.Setup(x => x.MasterVocabularies.GetByWordAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((MasterVocabulary?)null);
+        // Mock batch master vocab lookup: no enrichment data
+        _mockUow.Setup(x => x.MasterVocabularies.GetByWordsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, MasterVocabulary>());
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Should().Be(1); // Only 1 was imported
+        result.Data.Should().Be(1); // Only "apple" was imported, "banana" skipped as duplicate
 
         _mockUow.Verify(x => x.Vocabularies.AddRangeAsync(It.Is<IEnumerable<UserVocabulary>>(l => l.Count() == 1), It.IsAny<CancellationToken>()), Times.Once);
         _mockUow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);

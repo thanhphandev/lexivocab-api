@@ -39,4 +39,10 @@ public interface IVocabularyRepository : IRepository<UserVocabulary>
         Guid userId, CancellationToken ct = default);
 
     Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Batch check: returns the set of words that already exist for a user (case-insensitive).
+    /// Used by BatchImport to avoid N+1 queries.
+    /// </summary>
+    Task<HashSet<string>> GetExistingWordsAsync(Guid userId, IEnumerable<string> words, CancellationToken ct = default);
 }
