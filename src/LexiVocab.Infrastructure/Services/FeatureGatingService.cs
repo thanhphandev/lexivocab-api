@@ -31,18 +31,13 @@ public class FeatureGatingService : IFeatureGatingService
 
     public async Task<UserPermissionsDto> GetPermissionsAsync(Guid userId, CancellationToken ct)
     {
-        // Single query: fetch user and count in parallel to avoid redundant DB calls
-        var userTask = _db.Users
+        // Run sequentially to prevent EF Core InvalidOperationException
+        var user = await _db.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
-        var countTask = _db.UserVocabularies
+        var currentCount = await _db.UserVocabularies
             .CountAsync(v => v.UserId == userId, ct);
-
-        await Task.WhenAll(userTask, countTask);
-
-        var user = userTask.Result;
-        var currentCount = countTask.Result;
 
         if (user == null)
         {

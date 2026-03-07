@@ -3,61 +3,61 @@ using LexiVocab.Domain.Enums;
 using LexiVocab.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Infrastructure.Services;
 
 /// <summary>
-/// Background job that runs periodically to check for expired subscriptions,
+/// Hangfire recurring job that checks for expired subscriptions,
 /// sends expiry warnings, and reverts user roles back to 'User'.
 /// </summary>
-public class SubscriptionExpirationJob : BackgroundService
+public class SubscriptionExpirationJob : ISubscriptionExpirationJob
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly AppDbContext _db;
+    private readonly IEmailQueueService _emailQueue;
+    private readonly IEmailTemplateService _templateService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<SubscriptionExpirationJob> _logger;
-    private readonly TimeSpan _checkInterval = TimeSpan.FromHours(12);
 
-    public SubscriptionExpirationJob(IServiceProvider serviceProvider, ILogger<SubscriptionExpirationJob> logger)
+    public SubscriptionExpirationJob(
+        AppDbContext db,
+        IEmailQueueService emailQueue,
+        IEmailTemplateService templateService,
+        IConfiguration configuration,
+        ILogger<SubscriptionExpirationJob> logger)
     {
-        _serviceProvider = serviceProvider;
+        _db = db;
+        _emailQueue = emailQueue;
+        _templateService = templateService;
+        _configuration = configuration;
         _logger = logger;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task ExecuteAsync(CancellationToken ct)
     {
-        _logger.LogInformation("Subscription Expiration Job is starting.");
+        _logger.LogInformation("Subscription Expiration Hangfire Job is starting.");
 
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
-            {
-                await ProcessExpirationsAsync(stoppingToken);
-                await SendExpiryWarningsAsync(stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error occurred executing Subscription Expiration Job.");
-            }
-
-            await Task.Delay(_checkInterval, stoppingToken);
+            await ProcessExpirationsAsync(ct);
+            await SendExpiryWarningsAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred executing Subscription Expiration Job.");
+            throw; // Rethrow to let Hangfire mark it as failed & retry
         }
 
-        _logger.LogInformation("Subscription Expiration Job is stopping.");
+        _logger.LogInformation("Subscription Expiration Hangfire Job completed.");
     }
 
     private async Task ProcessExpirationsAsync(CancellationToken ct)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var emailQueue = scope.ServiceProvider.GetRequiredService<IEmailQueueService>();
-        var templateService = scope.ServiceProvider.GetRequiredService<IEmailTemplateService>();
-        var appUrl = scope.ServiceProvider.GetRequiredService<IConfiguration>()["App:Url"] ?? "https://lexivocab.store";
+        var appUrl = _configuration["App:Url"] ?? "https://lexivocab.store";
 
         var now = DateTime.UtcNow;
 
-        var expiredUsers = await db.Users
+        var expiredUsers = await _db.Users
             .Where(u => u.Role == UserRole.Premium && 
                         u.PlanExpirationDate.HasValue && 
                         u.PlanExpirationDate.Value < now)
@@ -74,12 +74,12 @@ public class SubscriptionExpirationJob : BackgroundService
                 // Send expired notification
                 try
                 {
-                    var html = await templateService.RenderTemplateAsync("SubscriptionExpired", new Dictionary<string, string>
+                    var html = await _templateService.RenderTemplateAsync("SubscriptionExpired", new Dictionary<string, string>
                     {
                         { "FullName", user.FullName },
                         { "AppUrl", appUrl }
                     });
-                    emailQueue.EnqueueEmail(user.Email, "📋 Your Premium Has Expired", html);
+                    _emailQueue.EnqueueEmail(user.Email, "📋 Your Premium Has Expired", html);
                 }
                 catch (Exception ex)
                 {
@@ -88,7 +88,7 @@ public class SubscriptionExpirationJob : BackgroundService
             }
 
             var userIds = expiredUsers.Select(u => u.Id).ToList();
-            var activeSubscriptions = await db.Subscriptions
+            var activeSubscriptions = await _db.Subscriptions
                 .Where(s => userIds.Contains(s.UserId) && s.Status == SubscriptionStatus.Active)
                 .ToListAsync(ct);
 
@@ -100,27 +100,20 @@ public class SubscriptionExpirationJob : BackgroundService
                 }
             }
 
-            await db.SaveChangesAsync(ct);
+            await _db.SaveChangesAsync(ct);
             _logger.LogInformation("Successfully completed subscription expiration processing.");
         }
     }
 
-    /// <summary>
-    /// Sends warning emails to users whose subscriptions expire within 3 days.
-    /// </summary>
     private async Task SendExpiryWarningsAsync(CancellationToken ct)
     {
-        using var scope = _serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var emailQueue = scope.ServiceProvider.GetRequiredService<IEmailQueueService>();
-        var templateService = scope.ServiceProvider.GetRequiredService<IEmailTemplateService>();
-        var appUrl = scope.ServiceProvider.GetRequiredService<IConfiguration>()["App:Url"] ?? "https://lexivocab.store";
+        var appUrl = _configuration["App:Url"] ?? "https://lexivocab.store";
 
         var now = DateTime.UtcNow;
         var threeDaysLater = now.AddDays(3);
 
         // Find premium users expiring in the next 3 days (but not already expired)
-        var expiringUsers = await db.Users
+        var expiringUsers = await _db.Users
             .AsNoTracking()
             .Where(u => u.Role == UserRole.Premium &&
                         u.PlanExpirationDate.HasValue &&
@@ -136,13 +129,13 @@ public class SubscriptionExpirationJob : BackgroundService
             {
                 try
                 {
-                    var html = await templateService.RenderTemplateAsync("SubscriptionExpiring", new Dictionary<string, string>
+                    var html = await _templateService.RenderTemplateAsync("SubscriptionExpiring", new Dictionary<string, string>
                     {
                         { "FullName", user.FullName },
                         { "ExpiryDate", user.PlanExpirationDate!.Value.ToString("MMMM dd, yyyy") },
                         { "AppUrl", appUrl }
                     });
-                    emailQueue.EnqueueEmail(user.Email, "⏰ Your Premium is Expiring Soon", html);
+                    _emailQueue.EnqueueEmail(user.Email, "⏰ Your Premium is Expiring Soon", html);
                 }
                 catch (Exception ex)
                 {

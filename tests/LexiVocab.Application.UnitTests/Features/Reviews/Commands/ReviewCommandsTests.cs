@@ -63,7 +63,8 @@ public class ReviewCommandsTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.NewRepetitionCount.Should().Be(1);
+        result.Data.Should().NotBeNull();
+        result.Data!.NewRepetitionCount.Should().Be(1);
         result.Data.NewEasinessFactor.Should().Be(2.6);
         result.Data.NewIntervalDays.Should().Be(1);
 

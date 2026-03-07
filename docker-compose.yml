@@ -56,7 +56,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: lexivocab-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:-}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    command: sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then redis-server --requirepass "$$REDIS_PASSWORD"; else redis-server; fi'
     ports:
       - "6379:6379"
     volumes:
