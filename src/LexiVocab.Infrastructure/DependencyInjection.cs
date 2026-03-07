@@ -48,8 +48,8 @@ public static class DependencyInjection
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
 
         // ─── Background Jobs ──────────────────────────────────
-        services.AddHostedService<Services.SubscriptionExpirationJob>();
-        services.AddHostedService<Services.ReviewReminderJob>();
+        services.AddTransient<Services.ISubscriptionExpirationJob, Services.SubscriptionExpirationJob>();
+        services.AddTransient<Services.IReviewReminderJob, Services.ReviewReminderJob>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

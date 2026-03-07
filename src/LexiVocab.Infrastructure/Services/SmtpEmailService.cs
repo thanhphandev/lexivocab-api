@@ -36,7 +36,7 @@ public class SmtpEmailService : IEmailService
         }
 
         var message = new MimeMessage();
-        message.From.Add(new MailboxAddress(senderName, senderEmail));
+        message.From.Add(new MailboxAddress(senderName, senderEmail!));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
 
@@ -48,11 +48,11 @@ public class SmtpEmailService : IEmailService
         {
             // Connect
             var secureSocketOptions = useSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
-            await client.ConnectAsync(server, port, secureSocketOptions, ct);
+            await client.ConnectAsync(server!, port, secureSocketOptions, ct);
 
             // Authenticate (Remove XOAUTH2 as a mechanism if we use standard username/pwd)
             client.AuthenticationMechanisms.Remove("XOAUTH2");
-            await client.AuthenticateAsync(username, password, ct);
+            await client.AuthenticateAsync(username!, password!, ct);
 
             // Send
             await client.SendAsync(message, ct);

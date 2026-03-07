@@ -2,6 +2,7 @@ using LexiVocab.API.Middlewares;
 using LexiVocab.Application;
 using LexiVocab.Infrastructure;
 using LexiVocab.Infrastructure.Persistence;
+using LexiVocab.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -155,6 +156,21 @@ try
 
     // ────────────────────────────────────────────────────────────
     var app = builder.Build();
+
+    // ─── Hangfire Recurring Jobs ──────────────────────────────
+    using (var scope = app.Services.CreateScope())
+    {
+        var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+        recurringJobManager.AddOrUpdate<ISubscriptionExpirationJob>(
+            "SubscriptionExpirationJob",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(0)); // Run daily at midnight UTC
+            
+        recurringJobManager.AddOrUpdate<IReviewReminderJob>(
+            "ReviewReminderJob",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Daily(1)); // Run daily at 1 AM UTC
+    }
 
     // ─── Middleware Pipeline ──────────────────────────────────
     // Order matters: Exception → Security Headers → HTTPS → CORS → RateLimit → Auth → Controllers

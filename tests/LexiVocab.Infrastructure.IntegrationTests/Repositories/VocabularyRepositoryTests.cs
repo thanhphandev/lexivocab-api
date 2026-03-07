@@ -8,14 +8,7 @@ namespace LexiVocab.Infrastructure.IntegrationTests.Repositories;
 
 public class VocabularyRepositoryTests : BaseIntegrationTest
 {
-    private readonly UserRepository _userRepository;
-    private readonly VocabularyRepository _vocabularyRepository;
 
-    public VocabularyRepositoryTests()
-    {
-        // Instances created outside of async initialization will get the DbContext later.
-        // Needs a slight refactor on BaseTest initialization strategy for dependency injection.
-    }
 
     [Fact]
     public async Task WordExistsForUserAsync_WhenWordExists_ShouldReturnTrue()

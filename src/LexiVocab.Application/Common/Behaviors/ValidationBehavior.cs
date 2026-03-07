@@ -27,8 +27,12 @@ public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TReques
 
         var context = new ValidationContext<TRequest>(request);
 
-        var validationResults = await Task.WhenAll(
-            _validators.Select(v => v.ValidateAsync(context, cancellationToken)));
+        // Execute sequentially to prevent EF Core concurrency exceptions in custom MustAsync rules
+        var validationResults = new List<FluentValidation.Results.ValidationResult>();
+        foreach (var validator in _validators)
+        {
+            validationResults.Add(await validator.ValidateAsync(context, cancellationToken));
+        }
 
         var failures = validationResults
             .SelectMany(r => r.Errors)
