@@ -23,6 +23,9 @@ public class UserSetting : BaseEntity
     /// <summary>Daily review goal (number of cards). Default 20.</summary>
     public int DailyGoal { get; set; } = 20;
 
+    /// <summary>JSON string storing other extension preferences.</summary>
+    public string PreferencesJson { get; set; } = "{}";
+
     // Navigation
     public User User { get; set; } = null!;
 }

@@ -36,7 +36,8 @@ public class SettingsController : ControllerBase
                 request.IsHighlightEnabled,
                 request.HighlightColor,
                 request.ExcludedDomains,
-                request.DailyGoal), ct);
+                request.DailyGoal,
+                request.PreferencesJson), ct);
         return ToActionResult(result);
     }
 
