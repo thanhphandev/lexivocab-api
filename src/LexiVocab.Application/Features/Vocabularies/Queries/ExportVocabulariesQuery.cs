@@ -33,7 +33,7 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
             return Result<ExportDataDto>.Failure("ERR_PREMIUM_REQUIRED", 403);
         }
 
-        var result = await _uow.Vocabularies.GetByUserIdAsync(userId, 1, int.MaxValue, null, null, ct);
+        var result = await _uow.Vocabularies.GetByUserIdAsync(userId, 1, int.MaxValue, null, null, null, ct);
         var vocabularies = result.Items;
 
         // Map to a cleaner format for export

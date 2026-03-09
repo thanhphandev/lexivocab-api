@@ -56,6 +56,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Refresh an expired access token using a valid refresh token from cookies.</summary>
     [HttpPost("refresh")]
+    [EnableRateLimiting("RefreshLimit")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request, CancellationToken ct)

@@ -35,6 +35,7 @@ public class User : BaseEntity
 
     // Navigation properties
     public ICollection<UserVocabulary> UserVocabularies { get; set; } = [];
+    public ICollection<VocabTag> VocabTags { get; set; } = [];
     public UserSetting? UserSetting { get; set; }
     public ICollection<ReviewLog> ReviewLogs { get; set; } = [];
     public ICollection<Subscription> Subscriptions { get; set; } = [];

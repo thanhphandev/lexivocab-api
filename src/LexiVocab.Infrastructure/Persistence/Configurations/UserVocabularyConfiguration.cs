@@ -15,6 +15,7 @@ public class UserVocabularyConfiguration : IEntityTypeConfiguration<UserVocabula
 
         builder.Property(v => v.UserId).HasColumnName("user_id").IsRequired();
         builder.Property(v => v.MasterVocabularyId).HasColumnName("master_vocabulary_id");
+        builder.Property(v => v.TagId).HasColumnName("tag_id");
 
         builder.Property(v => v.WordText)
             .HasColumnName("word_text")
@@ -74,6 +75,11 @@ public class UserVocabularyConfiguration : IEntityTypeConfiguration<UserVocabula
             .HasDatabaseName("ix_user_vocabularies_user_review_archive");
 
         // ─── Relationships ────────────────────────────────────
+        builder.HasOne(v => v.Tag)
+            .WithMany(t => t.UserVocabularies)
+            .HasForeignKey(v => v.TagId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasOne(v => v.MasterVocabulary)
             .WithMany(m => m.UserVocabularies)
             .HasForeignKey(v => v.MasterVocabularyId)

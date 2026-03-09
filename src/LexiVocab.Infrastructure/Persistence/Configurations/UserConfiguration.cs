@@ -80,6 +80,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(v => v.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // 1-N relationship with VocabTags
+        builder.HasMany(u => u.VocabTags)
+            .WithOne(t => t.User)
+            .HasForeignKey(t => t.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // 1-N relationship with ReviewLog (denormalized)
         builder.HasMany(u => u.ReviewLogs)
             .WithOne(r => r.User)

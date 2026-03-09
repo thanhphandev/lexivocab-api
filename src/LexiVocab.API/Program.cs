@@ -134,6 +134,18 @@ try
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 0 // No queueing — reject immediately
                 }));
+
+        // Refresh endpoints: a bit more lenient to allow multi-tab bursting
+        options.AddPolicy("RefreshLimit", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 30,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0 // No queueing
+                }));
     });
 
     // ─── Response Compression ─────────────────────────────────

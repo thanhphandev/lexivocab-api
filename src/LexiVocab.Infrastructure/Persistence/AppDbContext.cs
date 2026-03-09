@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<MasterVocabulary> MasterVocabularies => Set<MasterVocabulary>();
     public DbSet<UserVocabulary> UserVocabularies => Set<UserVocabulary>();
+    public DbSet<VocabTag> VocabTags => Set<VocabTag>();
     public DbSet<ReviewLog> ReviewLogs => Set<ReviewLog>();
     public DbSet<UserSetting> UserSettings => Set<UserSetting>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
