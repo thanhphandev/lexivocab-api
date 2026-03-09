@@ -15,7 +15,8 @@ public record GetVocabularyListQuery(
     int Page = 1,
     int PageSize = 20,
     bool? IsArchived = null,
-    string? SearchTerm = null
+    string? SearchTerm = null,
+    Guid? TagId = null
 ) : IRequest<Result<PagedResult<VocabularyDto>>>;
 
 public class GetVocabularyListHandler : IRequestHandler<GetVocabularyListQuery, Result<PagedResult<VocabularyDto>>>
@@ -47,7 +48,7 @@ public class GetVocabularyListHandler : IRequestHandler<GetVocabularyListQuery, 
         }
 
         var (items, totalCount) = await _uow.Vocabularies.GetByUserIdAsync(
-            userId, request.Page, request.PageSize, request.IsArchived, request.SearchTerm, ct);
+            userId, request.Page, request.PageSize, request.IsArchived, request.SearchTerm, request.TagId, ct);
 
         var dtos = items.Select(MapToDto).ToList();
         var pagedResult = new PagedResult<VocabularyDto>
@@ -65,7 +66,7 @@ public class GetVocabularyListHandler : IRequestHandler<GetVocabularyListQuery, 
     }
 
     private static VocabularyDto MapToDto(UserVocabulary v) => new(
-        v.Id, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
+        v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
         v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
         v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
         v.MasterVocabulary?.PhoneticUk, v.MasterVocabulary?.PhoneticUs,
@@ -107,7 +108,7 @@ public class GetVocabularyByIdHandler : IRequestHandler<GetVocabularyByIdQuery, 
             return Result<VocabularyDto>.NotFound("Vocabulary not found.");
 
         var dto = new VocabularyDto(
-            entity.Id, entity.WordText, entity.CustomMeaning, entity.ContextSentence, entity.SourceUrl,
+            entity.Id, entity.TagId, entity.WordText, entity.CustomMeaning, entity.ContextSentence, entity.SourceUrl,
             entity.RepetitionCount, entity.EasinessFactor, entity.IntervalDays,
             entity.NextReviewDate, entity.LastReviewedAt, entity.IsArchived, entity.CreatedAt,
             entity.MasterVocabulary?.PhoneticUk, entity.MasterVocabulary?.PhoneticUs,

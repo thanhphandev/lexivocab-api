@@ -26,13 +26,14 @@ public class VocabulariesController : ControllerBase
         [FromQuery] int pageSize = 20,
         [FromQuery] bool? isArchived = null,
         [FromQuery] string? search = null,
+        [FromQuery] Guid? tagId = null,
         CancellationToken ct = default)
     {
         pageSize = Math.Clamp(pageSize, 1, 100);
         page = Math.Max(1, page);
 
         var result = await _mediator.Send(
-            new GetVocabularyListQuery(page, pageSize, isArchived, search), ct);
+            new GetVocabularyListQuery(page, pageSize, isArchived, search, tagId), ct);
         return ToActionResult(result);
     }
 
@@ -55,7 +56,7 @@ public class VocabulariesController : ControllerBase
     {
         var result = await _mediator.Send(
             new CreateVocabularyCommand(request.WordText, request.CustomMeaning,
-                request.ContextSentence, request.SourceUrl), ct);
+                request.ContextSentence, request.SourceUrl, request.TagId), ct);
         return ToActionResult(result);
     }
 
@@ -68,6 +69,18 @@ public class VocabulariesController : ControllerBase
         var result = await _mediator.Send(
             new UpdateVocabularyCommand(id, request.CustomMeaning, request.ContextSentence), ct);
         return ToActionResult(result);
+    }
+
+    /// <summary>Update tag for a vocabulary card.</summary>
+    [HttpPatch("{id:guid}/tag")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateTag(Guid id, [FromBody] UpdateVocabularyTagRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new UpdateVocabularyTagCommand(id, request.TagId), ct);
+        if (result.IsSuccess)
+            return Ok(new { success = true });
+        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
     }
 
     /// <summary>Toggle archive status (soft delete / mark as mastered).</summary>

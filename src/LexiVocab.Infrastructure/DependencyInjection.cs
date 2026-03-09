@@ -44,6 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IVocabularyRepository, VocabularyRepository>();
         services.AddScoped<IReviewLogRepository, ReviewLogRepository>();
         services.AddScoped<IMasterVocabularyRepository, MasterVocabularyRepository>();
+        services.AddScoped<IVocabTagRepository, VocabTagRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
 

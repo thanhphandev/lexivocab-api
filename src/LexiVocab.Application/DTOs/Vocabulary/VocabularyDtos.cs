@@ -2,6 +2,7 @@ namespace LexiVocab.Application.DTOs.Vocabulary;
 
 public record VocabularyDto(
     Guid Id,
+    Guid? TagId,
     string WordText,
     string? CustomMeaning,
     string? ContextSentence,
@@ -23,11 +24,15 @@ public record CreateVocabularyRequest(
     string WordText,
     string? CustomMeaning,
     string? ContextSentence,
-    string? SourceUrl);
+    string? SourceUrl,
+    Guid? TagId = null);
 
 public record UpdateVocabularyRequest(
     string? CustomMeaning,
     string? ContextSentence);
+
+public record UpdateVocabularyTagRequest(
+    Guid? TagId);
 
 public record BatchImportRequest(
     List<CreateVocabularyRequest> Words);

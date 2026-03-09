@@ -10,6 +10,7 @@ public interface IUnitOfWork : IDisposable
     IVocabularyRepository Vocabularies { get; }
     IReviewLogRepository ReviewLogs { get; }
     IMasterVocabularyRepository MasterVocabularies { get; }
+    IVocabTagRepository Tags { get; }
     ISubscriptionRepository Subscriptions { get; }
     IPaymentTransactionRepository PaymentTransactions { get; }
 

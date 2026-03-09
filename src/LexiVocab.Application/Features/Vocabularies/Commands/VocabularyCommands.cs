@@ -14,7 +14,8 @@ public record CreateVocabularyCommand(
     string WordText,
     string? CustomMeaning,
     string? ContextSentence,
-    string? SourceUrl
+    string? SourceUrl,
+    Guid? TagId = null
 ) : IRequest<Result<VocabularyDto>>, IAuditedRequest
 {
     public AuditAction AuditAction => AuditAction.VocabularyCreated;
@@ -56,9 +57,26 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         // Try to link with master vocabulary for enriched data
         var masterVocab = await _uow.MasterVocabularies.GetByWordAsync(request.WordText.ToLowerInvariant().Trim(), ct);
 
+        // Auto-categorize tag based on SourceUrl domain or use passed TagId
+        Guid? assignedTagId = request.TagId;
+        if (!string.IsNullOrWhiteSpace(request.SourceUrl))
+        {
+            try
+            {
+                var uri = new Uri(request.SourceUrl);
+                var domain = uri.Host;
+                if (domain.StartsWith("www.")) domain = domain[4..];
+                
+                var tagEntity = await _uow.Tags.GetOrCreateByDomainAsync(userId, domain, ct);
+                assignedTagId = tagEntity.Id;
+            }
+            catch (UriFormatException) { /* Ignore invalid URL */ }
+        }
+
         var entity = new UserVocabulary
         {
             UserId = userId,
+            TagId = assignedTagId,
             WordText = request.WordText.Trim(),
             CustomMeaning = request.CustomMeaning?.Trim(),
             ContextSentence = request.ContextSentence?.Trim(),
@@ -75,7 +93,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
     }
 
     private static VocabularyDto MapToDto(UserVocabulary v, MasterVocabulary? m) => new(
-        v.Id, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
+        v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
         v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
         v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
         m?.PhoneticUk, m?.PhoneticUs, m?.AudioUrl, m?.PartOfSpeech);
@@ -124,11 +142,57 @@ public class UpdateVocabularyHandler : IRequestHandler<UpdateVocabularyCommand, 
     }
 
     private static VocabularyDto MapToDto(UserVocabulary v) => new(
-        v.Id, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
+        v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
         v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
         v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
         v.MasterVocabulary?.PhoneticUk, v.MasterVocabulary?.PhoneticUs,
         v.MasterVocabulary?.AudioUrl, v.MasterVocabulary?.PartOfSpeech);
+}
+
+// ─── Update Vocabulary Tag (Inline Notional UX) ───────────────────
+public record UpdateVocabularyTagCommand(Guid Id, Guid? TagId) : IRequest<Result>, IAuditedRequest
+{
+    public AuditAction AuditAction => AuditAction.VocabularyUpdated;
+    public string? EntityType => "UserVocabulary";
+    public string? EntityId => Id.ToString();
+    public string? AdditionalInfo => $"Tag updated to {TagId?.ToString() ?? "null"}";
+}
+
+public class UpdateVocabularyTagHandler : IRequestHandler<UpdateVocabularyTagCommand, Result>
+{
+    private readonly IUnitOfWork _uow;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IDistributedCache _cache;
+
+    public UpdateVocabularyTagHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
+    {
+        _uow = uow;
+        _currentUser = currentUser;
+        _cache = cache;
+    }
+
+    public async Task<Result> Handle(UpdateVocabularyTagCommand request, CancellationToken ct)
+    {
+        var entity = await _uow.Vocabularies.GetByIdAsync(request.Id, ct);
+        if (entity is null || entity.UserId != _currentUser.UserId)
+            return Result.NotFound("Vocabulary not found.");
+
+        if (request.TagId.HasValue)
+        {
+            var tag = await _uow.Tags.GetByIdAsync(request.TagId.Value, ct);
+            if (tag is null || tag.UserId != _currentUser.UserId)
+                return Result.NotFound("Tag not found.");
+        }
+
+        entity.TagId = request.TagId;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        _uow.Vocabularies.Update(entity);
+        await _uow.SaveChangesAsync(ct);
+        await _cache.SetStringAsync($"vocab-v:{_currentUser.UserId}", Guid.NewGuid().ToString(), ct);
+
+        return Result.Success();
+    }
 }
 
 // ─── Archive (Soft Delete / Mark as Mastered) ───────────────────

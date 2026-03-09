@@ -191,7 +191,18 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
     {
         var cachedTokenData = await _cache.GetStringAsync($"rf_token:{request.RefreshToken}", ct);
         if (string.IsNullOrEmpty(cachedTokenData))
+        {
+            // Grace period fallback for Token Rotation Race Condition (e.g., multiple tabs refreshing at once)
+            var gracefullyRotatedData = await _cache.GetStringAsync($"rf_token_grace:{request.RefreshToken}", ct);
+            if (!string.IsNullOrEmpty(gracefullyRotatedData))
+            {
+                var savedResponse = JsonSerializer.Deserialize<AuthResponse>(gracefullyRotatedData);
+                if (savedResponse is not null)
+                    return Result<AuthResponse>.Success(savedResponse);
+            }
+
             return Result<AuthResponse>.Unauthorized("Invalid or expired refresh token. It may have been revoked.");
+        }
 
         var metadataStr = JsonSerializer.Deserialize<RefreshTokenMetadata>(cachedTokenData);
         if (metadataStr is null)
@@ -203,9 +214,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         if (user is null || !user.IsActive)
             return Result<AuthResponse>.Unauthorized("Account is deactivated or does not exist.");
 
-        // Rotation: delete the old one
-        await _cache.RemoveAsync($"rf_token:{request.RefreshToken}", ct);
-
+        // Rotation: generate new tokens
         var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
         var newRefreshToken = _jwt.GenerateRefreshToken();
 
@@ -218,9 +227,21 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         var newMetadata = JsonSerializer.Serialize(new RefreshTokenMetadata(user.Id, request.DeviceInfo, request.IpAddress, DateTime.UtcNow));
         await _cache.SetStringAsync($"rf_token:{newRefreshToken}", newMetadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7) }, ct);
 
-        return Result<AuthResponse>.Success(new AuthResponse(
+        var authResponse = new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, newRefreshToken, DateTime.UtcNow.AddHours(1)));
+            accessToken, newRefreshToken, DateTime.UtcNow.AddHours(1));
+
+        // Save into grace cache before removing old token
+        await _cache.SetStringAsync(
+            $"rf_token_grace:{request.RefreshToken}", 
+            JsonSerializer.Serialize(authResponse),
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60) }, 
+            ct);
+
+        // Remove the old token from active storage
+        await _cache.RemoveAsync($"rf_token:{request.RefreshToken}", ct);
+
+        return Result<AuthResponse>.Success(authResponse);
     }
 }
 

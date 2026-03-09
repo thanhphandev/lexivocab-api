@@ -15,7 +15,7 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
             .FirstOrDefaultAsync(v => v.Id == id, ct);
 
     public async Task<(IReadOnlyList<UserVocabulary> Items, int TotalCount)> GetByUserIdAsync(
-        Guid userId, int page, int pageSize, bool? isArchived, string? searchTerm, CancellationToken ct)
+        Guid userId, int page, int pageSize, bool? isArchived, string? searchTerm, Guid? tagId, CancellationToken ct)
     {
         var query = _dbSet
             .Include(v => v.MasterVocabulary)
@@ -24,12 +24,34 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
         if (isArchived.HasValue)
             query = query.Where(v => v.IsArchived == isArchived.Value);
 
+        if (tagId.HasValue)
+            query = query.Where(v => v.TagId == tagId.Value);
+
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var lowerTerm = searchTerm.ToLower();
             query = query.Where(v => v.WordText.ToLower().Contains(lowerTerm)
                 || (v.CustomMeaning != null && v.CustomMeaning.ToLower().Contains(lowerTerm)));
         }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderByDescending(v => v.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
+
+    public async Task<(IReadOnlyList<UserVocabulary> Items, int TotalCount)> GetByTagIdAsync(
+        Guid userId, Guid tagId, int page, int pageSize, CancellationToken ct)
+    {
+        var query = _dbSet
+            .Include(v => v.MasterVocabulary)
+            .Where(v => v.UserId == userId && v.TagId == tagId);
 
         var totalCount = await query.CountAsync(ct);
 

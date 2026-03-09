@@ -12,10 +12,21 @@ public interface IVocabularyRepository : IRepository<UserVocabulary>
     /// </summary>
     Task<(IReadOnlyList<UserVocabulary> Items, int TotalCount)> GetByUserIdAsync(
         Guid userId,
-        int page,
-        int pageSize,
+        int page = 1,
+        int pageSize = 20,
         bool? isArchived = null,
         string? searchTerm = null,
+        Guid? tagId = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Get paginated vocabulary list for a specific tag.
+    /// </summary>
+    Task<(IReadOnlyList<UserVocabulary> Items, int TotalCount)> GetByTagIdAsync(
+        Guid userId,
+        Guid tagId,
+        int page,
+        int pageSize,
         CancellationToken ct = default);
 
     /// <summary>

@@ -14,6 +14,7 @@ public class UnitOfWork : IUnitOfWork
     public IVocabularyRepository Vocabularies { get; }
     public IReviewLogRepository ReviewLogs { get; }
     public IMasterVocabularyRepository MasterVocabularies { get; }
+    public IVocabTagRepository Tags { get; }
     public ISubscriptionRepository Subscriptions { get; }
     public IPaymentTransactionRepository PaymentTransactions { get; }
 
@@ -23,6 +24,7 @@ public class UnitOfWork : IUnitOfWork
         IVocabularyRepository vocabularies,
         IReviewLogRepository reviewLogs,
         IMasterVocabularyRepository masterVocabularies,
+        IVocabTagRepository tags,
         ISubscriptionRepository subscriptions,
         IPaymentTransactionRepository paymentTransactions)
     {
@@ -31,6 +33,7 @@ public class UnitOfWork : IUnitOfWork
         Vocabularies = vocabularies;
         ReviewLogs = reviewLogs;
         MasterVocabularies = masterVocabularies;
+        Tags = tags;
         Subscriptions = subscriptions;
         PaymentTransactions = paymentTransactions;
     }

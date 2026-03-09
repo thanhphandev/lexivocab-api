@@ -13,6 +13,7 @@ public class UserVocabulary : BaseEntity
     // ─── Foreign Keys ────────────────────────────────────────────
     public Guid UserId { get; set; }
     public Guid? MasterVocabularyId { get; set; }
+    public Guid? TagId { get; set; }
 
     // ─── Vocabulary Data ─────────────────────────────────────────
     /// <summary>Denormalized word text for fast retrieval without JOIN.</summary>
@@ -50,5 +51,6 @@ public class UserVocabulary : BaseEntity
     // ─── Navigation ──────────────────────────────────────────────
     public User User { get; set; } = null!;
     public MasterVocabulary? MasterVocabulary { get; set; }
+    public VocabTag? Tag { get; set; }
     public ICollection<ReviewLog> ReviewLogs { get; set; } = [];
 }
