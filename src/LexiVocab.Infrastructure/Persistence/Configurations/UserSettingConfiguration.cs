@@ -39,6 +39,11 @@ public class UserSettingConfiguration : IEntityTypeConfiguration<UserSetting>
             .HasColumnName("daily_goal")
             .HasDefaultValue(20);
 
+        builder.Property(s => s.PreferencesJson)
+            .HasColumnName("preferences_json")
+            .HasColumnType("jsonb")
+            .HasDefaultValueSql("'{}'::jsonb");
+
         builder.Property(s => s.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");

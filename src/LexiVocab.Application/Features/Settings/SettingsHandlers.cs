@@ -35,14 +35,16 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, Result<UserS
                 IsHighlightEnabled: true,
                 HighlightColor: "#FFD700",
                 ExcludedDomains: [],
-                DailyGoal: 20));
+                DailyGoal: 20,
+                PreferencesJson: "{}"));
         }
 
         return Result<UserSettingsDto>.Success(new UserSettingsDto(
             settings.IsHighlightEnabled,
             settings.HighlightColor,
             settings.ExcludedDomains,
-            settings.DailyGoal));
+            settings.DailyGoal,
+            settings.PreferencesJson));
     }
 }
 
@@ -51,7 +53,8 @@ public record UpdateSettingsCommand(
     bool? IsHighlightEnabled,
     string? HighlightColor,
     List<string>? ExcludedDomains,
-    int? DailyGoal
+    int? DailyGoal,
+    string? PreferencesJson
 ) : IRequest<Result<UserSettingsDto>>;
 
 public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Result<UserSettingsDto>>
@@ -84,6 +87,7 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
         if (request.HighlightColor is not null) settings.HighlightColor = request.HighlightColor;
         if (request.ExcludedDomains is not null) settings.ExcludedDomains = request.ExcludedDomains;
         if (request.DailyGoal.HasValue) settings.DailyGoal = request.DailyGoal.Value;
+        if (request.PreferencesJson is not null) settings.PreferencesJson = request.PreferencesJson;
         settings.UpdatedAt = DateTime.UtcNow;
 
         await _uow.SaveChangesAsync(ct);
@@ -92,6 +96,7 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
             settings.IsHighlightEnabled,
             settings.HighlightColor,
             settings.ExcludedDomains,
-            settings.DailyGoal));
+            settings.DailyGoal,
+            settings.PreferencesJson));
     }
 }
