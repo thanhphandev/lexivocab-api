@@ -5,6 +5,7 @@ using LexiVocab.Application.Features.Payments;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using LexiVocab.Domain.Enums;
 
 namespace LexiVocab.API.Controllers;
 
@@ -15,13 +16,11 @@ namespace LexiVocab.API.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IPaymentService _paymentService;
     private readonly ILogger<PaymentsController> _logger;
 
-    public PaymentsController(IMediator mediator, IPaymentService paymentService, ILogger<PaymentsController> logger)
+    public PaymentsController(IMediator mediator, ILogger<PaymentsController> logger)
     {
         _mediator = mediator;
-        _paymentService = paymentService;
         _logger = logger;
     }
 
@@ -63,10 +62,17 @@ public class PaymentsController : ControllerBase
     [HttpPost("create-order")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request, CancellationToken ct)
+    public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
     {
-        var result = await _mediator.Send(new CreatePaymentOrderCommand(request.PlanId), ct);
-        return ToActionResult(result);
+        var result = await _mediator.Send(new CreatePaymentOrderCommand(request.PlanId, request.Provider));
+        return result.IsSuccess ? Ok(new { approvalUrl = result.Data }) : ToActionResult(result); // Changed to use controller's ToActionResult
+    }
+
+    [HttpGet("status/{reference}")]
+    public async Task<IActionResult> GetStatus(string reference)
+    {
+        var result = await _mediator.Send(new GetPaymentStatusQuery(reference));
+        return result.IsSuccess ? Ok(new { status = result.Data }) : ToActionResult(result);
     }
 
     /// <summary>Capture a PayPal order after user approval.</summary>
@@ -89,17 +95,25 @@ public class PaymentsController : ControllerBase
         var body = await reader.ReadToEndAsync(ct);
 
         var headers = Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString());
+        var command = new ProcessPaymentWebhookCommand(PaymentProvider.PayPal, body, headers);
+        
+        var result = await _mediator.Send(command, ct);
+        return result.IsSuccess ? Ok() : ToActionResult(result);
+    }
 
-        var isValid = await _paymentService.VerifyWebhookSignatureAsync(body, headers);
-        if (!isValid)
-        {
-            _logger.LogWarning("Invalid webhook signature detected.");
-            return BadRequest();
-        }
-
-        _logger.LogInformation("Received verified PayPal webhook. Processing event...");
-        await _paymentService.ProcessWebhookEventAsync(body, ct);
-        return Ok();
+    // ─── SePay Webhook ──────────────────────────────────────────
+    [HttpPost("webhook/sepay")]
+    [AllowAnonymous] // Assuming this should also be anonymous like PayPal webhook
+    public async Task<IActionResult> SePayWebhook()
+    {
+        using var reader = new StreamReader(Request.Body);
+        var body = await reader.ReadToEndAsync();
+        
+        var headers = Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString());
+        var command = new ProcessPaymentWebhookCommand(PaymentProvider.Seapay, body, headers);
+        
+        var result = await _mediator.Send(command, HttpContext.RequestAborted);
+        return result.IsSuccess ? Ok() : ToActionResult(result);
     }
 
     private IActionResult ToActionResult<T>(Result<T> result)

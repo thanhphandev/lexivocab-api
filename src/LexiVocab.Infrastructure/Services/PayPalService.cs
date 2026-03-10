@@ -4,7 +4,7 @@ using System.Text.Json;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
-using LexiVocab.Infrastructure.Persistence;
+using LexiVocab.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -19,7 +19,7 @@ namespace LexiVocab.Infrastructure.Services;
 public class PayPalService : IPaymentService
 {
     private readonly HttpClient _httpClient;
-    private readonly AppDbContext _db;
+    private readonly IUnitOfWork _uow;
     private readonly ILogger<PayPalService> _logger;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
@@ -36,7 +36,7 @@ public class PayPalService : IPaymentService
 
     public PayPalService(
         HttpClient httpClient,
-        AppDbContext db,
+        IUnitOfWork uow,
         IConfiguration config,
         IHostEnvironment env,
         ILogger<PayPalService> logger,
@@ -44,7 +44,7 @@ public class PayPalService : IPaymentService
         IEmailTemplateService templateService)
     {
         _httpClient = httpClient;
-        _db = db;
+        _uow = uow;
         _logger = logger;
         _emailQueue = emailQueue;
         _templateService = templateService;
@@ -79,11 +79,14 @@ public class PayPalService : IPaymentService
     {
         var token = await GetAccessTokenAsync(ct);
 
-        var isYearly = planId.Contains("yearly", StringComparison.OrdinalIgnoreCase);
-        var isMonthly = planId.Contains("monthly", StringComparison.OrdinalIgnoreCase);
+        if (!Guid.TryParse(planId, out var planGuid))
+            throw new ArgumentException("Invalid subscription plan ID.");
+
+        var plan = await _uow.PlanDefinitions.GetByIdAsync(planGuid, ct)
+                   ?? throw new ArgumentException("Subscription plan not found.");
         
-        var amount = isYearly ? "99.99" : (isMonthly ? "9.99" : "199.99");
-        var description = isYearly ? "LexiVocab Premium - 1 Year" : (isMonthly ? "LexiVocab Premium - 1 Month" : "LexiVocab Premium - Lifetime");
+        var amount = plan.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        var description = $"LexiVocab {plan.Name} - {plan.Description}";
 
         var payload = new
         {
@@ -137,10 +140,10 @@ public class PayPalService : IPaymentService
                 var sub = new Subscription
                 {
                     UserId = userId,
-                    Plan = SubscriptionPlan.Premium,
+                    PlanDefinitionId = plan.Id,
                     Status = SubscriptionStatus.Pending,
                     StartDate = DateTime.UtcNow,
-                    EndDate = isYearly ? DateTime.UtcNow.AddYears(1) : (isMonthly ? DateTime.UtcNow.AddMonths(1) : null),
+                    EndDate = plan.DurationDays > 0 ? DateTime.UtcNow.AddDays(plan.DurationDays) : null,
                     Provider = PaymentProvider.PayPal
                 };
                 
@@ -155,9 +158,9 @@ public class PayPalService : IPaymentService
                     Status = PaymentStatus.Pending
                 };
 
-                _db.Subscriptions.Add(sub);
-                _db.PaymentTransactions.Add(tx);
-                await _db.SaveChangesAsync(ct);
+                _uow.Subscriptions.Add(sub);
+                _uow.PaymentTransactions.Add(tx);
+                await _uow.SaveChangesAsync(ct);
 
                 return link.GetProperty("href").GetString()!;
             }
@@ -346,10 +349,7 @@ public class PayPalService : IPaymentService
                 return;
             }
 
-            var tx = await _db.PaymentTransactions
-                .Include(t => t.Subscription)
-                .ThenInclude(s => s.User)
-                .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);
+            var tx = await _uow.PaymentTransactions.GetByExternalOrderIdWithDetailsAsync(orderId, ct);
 
             if (tx == null)
             {
@@ -359,9 +359,8 @@ public class PayPalService : IPaymentService
 
             tx.Status = PaymentStatus.Refunded;
             tx.Subscription.Status = SubscriptionStatus.Cancelled;
-            tx.Subscription.User.Role = UserRole.User;
 
-            await _db.SaveChangesAsync(ct);
+            await _uow.SaveChangesAsync(ct);
             _logger.LogInformation("Successfully processed refund for order {OrderId}, user {UserId} downgraded to Free",
                 orderId, tx.UserId);
 
@@ -407,16 +406,14 @@ public class PayPalService : IPaymentService
                 return;
             }
 
-            var tx = await _db.PaymentTransactions
-                .Include(t => t.Subscription)
-                .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);
+            var tx = await _uow.PaymentTransactions.GetByExternalOrderIdWithDetailsAsync(orderId, ct);
 
             if (tx == null) return;
 
             tx.Status = PaymentStatus.Failed;
             tx.Subscription.Status = SubscriptionStatus.Cancelled;
 
-            await _db.SaveChangesAsync(ct);
+            await _uow.SaveChangesAsync(ct);
             _logger.LogInformation("Marked payment as failed for order {OrderId}", orderId);
         }
         catch (Exception ex)
@@ -433,10 +430,7 @@ public class PayPalService : IPaymentService
     /// </summary>
     private async Task ActivateSubscriptionByOrderIdAsync(string orderId, string rawPayload, CancellationToken ct)
     {
-        var tx = await _db.PaymentTransactions
-            .Include(t => t.Subscription)
-            .ThenInclude(s => s.User)
-            .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);
+        var tx = await _uow.PaymentTransactions.GetByExternalOrderIdWithDetailsAsync(orderId, ct);
 
         if (tx == null)
         {
@@ -460,12 +454,8 @@ public class PayPalService : IPaymentService
             var duration = tx.Subscription.EndDate.Value - tx.Subscription.StartDate;
             tx.Subscription.EndDate = DateTime.UtcNow + duration;
         }
-        
-        // Upgrade User
-        tx.Subscription.User.Role = UserRole.Premium;
-        tx.Subscription.User.PlanExpirationDate = tx.Subscription.EndDate;
 
-        await _db.SaveChangesAsync(ct);
+        await _uow.SaveChangesAsync(ct);
 
         // Send payment success email
         try
@@ -474,7 +464,7 @@ public class PayPalService : IPaymentService
             var html = await _templateService.RenderTemplateAsync("PaymentSuccess", new Dictionary<string, string>
             {
                 { "FullName", user.FullName },
-                { "PlanName", "Premium" },
+                { "PlanName", tx.Subscription.PlanDefinition?.Name ?? "Premium" },
                 { "Amount", $"${tx.Amount:F2} {tx.Currency}" },
                 { "ExpiryDate", tx.Subscription.EndDate?.ToString("MMMM dd, yyyy") ?? "Lifetime" },
                 { "TransactionId", tx.ExternalOrderId ?? tx.Id.ToString() }

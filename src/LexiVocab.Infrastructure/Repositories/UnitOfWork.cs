@@ -17,6 +17,7 @@ public class UnitOfWork : IUnitOfWork
     public IVocabTagRepository Tags { get; }
     public ISubscriptionRepository Subscriptions { get; }
     public IPaymentTransactionRepository PaymentTransactions { get; }
+    public IPlanDefinitionRepository PlanDefinitions { get; }
 
     public UnitOfWork(
         AppDbContext context,
@@ -26,7 +27,8 @@ public class UnitOfWork : IUnitOfWork
         IMasterVocabularyRepository masterVocabularies,
         IVocabTagRepository tags,
         ISubscriptionRepository subscriptions,
-        IPaymentTransactionRepository paymentTransactions)
+        IPaymentTransactionRepository paymentTransactions,
+        IPlanDefinitionRepository planDefinitions)
     {
         _context = context;
         Users = users;
@@ -36,6 +38,7 @@ public class UnitOfWork : IUnitOfWork
         Tags = tags;
         Subscriptions = subscriptions;
         PaymentTransactions = paymentTransactions;
+        PlanDefinitions = planDefinitions;
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)

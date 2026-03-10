@@ -65,8 +65,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.RefreshTokenExpiryTime)
             .HasColumnName("refresh_token_expiry_time");
 
-        builder.Property(u => u.PlanExpirationDate)
-            .HasColumnName("plan_expiration_date");
 
         // 1-1 relationship with UserSetting
         builder.HasOne(u => u.UserSetting)

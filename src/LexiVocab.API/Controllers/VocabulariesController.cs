@@ -129,7 +129,6 @@ public class VocabulariesController : ControllerBase
 
     /// <summary>Export vocabulary data to CSV or JSON (Premium Only).</summary>
     [HttpGet("export")]
-    [Authorize(Policy = "RequirePremium")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Export([FromQuery] string format = "json", CancellationToken ct = default)

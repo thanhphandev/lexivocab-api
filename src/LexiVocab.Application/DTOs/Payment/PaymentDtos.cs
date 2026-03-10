@@ -43,5 +43,5 @@ public record SubscriptionPlanDto(
     List<PlanFeatureDto> Features);
 
 // ─── Requests ────────────────────────────────────────────────
-public record CreateOrderRequest(string PlanId);
+public record CreateOrderRequest(string PlanId, LexiVocab.Domain.Enums.PaymentProvider Provider = LexiVocab.Domain.Enums.PaymentProvider.PayPal);
 public record CaptureOrderRequest(string OrderId);

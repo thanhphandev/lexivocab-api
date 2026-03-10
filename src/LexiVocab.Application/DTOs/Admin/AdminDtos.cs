@@ -23,7 +23,6 @@ public record UserDetailDto(
     string? AuthProvider,
     int TotalVocabularies,
     int TotalReviews,
-    DateTime? PlanExpirationDate,
     IReadOnlyList<AdminSubscriptionDto> Subscriptions);
 
 public record AdminSubscriptionDto(

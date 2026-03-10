@@ -66,7 +66,7 @@ public class GetUserDetailHandler : IRequestHandler<GetUserDetailQuery, Result<U
         
         var subscriptionDtos = subs.Select(s => new AdminSubscriptionDto(
             s.Id,
-            s.Plan.ToString(),
+            s.PlanDefinition.Name,
             s.Status.ToString(),
             s.StartDate,
             s.EndDate,
@@ -84,7 +84,6 @@ public class GetUserDetailHandler : IRequestHandler<GetUserDetailQuery, Result<U
             user.AuthProvider,
             totalVocabularies,
             totalReviews,
-            user.PlanExpirationDate,
             subscriptionDtos);
 
         return Result<UserDetailDto>.Success(dto);

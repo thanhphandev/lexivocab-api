@@ -47,5 +47,9 @@ public class UserRepository : GenericRepository<User>, IUserRepository
     }
 
     public async Task<int> CountPremiumUsersAsync(CancellationToken ct = default)
-        => await _dbSet.CountAsync(u => u.Role == LexiVocab.Domain.Enums.UserRole.Premium, ct);
+        => await _context.Subscriptions
+            .Where(s => s.Status == LexiVocab.Domain.Enums.SubscriptionStatus.Active)
+            .Select(s => s.UserId)
+            .Distinct()
+            .CountAsync(ct);
 }

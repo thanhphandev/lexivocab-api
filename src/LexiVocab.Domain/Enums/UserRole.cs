@@ -6,6 +6,5 @@ namespace LexiVocab.Domain.Enums;
 public enum UserRole
 {
     User = 0,
-    Premium = 1,
-    Admin = 2
+    Admin = 1
 }

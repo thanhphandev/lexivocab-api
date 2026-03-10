@@ -11,7 +11,9 @@ public interface IRepository<T> where T : BaseEntity
     Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<T>> GetAllAsync(CancellationToken ct = default);
     Task<T> AddAsync(T entity, CancellationToken ct = default);
+    void Add(T entity);
     Task AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default);
+    void AddRange(IEnumerable<T> entities);
     void Update(T entity);
     void Remove(T entity);
     Task<bool> ExistsAsync(Guid id, CancellationToken ct = default);

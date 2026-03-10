@@ -1,9 +1,10 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Payment;
+using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
-
 namespace LexiVocab.Application.Features.Payments;
 
 // ─── Get Billing Overview ─────────────────────────────────────────
@@ -25,7 +26,9 @@ public class GetBillingOverviewHandler : IRequestHandler<GetBillingOverviewQuery
     public async Task<Result<BillingOverviewDto>> Handle(GetBillingOverviewQuery request, CancellationToken ct)
     {
         var userId = _currentUser.UserId!.Value;
-        var isPremium = await _featureGating.IsPremiumAsync(userId, ct);
+        
+        // Use FeatureGating to get structured permissions
+        var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
 
         var user = await _uow.Users.GetByIdAsync(userId, ct);
         if (user == null) return Result<BillingOverviewDto>.NotFound("User not found.");
@@ -37,7 +40,7 @@ public class GetBillingOverviewHandler : IRequestHandler<GetBillingOverviewQuery
         SubscriptionDto? subDto = activeSub != null
             ? new SubscriptionDto(
                 activeSub.Id,
-                activeSub.Plan.ToString(),
+                activeSub.PlanDefinition.Name,
                 activeSub.Status.ToString(),
                 activeSub.StartDate,
                 activeSub.EndDate,
@@ -47,9 +50,9 @@ public class GetBillingOverviewHandler : IRequestHandler<GetBillingOverviewQuery
 
         return Result<BillingOverviewDto>.Success(new BillingOverviewDto(
             ActiveSubscription: subDto,
-            IsPremium: isPremium,
-            Plan: isPremium ? "Premium" : "Free",
-            PlanExpiresAt: user.PlanExpirationDate,
+            IsPremium: permissions.Plan != "Free" && permissions.Plan != "None",
+            Plan: permissions.Plan,
+            PlanExpiresAt: permissions.PlanExpiresAt,
             TotalTransactions: totalTx));
     }
 }
@@ -101,60 +104,50 @@ public record GetSubscriptionPlansQuery() : IRequest<Result<List<SubscriptionPla
 
 public class GetSubscriptionPlansHandler : IRequestHandler<GetSubscriptionPlansQuery, Result<List<SubscriptionPlanDto>>>
 {
-    private readonly IFeatureGatingService _featureGating;
+    private readonly IUnitOfWork _uow;
 
-    public GetSubscriptionPlansHandler(IFeatureGatingService featureGating)
+    public GetSubscriptionPlansHandler(IUnitOfWork uow)
     {
-        _featureGating = featureGating;
+        _uow = uow;
     }
 
-    public Task<Result<List<SubscriptionPlanDto>>> Handle(GetSubscriptionPlansQuery request, CancellationToken ct)
+    public async Task<Result<List<SubscriptionPlanDto>>> Handle(GetSubscriptionPlansQuery request, CancellationToken ct)
     {
-        var freeFeatures = new List<PlanFeatureDto>
-        {
-            new("Pricing.features.save_words", true),
-            new("Pricing.features.spaced_repetition", true),
-            new("Pricing.features.chrome_extension", true),
-            new("Pricing.features.dashboard", true),
-            new("Pricing.features.batch_import", false),
-            new("Pricing.features.ai_features", false),
-            new("Pricing.features.unlimited_vocab", false),
-            new("Pricing.features.priority_support", false),
-            new("Pricing.features.data_export", false),
-        };
+        var plans = await _uow.PlanDefinitions.GetAllWithFeaturesAsync(ct);
 
-        var premiumFeatures = new List<PlanFeatureDto>
-        {
-            new("Pricing.features.unlimited_vocab", true),
-            new("Pricing.features.spaced_repetition", true),
-            new("Pricing.features.chrome_extension", true),
-            new("Pricing.features.dashboard", true),
-            new("Pricing.features.batch_import", true),
-            new("Pricing.features.ai_features", true),
-            new("Pricing.features.data_export", true),
-            new("Pricing.features.priority_support", true),
-        };
+        var dtos = plans.Select(p => new SubscriptionPlanDto(
+            p.Id.ToString(),
+            p.NameKey,
+            p.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+            p.DurationDays switch { 30 => "monthly", 365 => "yearly", _ => "one_time" },
+            p.Description,
+            p.IsRecommended,
+            p.PlanFeatures.Select(f => new PlanFeatureDto(
+                $"{f.Feature.Name}: {f.Value}", 
+                !f.Value.Equals("false", StringComparison.OrdinalIgnoreCase))
+            ).ToList()
+        )).ToList();
 
-        var plans = new List<SubscriptionPlanDto>
-        {
-            new(
-                "free",
-                "Pricing.free_plan",
-                "Pricing.free_price",
-                "Pricing.forever",
-                "Pricing.free_desc",
-                false,
-                freeFeatures),
-            new(
-                "premium",
-                "Pricing.premium_plan",
-                "Pricing.premium_price",
-                "Pricing.lifetime",
-                "Pricing.premium_desc",
-                true,
-                premiumFeatures)
-        };
+        return Result<List<SubscriptionPlanDto>>.Success(dtos);
+    }
+}
 
-        return Task.FromResult(Result<List<SubscriptionPlanDto>>.Success(plans));
+// ─── Get Payment Status ───────────────────────────────────────────
+public record GetPaymentStatusQuery(string Reference) : IRequest<Result<string>>;
+
+public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Result<string>>
+{
+    private readonly IUnitOfWork _uow;
+
+    public GetPaymentStatusHandler(IUnitOfWork uow) => _uow = uow;
+
+    public async Task<Result<string>> Handle(GetPaymentStatusQuery request, CancellationToken ct)
+    {
+        var tx = await _uow.PaymentTransactions
+            .GetByExternalOrderIdAsync(request.Reference, ct);
+
+        if (tx == null) return Result<string>.NotFound("Transaction not found.");
+
+        return Result<string>.Success(tx.Status.ToString());
     }
 }

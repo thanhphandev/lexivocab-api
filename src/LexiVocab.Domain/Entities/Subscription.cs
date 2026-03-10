@@ -14,7 +14,8 @@ public class Subscription : BaseEntity
     public Guid UserId { get; set; }
 
     // ─── Plan Details ────────────────────────────────────────────
-    public SubscriptionPlan Plan { get; set; } = SubscriptionPlan.Free;
+    public Guid PlanDefinitionId { get; set; }
+    public PlanDefinition PlanDefinition { get; set; } = null!;
     public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Active;
 
     /// <summary>When this subscription period begins.</summary>

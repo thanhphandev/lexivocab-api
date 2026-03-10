@@ -29,4 +29,24 @@ public class PaymentTransactionRepository : GenericRepository<PaymentTransaction
 
     public async Task<int> CountByUserAsync(Guid userId, CancellationToken ct = default)
         => await _dbSet.CountAsync(t => t.UserId == userId, ct);
+
+    public async Task<PaymentTransaction?> GetByExternalOrderIdAsync(string externalOrderId, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .Include(t => t.Subscription)
+            .ThenInclude(s => s.User)
+            .FirstOrDefaultAsync(t => t.ExternalOrderId == externalOrderId, ct);
+    }
+
+    public async Task<PaymentTransaction?> GetByExternalOrderIdWithDetailsAsync(string orderId, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .AsNoTracking()
+            .Include(t => t.Subscription)
+                .ThenInclude(s => s.User)
+            .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);
+    }
+
+    public async Task<bool> ExistsByProviderResponseIdAsync(string responseId, CancellationToken ct = default)
+        => await _dbSet.AnyAsync(t => t.ProviderResponseId == responseId, ct);
 }

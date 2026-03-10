@@ -26,12 +26,6 @@ public class User : BaseEntity
     public string? RefreshTokenHash { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
 
-    /// <summary>
-    /// Denormalized: when the current premium plan expires.
-    /// Null = Free tier (never purchased) or lifetime plan.
-    /// Updated by payment webhook/capture flow.
-    /// </summary>
-    public DateTime? PlanExpirationDate { get; set; }
 
     // Navigation properties
     public ICollection<UserVocabulary> UserVocabularies { get; set; } = [];

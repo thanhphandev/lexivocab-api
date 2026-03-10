@@ -13,6 +13,7 @@ public interface IUnitOfWork : IDisposable
     IVocabTagRepository Tags { get; }
     ISubscriptionRepository Subscriptions { get; }
     IPaymentTransactionRepository PaymentTransactions { get; }
+    IPlanDefinitionRepository PlanDefinitions { get; }
 
     /// <summary>
     /// Persist all changes made through repositories as a single atomic transaction.
