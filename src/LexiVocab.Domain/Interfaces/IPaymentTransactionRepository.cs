@@ -11,4 +11,8 @@ public interface IPaymentTransactionRepository : IRepository<PaymentTransaction>
         Guid userId, int page, int pageSize, CancellationToken ct = default);
 
     Task<int> CountByUserAsync(Guid userId, CancellationToken ct = default);
+
+    Task<PaymentTransaction?> GetByExternalOrderIdAsync(string externalOrderId, CancellationToken ct = default);
+    Task<PaymentTransaction?> GetByExternalOrderIdWithDetailsAsync(string orderId, CancellationToken ct = default);
+    Task<bool> ExistsByProviderResponseIdAsync(string responseId, CancellationToken ct = default);
 }

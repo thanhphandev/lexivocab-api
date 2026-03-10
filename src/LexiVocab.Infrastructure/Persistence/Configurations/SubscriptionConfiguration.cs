@@ -16,14 +16,13 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
 
         builder.Property(s => s.UserId).HasColumnName("user_id");
 
-        builder.Property(s => s.Plan)
-            .HasColumnName("plan")
-            .HasMaxLength(50)
-            .HasConversion(
-                v => v.ToString(),
-                v => Enum.Parse<SubscriptionPlan>(v))
-            .HasDefaultValue(SubscriptionPlan.Free)
+        builder.Property(s => s.PlanDefinitionId)
+            .HasColumnName("plan_definition_id")
             .IsRequired();
+
+        builder.HasOne(s => s.PlanDefinition)
+            .WithMany(p => p.Subscriptions)
+            .HasForeignKey(s => s.PlanDefinitionId);
 
         builder.Property(s => s.Status)
             .HasColumnName("status")

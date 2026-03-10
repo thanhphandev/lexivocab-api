@@ -8,5 +8,5 @@ public enum PaymentProvider
     Mock = 0,
     PayPal = 1,
     Stripe = 2,
-    VnPay = 3
+    Seapay = 3
 }

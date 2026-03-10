@@ -18,6 +18,9 @@ public class AppDbContext : DbContext
     public DbSet<ReviewLog> ReviewLogs => Set<ReviewLog>();
     public DbSet<UserSetting> UserSettings => Set<UserSetting>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
+    public DbSet<PlanDefinition> PlanDefinitions => Set<PlanDefinition>();
+    public DbSet<FeatureDefinition> FeatureDefinitions => Set<FeatureDefinition>();
+    public DbSet<PlanFeature> PlanFeatures => Set<PlanFeature>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 

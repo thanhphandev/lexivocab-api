@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IVocabTagRepository, VocabTagRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
+        services.AddScoped<IPlanDefinitionRepository, PlanDefinitionRepository>();
 
         // ─── Background Jobs ──────────────────────────────────
         services.AddTransient<Services.ISubscriptionExpirationJob, Services.SubscriptionExpirationJob>();
@@ -81,13 +82,17 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddHttpContextAccessor();
         
-        // ─── Freemium & Permissions ───────────────────────────
+        // ─── Freemium & Payments ─────────────────────────────
         services.AddScoped<IFeatureGatingService, Services.FeatureGatingService>();
+        services.AddScoped<IPaymentServiceFactory, Services.PaymentServiceFactory>();
+        
         services.AddHttpClient<IPaymentService, Services.PayPalService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         })
         .AddStandardResilienceHandler();
+
+        services.AddScoped<IPaymentService, Services.SeapayService>();
 
         // ─── Google OAuth ─────────────────────────────────────
         services.AddHttpClient<IGoogleAuthService, GoogleAuthService>(client =>
@@ -122,8 +127,7 @@ public static class DependencyInjection
 
         services.AddAuthorization(options =>
         {
-            options.AddPolicy("RequirePremium", policy =>
-                policy.RequireRole("Premium", "Admin"));
+            // Policies are intentionally kept minimal as we use dynamic feature gating
         });
 
         // ─── Redis Distributed Cache ──────────────────────────

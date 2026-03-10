@@ -1,5 +1,6 @@
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
+using LexiVocab.Domain.Interfaces;
 using LexiVocab.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -13,20 +14,20 @@ namespace LexiVocab.Infrastructure.Services;
 /// </summary>
 public class SubscriptionExpirationJob : ISubscriptionExpirationJob
 {
-    private readonly AppDbContext _db;
+    private readonly IUnitOfWork _uow;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SubscriptionExpirationJob> _logger;
 
     public SubscriptionExpirationJob(
-        AppDbContext db,
+        IUnitOfWork uow,
         IEmailQueueService emailQueue,
         IEmailTemplateService templateService,
         IConfiguration configuration,
         ILogger<SubscriptionExpirationJob> logger)
     {
-        _db = db;
+        _uow = uow;
         _emailQueue = emailQueue;
         _templateService = templateService;
         _configuration = configuration;
@@ -57,19 +58,17 @@ public class SubscriptionExpirationJob : ISubscriptionExpirationJob
 
         var now = DateTime.UtcNow;
 
-        var expiredUsers = await _db.Users
-            .Where(u => u.Role == UserRole.Premium && 
-                        u.PlanExpirationDate.HasValue && 
-                        u.PlanExpirationDate.Value < now)
-            .ToListAsync(ct);
+        var expiredSubscriptions = await _uow.Subscriptions
+            .GetExpiredWithUserAsync(now, ct);
 
-        if (expiredUsers.Count > 0)
+        if (expiredSubscriptions.Count > 0)
         {
-            _logger.LogInformation("Found {Count} users with expired subscriptions. Reverting to Free tier.", expiredUsers.Count);
+            _logger.LogInformation("Found {Count} expired subscriptions. Reverting to Free tier.", expiredSubscriptions.Count);
 
-            foreach (var user in expiredUsers)
+            foreach (var sub in expiredSubscriptions)
             {
-                user.Role = UserRole.User;
+                sub.Status = SubscriptionStatus.Expired;
+                var user = sub.User;
 
                 // Send expired notification
                 try
@@ -87,20 +86,7 @@ public class SubscriptionExpirationJob : ISubscriptionExpirationJob
                 }
             }
 
-            var userIds = expiredUsers.Select(u => u.Id).ToList();
-            var activeSubscriptions = await _db.Subscriptions
-                .Where(s => userIds.Contains(s.UserId) && s.Status == SubscriptionStatus.Active)
-                .ToListAsync(ct);
-
-            foreach (var sub in activeSubscriptions)
-            {
-                if (sub.EndDate.HasValue && sub.EndDate.Value < now)
-                {
-                    sub.Status = SubscriptionStatus.Expired;
-                }
-            }
-
-            await _db.SaveChangesAsync(ct);
+            await _uow.SaveChangesAsync(ct);
             _logger.LogInformation("Successfully completed subscription expiration processing.");
         }
     }
@@ -112,27 +98,23 @@ public class SubscriptionExpirationJob : ISubscriptionExpirationJob
         var now = DateTime.UtcNow;
         var threeDaysLater = now.AddDays(3);
 
-        // Find premium users expiring in the next 3 days (but not already expired)
-        var expiringUsers = await _db.Users
-            .AsNoTracking()
-            .Where(u => u.Role == UserRole.Premium &&
-                        u.PlanExpirationDate.HasValue &&
-                        u.PlanExpirationDate.Value > now &&
-                        u.PlanExpirationDate.Value <= threeDaysLater)
-            .ToListAsync(ct);
+        // Find active subscriptions expiring in the next 3 days
+        var expiringSubscriptions = await _uow.Subscriptions
+            .GetExpiringSoonWithUserAsync(now, threeDaysLater, ct);
 
-        if (expiringUsers.Count > 0)
+        if (expiringSubscriptions.Count > 0)
         {
-            _logger.LogInformation("Sending expiry warnings to {Count} users.", expiringUsers.Count);
+            _logger.LogInformation("Sending expiry warnings to {Count} subscriptions.", expiringSubscriptions.Count);
 
-            foreach (var user in expiringUsers)
+            foreach (var sub in expiringSubscriptions)
             {
+                var user = sub.User;
                 try
                 {
                     var html = await _templateService.RenderTemplateAsync("SubscriptionExpiring", new Dictionary<string, string>
                     {
                         { "FullName", user.FullName },
-                        { "ExpiryDate", user.PlanExpirationDate!.Value.ToString("MMMM dd, yyyy") },
+                        { "ExpiryDate", sub.EndDate!.Value.ToString("MMMM dd, yyyy") },
                         { "AppUrl", appUrl }
                     });
                     _emailQueue.EnqueueEmail(user.Email, "⏰ Your Premium is Expiring Soon", html);

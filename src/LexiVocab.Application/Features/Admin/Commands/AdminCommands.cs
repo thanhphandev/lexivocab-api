@@ -25,7 +25,7 @@ public class UpdateUserRoleHandler : IRequestHandler<UpdateUserRoleCommand, Resu
 
         if (!Enum.TryParse<UserRole>(request.Role, true, out var roleEnum))
         {
-            return Result<string>.Failure("Invalid role. Must be 'User', 'Premium', or 'Admin'.", 400);
+            return Result<string>.Failure("Invalid role. Must be 'User' or 'Admin'.", 400);
         }
 
         user.Role = roleEnum;
@@ -67,7 +67,7 @@ public class UpdateUserStatusHandler : IRequestHandler<UpdateUserStatusCommand, 
 }
 
 // ─── Add Manual Subscription ──────────────────────────────────────
-public record AddManualSubscriptionCommand(Guid UserId, string Plan, int DurationDays) : IRequest<Result<string>>;
+public record AddManualSubscriptionCommand(Guid UserId, string PlanName, int DurationDays) : IRequest<Result<string>>;
 
 public class AddManualSubscriptionHandler : IRequestHandler<AddManualSubscriptionCommand, Result<string>>
 {
@@ -83,8 +83,10 @@ public class AddManualSubscriptionHandler : IRequestHandler<AddManualSubscriptio
         var user = await _uow.Users.GetByIdAsync(request.UserId, ct);
         if (user == null) return Result<string>.Failure("User not found", 404);
 
-        if (!Enum.TryParse<SubscriptionPlan>(request.Plan, true, out var planEnum))
-            return Result<string>.Failure("Invalid plan. Use 'Premium' or 'Free'.", 400);
+        var plan = await _uow.PlanDefinitions.GetByNameAsync(request.PlanName, ct);
+            
+        if (plan == null)
+            return Result<string>.Failure($"Plan '{request.PlanName}' not found.", 404);
 
         // Deactivate existing active subscription if any
         var currentSub = await _uow.Subscriptions.GetActiveByUserIdAsync(user.Id, ct);
@@ -101,7 +103,7 @@ public class AddManualSubscriptionHandler : IRequestHandler<AddManualSubscriptio
         var newSub = new Subscription
         {
             UserId = user.Id,
-            Plan = planEnum,
+            PlanDefinitionId = plan.Id,
             Status = SubscriptionStatus.Active,
             StartDate = DateTime.UtcNow,
             EndDate = endDate,
@@ -109,20 +111,13 @@ public class AddManualSubscriptionHandler : IRequestHandler<AddManualSubscriptio
             ExternalSubscriptionId = $"MANUAL-{Guid.NewGuid().ToString()[..8]}"
         };
 
-        if (planEnum == SubscriptionPlan.Premium && user.Role != UserRole.Admin)
-        {
-            user.Role = UserRole.Premium;
-        }
-
-        // Update denormalized cache
-        user.PlanExpirationDate = endDate;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _uow.Subscriptions.AddAsync(newSub, ct);
         _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);
 
-        return Result<string>.Success($"Added {request.DurationDays}-day {planEnum} subscription.");
+        return Result<string>.Success($"Added {request.DurationDays}-day {plan.Name} subscription.");
     }
 }
 
@@ -151,11 +146,6 @@ public class CancelCurrentSubscriptionHandler : IRequestHandler<CancelCurrentSub
         currentSub.UpdatedAt = DateTime.UtcNow;
         _uow.Subscriptions.Update(currentSub);
 
-        if (user.Role == UserRole.Premium)
-        {
-            user.Role = UserRole.User; // fallback
-        }
-        user.PlanExpirationDate = null;
         user.UpdatedAt = DateTime.UtcNow;
 
         _uow.Users.Update(user);

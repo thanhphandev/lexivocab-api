@@ -32,8 +32,13 @@ public class GenericRepository<T> : IRepository<T> where T : BaseEntity
         return entity;
     }
 
+    public virtual void Add(T entity)
+        => _dbSet.Add(entity);
     public virtual async Task AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default)
         => await _dbSet.AddRangeAsync(entities, ct);
+
+    public virtual void AddRange(IEnumerable<T> entities)
+        => _dbSet.AddRange(entities);
 
     public virtual void Update(T entity)
         => _dbSet.Update(entity);

@@ -3,7 +3,7 @@ using LexiVocab.Domain.Enums;
 namespace LexiVocab.Application.Common.Interfaces;
 
 /// <summary>
-/// Abstraction for payment gateways (e.g., PayPal, Stripe).
+/// Abstraction for payment gateways (e.g., PayPal, Stripe, Seapay).
 /// Allows easily swapping providers without changing business logic.
 /// </summary>
 public interface IPaymentService
@@ -29,7 +29,7 @@ public interface IPaymentService
     Task<bool> VerifyWebhookSignatureAsync(string body, IDictionary<string, string> headers);
 
     /// <summary>
-    /// Processes a verified webhook event (e.g., PAYMENT.CAPTURE.COMPLETED, PAYMENT.CAPTURE.REFUNDED).
+    /// Processes a verified webhook event.
     /// Should be called only after signature verification succeeds.
     /// </summary>
     Task ProcessWebhookEventAsync(string body, CancellationToken ct);

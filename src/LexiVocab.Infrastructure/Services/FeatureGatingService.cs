@@ -1,94 +1,74 @@
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Enums;
-using LexiVocab.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using LexiVocab.Domain.Interfaces;
 
 namespace LexiVocab.Infrastructure.Services;
 
 public class FeatureGatingService : IFeatureGatingService
 {
-    private readonly AppDbContext _db;
-    private readonly int _freeMaxVocabularies;
+    private readonly IUnitOfWork _uow;
 
-    public FeatureGatingService(AppDbContext db, IConfiguration config)
+    public FeatureGatingService(IUnitOfWork uow)
     {
-        _db = db;
-        _freeMaxVocabularies = config.GetValue<int>("FreePlan:MaxVocabularies", 50);
+        _uow = uow;
     }
 
     public async Task<bool> IsPremiumAsync(Guid userId, CancellationToken ct)
     {
-        var user = await _db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+        // Check for ANY active subscription that is not the "Free" plan
+        var activeSub = await _uow.Subscriptions.GetActiveByUserIdAsync(userId, ct);
 
-        if (user == null) return false;
-
-        return IsUserPremium(user);
+        return activeSub != null && activeSub.PlanDefinition.Name != "Free";
     }
 
     public async Task<UserPermissionsDto> GetPermissionsAsync(Guid userId, CancellationToken ct)
     {
-        // Run sequentially to prevent EF Core InvalidOperationException
-        var user = await _db.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+        var user = await _uow.Users.GetByIdAsync(userId, ct);
 
-        var currentCount = await _db.UserVocabularies
-            .CountAsync(v => v.UserId == userId, ct);
+        var currentCount = await _uow.Vocabularies
+            .CountByUserIdAsync(userId, ct);
 
-        if (user == null)
+        // Fetch active subscription with its plan and features
+        var activeSub = await _uow.Subscriptions.GetActiveWithFeaturesAsync(userId, ct);
+
+        // If no active sub (or expired), fall back to Free tier
+        if (activeSub == null || (activeSub.EndDate.HasValue && activeSub.EndDate.Value < DateTime.UtcNow))
         {
-            return new UserPermissionsDto(
-                Plan: "Free",
-                MaxVocabularies: _freeMaxVocabularies,
-                CurrentCount: 0,
-                CanExportData: false,
-                CanUseAi: false,
-                CanBatchImport: false,
-                PlanExpiresAt: null);
+            var freePlan = await GetPlanByCodeAsync("Free", ct);
+            return CreatePermissionsDto(freePlan, currentCount, null);
         }
 
-        var isPremium = IsUserPremium(user);
-
-        return new UserPermissionsDto(
-            Plan: isPremium ? "Premium" : "Free",
-            MaxVocabularies: isPremium ? -1 : _freeMaxVocabularies,
-            CurrentCount: currentCount,
-            CanExportData: isPremium,
-            CanUseAi: isPremium,
-            CanBatchImport: isPremium,
-            PlanExpiresAt: user.PlanExpirationDate
-        );
+        return CreatePermissionsDto(activeSub.PlanDefinition, currentCount, activeSub.EndDate);
     }
 
     public async Task<bool> CanCreateVocabularyAsync(Guid userId, CancellationToken ct)
     {
-        var isPremium = await IsPremiumAsync(userId, ct);
-        if (isPremium) return true;
-
-        var currentCount = await _db.UserVocabularies
-            .CountAsync(v => v.UserId == userId, ct);
-
-        return currentCount < _freeMaxVocabularies;
+         var permissions = await GetPermissionsAsync(userId, ct);
+         if (permissions.MaxVocabularies >= 999999) return true;
+         return permissions.CurrentCount < permissions.MaxVocabularies;
     }
 
-    /// <summary>
-    /// Shared logic to determine premium status from a User entity.
-    /// Avoids duplicating the check across multiple methods.
-    /// </summary>
-    private static bool IsUserPremium(Domain.Entities.User user)
+    private async Task<Domain.Entities.PlanDefinition?> GetPlanByCodeAsync(string name, CancellationToken ct)
     {
-        // Manual override for Admin or Premium role
-        if (user.Role is UserRole.Admin or UserRole.Premium)
-            return true;
-
-        // Check plan expiration date
-        if (user.PlanExpirationDate.HasValue && user.PlanExpirationDate.Value > DateTime.UtcNow)
-            return true;
-
-        return false;
+        return await _uow.PlanDefinitions.GetByNameWithFeaturesAsync(name, ct);
     }
+
+    private static UserPermissionsDto CreatePermissionsDto(Domain.Entities.PlanDefinition? plan, int currentCount, DateTime? expiration)
+    {
+        if (plan == null) return new UserPermissionsDto("None", 0, currentCount, false, false, false, expiration);
+
+        var maxWordsValue = plan.PlanFeatures.FirstOrDefault(pf => pf.Feature.Code == "MAX_WORDS")?.Value ?? "50";
+        var maxVocab = maxWordsValue.Equals("Unlimited", StringComparison.OrdinalIgnoreCase) ? 999999 : int.Parse(maxWordsValue);
+
+        return new UserPermissionsDto(
+            Plan: plan.Name,
+            MaxVocabularies: maxVocab,
+            CurrentCount: currentCount,
+            CanExportData: plan.PlanFeatures.FirstOrDefault(pf => pf.Feature.Code == "EXPORT_PDF")?.Value.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false,
+            CanUseAi: plan.PlanFeatures.FirstOrDefault(pf => pf.Feature.Code == "AI_ACCESS")?.Value.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false,
+            CanBatchImport: plan.PlanFeatures.FirstOrDefault(pf => pf.Feature.Code == "BATCH_IMPORT")?.Value.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false, // Mapped from your tier requirements
+            PlanExpiresAt: expiration);
+    }
+
 }

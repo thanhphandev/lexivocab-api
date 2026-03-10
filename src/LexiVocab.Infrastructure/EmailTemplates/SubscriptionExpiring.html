@@ -1,77 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Expiring Soon - LexiVocab</title>
 </head>
-
-<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 40px 20px;">
         <tr>
             <td align="center">
-                <table width="600" cellpadding="0" cellspacing="0"
-                    style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);">
+                    <!-- Header -->
                     <tr>
-                        <td
-                            style="background:linear-gradient(135deg,#ed8936 0%,#dd6b20 100%);padding:40px 40px 30px;text-align:center;">
-                            <h1 style="margin:0;color:#fff;font-size:28px;font-weight:700;">⏰ Your Premium is Expiring
-                                Soon</h1>
+                        <td style="background-color: #fffbeb; padding: 48px 40px; text-align: center;">
+                            <div style="background-color: #fef3c7; width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 24px auto; display: inline-flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 32px; color: #d97706;">⚡</span>
+                            </div>
+                            <h1 style="margin: 0; color: #92400e; font-size: 32px; font-weight: 800; letter-spacing: -0.025em;">Don't Lose Your Edge</h1>
+                            <p style="margin: 12px 0 0 0; color: #b45309; font-size: 18px;">Your {{PlanName}} access expires in {{DaysRemaining}} days</p>
                         </td>
                     </tr>
+                    <!-- Content -->
                     <tr>
-                        <td style="padding:40px;">
-                            <p style="font-size:18px;color:#2d3748;margin:0 0 12px;">Hello
-                                <strong>{{FullName}}</strong>,</p>
-                            <p style="font-size:15px;color:#4a5568;line-height:1.7;margin:0 0 20px;">
-                                Your <strong>Premium plan</strong> will expire on <strong>{{ExpiryDate}}</strong>. After
-                                that, you'll lose access to:
-                            </p>
-                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-                                <tr>
-                                    <td
-                                        style="padding:10px 16px;background:#fff5f5;border-left:4px solid #e53e3e;border-radius:0 8px 8px 0;margin-bottom:6px;">
-                                        <span style="color:#c53030;">✗</span> <span style="color:#2d3748;">Unlimited
-                                            vocabulary storage</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="height:6px;"></td>
-                                </tr>
-                                <tr>
-                                    <td
-                                        style="padding:10px 16px;background:#fff5f5;border-left:4px solid #e53e3e;border-radius:0 8px 8px 0;">
-                                        <span style="color:#c53030;">✗</span> <span style="color:#2d3748;">Batch import
-                                            & data export</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="height:6px;"></td>
-                                </tr>
-                                <tr>
-                                    <td
-                                        style="padding:10px 16px;background:#fff5f5;border-left:4px solid #e53e3e;border-radius:0 8px 8px 0;">
-                                        <span style="color:#c53030;">✗</span> <span style="color:#2d3748;">AI-powered
-                                            features</span>
-                                    </td>
-                                </tr>
-                            </table>
-                            <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
-                                <tr>
-                                    <td
-                                        style="background:linear-gradient(135deg,#ed8936,#dd6b20);border-radius:8px;padding:14px 32px;">
-                                        <a href="{{AppUrl}}/pricing"
-                                            style="color:#fff;text-decoration:none;font-size:16px;font-weight:600;">Renew
-                                            Premium →</a>
-                                    </td>
-                                </tr>
-                            </table>
+                        <td style="padding: 48px 40px;">
+                            <p style="font-size: 18px; color: #1e293b; margin: 0 0 16px;">Hi {{FullName}},</p>
+                            <p style="font-size: 16px; color: #475569; line-height: 1.6; margin: 0 0 24px;">Time flies! Your LexiVocab {{PlanName}} subscription is set to expire on <strong>{{ExpiryDate}}</strong>. We wanted to reach out so you don't miss a beat in your learning journey.</p>
+                            
+                            <div style="background-color: #f0fdf4; border-radius: 16px; padding: 24px; margin-bottom: 32px;">
+                                <p style="margin: 0 0 12px 0; font-size: 14px; color: #166534; font-weight: 700; text-transform: uppercase;">Stay Premium for:</p>
+                                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td style="padding: 4px 0; color: #15803d; font-size: 15px;">✓ AI-generated contextual meanings</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 4px 0; color: #15803d; font-size: 15px;">✓ Unlimited vocabulary storage</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 4px 0; color: #15803d; font-size: 15px;">✓ Priority support & export tools</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <p style="font-size: 16px; color: #475569; line-height: 1.6; margin: 0 0 40px;">Renew now to ensure your access remains uninterrupted. It takes less than a minute!</p>
+                            
+                            <div style="text-align: center;">
+                                <a href="https://lexivocab.store/pricing" style="background-color: #4f46e5; color: #ffffff; padding: 18px 36px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 16px; display: inline-block;">Renew My Subscription</a>
+                            </div>
                         </td>
                     </tr>
+                    <!-- Footer -->
                     <tr>
-                        <td
-                            style="padding:24px 40px;background:#f7fafc;text-align:center;border-top:1px solid #e2e8f0;">
-                            <p style="margin:0;font-size:13px;color:#a0aec0;">© 2026 LexiVocab. All rights reserved.</p>
+                        <td style="padding: 32px 40px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; text-align: center;">
+                            <p style="margin: 0; font-size: 14px; color: #94a3b8;">&copy; 2026 LexiVocab. Keeping your learning on track.</p>
                         </td>
                     </tr>
                 </table>
@@ -79,5 +59,4 @@
         </tr>
     </table>
 </body>
-
 </html>
