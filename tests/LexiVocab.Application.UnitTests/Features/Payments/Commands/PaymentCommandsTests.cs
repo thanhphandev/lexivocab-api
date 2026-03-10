@@ -1,7 +1,7 @@
 using FluentAssertions;
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
-using LexiVocab.Application.Features.Payments;
+using LexiVocab.Application.Features.Payments.Commands;
 using LexiVocab.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Moq;

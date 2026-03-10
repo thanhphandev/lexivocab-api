@@ -46,14 +46,14 @@ public class SubmitReviewHandler : IRequestHandler<SubmitReviewCommand, Result<R
         if (vocab is null || vocab.UserId != userId)
             return Result<ReviewResultDto>.NotFound("Vocabulary card not found.");
 
-        // ─── SM-2 Calculation ─────────────────────────────────
+        // SM-2 Calculation
         var result = _srs.Calculate(
             vocab.RepetitionCount,
             vocab.EasinessFactor,
             vocab.IntervalDays,
             request.QualityScore);
 
-        // ─── Update Vocabulary SRS State ──────────────────────
+        // Update Vocabulary SRS State
         vocab.RepetitionCount = result.NewRepetitionCount;
         vocab.EasinessFactor = result.NewEasinessFactor;
         vocab.IntervalDays = result.NewIntervalDays;
@@ -63,11 +63,11 @@ public class SubmitReviewHandler : IRequestHandler<SubmitReviewCommand, Result<R
 
         _uow.Vocabularies.Update(vocab);
 
-        // ─── Create Immutable Review Log ──────────────────────
+        // Create Immutable Review Log
         var log = new ReviewLog
         {
             UserVocabularyId = request.UserVocabularyId,
-            UserId = userId, // Denormalized for fast analytics
+            UserId = userId,
             QualityScore = request.QualityScore,
             TimeSpentMs = request.TimeSpentMs,
             ReviewedAt = DateTime.UtcNow
