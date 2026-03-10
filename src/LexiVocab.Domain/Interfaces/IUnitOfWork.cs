@@ -19,4 +19,9 @@ public interface IUnitOfWork : IDisposable
     /// Persist all changes made through repositories as a single atomic transaction.
     /// </summary>
     Task<int> SaveChangesAsync(CancellationToken ct = default);
+
+    Task BeginTransactionAsync(CancellationToken ct = default);
+    Task CommitTransactionAsync(CancellationToken ct = default);
+    Task RollbackTransactionAsync(CancellationToken ct = default);
+    Task ExecuteStrategyAsync(Func<Task> action, CancellationToken ct = default);
 }

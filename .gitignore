@@ -103,7 +103,7 @@ StyleCopReport.xml
 *_wpftmp.csproj
 *.log
 *.txt
-binDebug\
+bin\Debug\
 *.tlog
 *.vspscc
 *.vssscc

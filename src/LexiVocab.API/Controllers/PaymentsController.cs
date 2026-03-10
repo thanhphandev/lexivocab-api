@@ -1,7 +1,8 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Payment;
-using LexiVocab.Application.Features.Payments;
+using LexiVocab.Application.Features.Payments.Commands;
+using LexiVocab.Application.Features.Payments.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
