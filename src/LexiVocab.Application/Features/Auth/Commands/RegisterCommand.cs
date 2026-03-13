@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LexiVocab.Application.Common;
@@ -31,9 +33,17 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
     private readonly IDistributedCache _cache;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
+    private readonly IConfiguration _configuration;
     private readonly string _appUrl;
 
-    public RegisterCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache, IEmailQueueService emailQueue, IEmailTemplateService templateService, IConfiguration configuration)
+    public RegisterCommandHandler(
+        IUnitOfWork uow, 
+        IJwtTokenService jwt, 
+        IPasswordHasher hasher, 
+        IDistributedCache cache, 
+        IEmailQueueService emailQueue, 
+        IEmailTemplateService templateService, 
+        IConfiguration configuration)
     {
         _uow = uow;
         _jwt = jwt;
@@ -41,6 +51,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         _cache = cache;
         _emailQueue = emailQueue;
         _templateService = templateService;
+        _configuration = configuration;
         _appUrl = configuration["App:Url"] ?? "https://lexivocab.store";
     }
 
@@ -49,12 +60,15 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         if (await _uow.Users.EmailExistsAsync(request.Email, ct))
             return Result<AuthResponse>.Conflict($"Email '{request.Email}' is already registered.");
 
+        var requireVerification = _configuration["Auth:RequireEmailVerification"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
+
         var user = new Domain.Entities.User
         {
             Email = request.Email.ToLowerInvariant().Trim(),
             PasswordHash = _hasher.Hash(request.Password),
             FullName = request.FullName.Trim(),
-            LastLogin = DateTime.UtcNow
+            LastLogin = DateTime.UtcNow,
+            EmailConfirmed = !requireVerification
         };
 
         await _uow.Users.AddAsync(user, ct);
@@ -64,17 +78,37 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 
         await _uow.SaveChangesAsync(ct);
 
-        // Enqueue welcome email using template (returns immediately, processed in background)
-        try
+        if (requireVerification)
         {
-            var html = await _templateService.RenderTemplateAsync("Welcome", new Dictionary<string, string>
+            // Enqueue verification email (returns immediately, processed in background)
+            var verifyCode = new Random().Next(100000, 999999).ToString();
+            await _cache.SetStringAsync($"email-verify:{user.Email}", verifyCode, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) }, ct);
+
+            try
             {
-                { "FullName", user.FullName },
-                { "AppUrl", _appUrl }
-            });
-            _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! 🚀", html);
+                var html = await _templateService.RenderTemplateAsync("Welcome", new Dictionary<string, string>
+                {
+                    { "FullName", user.FullName },
+                    { "Code", verifyCode },
+                    { "AppUrl", _appUrl }
+                });
+                _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! Please verify your email 🚀", html);
+            }
+            catch { /* Non-critical: don't block registration if template fails */ }
         }
-        catch { /* Non-critical: don't block registration if template fails */ }
+        else
+        {
+            try
+            {
+                var html = await _templateService.RenderTemplateAsync("WelcomeVerified", new Dictionary<string, string>
+                {
+                    { "FullName", user.FullName },
+                    { "AppUrl", _appUrl }
+                });
+                _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! 🚀", html);
+            }
+            catch { }
+        }
 
         var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
         var refreshToken = _jwt.GenerateRefreshToken();

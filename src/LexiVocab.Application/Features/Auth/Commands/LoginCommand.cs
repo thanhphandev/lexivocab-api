@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LexiVocab.Application.Common;
@@ -7,6 +8,7 @@ using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
@@ -27,13 +29,15 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
     private readonly IJwtTokenService _jwt;
     private readonly IPasswordHasher _hasher;
     private readonly IDistributedCache _cache;
+    private readonly IConfiguration _configuration;
 
-    public LoginCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache)
+    public LoginCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache, IConfiguration configuration)
     {
         _uow = uow;
         _jwt = jwt;
         _hasher = hasher;
         _cache = cache;
+        _configuration = configuration;
     }
 
     public async Task<Result<AuthResponse>> Handle(LoginCommand request, CancellationToken ct)
@@ -42,12 +46,39 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
         if (user is null || user.PasswordHash is null)
             return Result<AuthResponse>.Unauthorized("Invalid email or password.");
 
-        if (!_hasher.Verify(request.Password, user.PasswordHash))
-            return Result<AuthResponse>.Unauthorized("Invalid email or password.");
+        // Check if account is locked
+        if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.UtcNow)
+        {
+            var remainingMinutes = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalMinutes);
+            return Result<AuthResponse>.Forbidden($"Account is locked due to too many failed attempts. Please try again in {remainingMinutes} minutes.");
+        }
 
         if (!user.IsActive)
             return Result<AuthResponse>.Forbidden("Account is deactivated.");
 
+        var requireVerification = _configuration["Auth:RequireEmailVerification"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
+        if (requireVerification && !user.EmailConfirmed)
+            return Result<AuthResponse>.Forbidden("Your email is not verified. Please check your inbox for the verification code.");
+
+        if (!_hasher.Verify(request.Password, user.PasswordHash))
+        {
+            user.AccessFailedCount++;
+            if (user.AccessFailedCount >= 5)
+            {
+                user.LockoutEnd = DateTime.UtcNow.AddMinutes(15);
+                _uow.Users.Update(user);
+                await _uow.SaveChangesAsync(ct);
+                return Result<AuthResponse>.Forbidden("Account has been locked for 15 minutes due to too many failed login attempts.");
+            }
+            
+            _uow.Users.Update(user);
+            await _uow.SaveChangesAsync(ct);
+            return Result<AuthResponse>.Unauthorized("Invalid email or password.");
+        }
+
+        // Reset lockout on success
+        user.AccessFailedCount = 0;
+        user.LockoutEnd = null;
         user.LastLogin = DateTime.UtcNow;
 
         var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());

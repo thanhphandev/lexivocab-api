@@ -1,5 +1,7 @@
 using FluentAssertions;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.Features.Auth.Commands;
+using LexiVocab.Domain.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
 using Moq;
 using Xunit;
@@ -9,12 +11,16 @@ namespace LexiVocab.Application.UnitTests.Features.Auth.Commands;
 public class LogoutCommandHandlerTests
 {
     private readonly Mock<IDistributedCache> _mockCache;
+    private readonly Mock<IUnitOfWork> _mockUow;
+    private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly LogoutCommandHandler _handler;
 
     public LogoutCommandHandlerTests()
     {
         _mockCache = new Mock<IDistributedCache>();
-        _handler = new LogoutCommandHandler(_mockCache.Object);
+        _mockUow = new Mock<IUnitOfWork>();
+        _mockCurrentUser = new Mock<ICurrentUserService>();
+        _handler = new LogoutCommandHandler(_mockUow.Object, _mockCurrentUser.Object, _mockCache.Object);
     }
 
     [Fact]

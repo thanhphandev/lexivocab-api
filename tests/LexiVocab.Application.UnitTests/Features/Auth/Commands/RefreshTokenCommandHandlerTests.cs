@@ -89,7 +89,9 @@ public class RefreshTokenCommandHandlerTests
             Id = _userId,
             Email = "test@test.com",
             FullName = "Test User",
-            IsActive = true
+            IsActive = true,
+            RefreshTokenHash = "old_hash",
+            RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(1)
         };
 
         var command = new RefreshTokenCommand("old_at", "old_rt", "Chrome", "127.0.0.1");
@@ -101,7 +103,7 @@ public class RefreshTokenCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue($"Error was: {result.Error} (Status: {result.StatusCode})");
         result.StatusCode.Should().Be(200);
         result.Data!.AccessToken.Should().Be("new_access_token");
         result.Data.RefreshToken.Should().Be("new_refresh_token");

@@ -44,6 +44,35 @@ public class AuthController : ControllerBase
         return ToAuthResult(result);
     }
 
+    /// <summary>Initiate password reset flow by sending a 6-digit code to the email.</summary>
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ForgotPasswordCommand(request.Email), ct);
+        return Ok(new { success = true, message = "If the email is registered, a reset code has been sent." });
+    }
+
+    /// <summary>Reset password using the 6-digit code received via email.</summary>
+    [HttpPost("reset-password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ResetPasswordCommand(request.Email, request.Code, request.NewPassword), ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Verify user's email address using the 6-digit code.</summary>
+    [HttpPost("verify-email")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request, [FromQuery] string email, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new VerifyEmailCommand(email, request.Code), ct);
+        return ToActionResult(result);
+    }
+
     /// <summary>Login or register with a Google ID token. Auto-links existing email accounts.</summary>
     [HttpPost("google")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]

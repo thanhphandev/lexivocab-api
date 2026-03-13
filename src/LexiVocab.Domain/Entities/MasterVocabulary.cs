@@ -27,6 +27,9 @@ public class MasterVocabulary : BaseEntity
     /// <summary>Popularity rank (e.g., Oxford 3000). Lower = more common.</summary>
     public int? PopularityRank { get; set; }
 
+    /// <summary>Flag to indicate that the external dictionary API failed to find this word, preventing infinite retries.</summary>
+    public bool IsFetchFailed { get; set; }
+
     // Navigation
     public ICollection<UserVocabulary> UserVocabularies { get; set; } = [];
 }

@@ -57,16 +57,22 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         Guid? assignedTagId = request.TagId;
         if (!string.IsNullOrWhiteSpace(request.SourceUrl))
         {
-            try
+            var url = request.SourceUrl.Trim();
+            if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
+                !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             {
-                var uri = new Uri(request.SourceUrl);
+                url = "https://" + url;
+            }
+
+            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
                 var domain = uri.Host;
-                if (domain.StartsWith("www.")) domain = domain[4..];
+                if (domain.StartsWith("www.", StringComparison.OrdinalIgnoreCase)) 
+                    domain = domain[4..];
                 
                 var tagEntity = await _uow.Tags.GetOrCreateByDomainAsync(userId, domain, ct);
                 assignedTagId = tagEntity.Id;
             }
-            catch (UriFormatException) { }
         }
 
         var entity = new UserVocabulary

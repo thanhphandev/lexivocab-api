@@ -3,6 +3,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
@@ -16,11 +17,13 @@ public class DeleteAccountHandler : IRequestHandler<DeleteAccountCommand, Result
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache _cache;
 
-    public DeleteAccountHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public DeleteAccountHandler(IUnitOfWork uow, ICurrentUserService currentUser, Microsoft.Extensions.Caching.Distributed.IDistributedCache cache)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _cache = cache;
     }
 
     public async Task<Result> Handle(DeleteAccountCommand request, CancellationToken ct)
@@ -33,11 +36,12 @@ public class DeleteAccountHandler : IRequestHandler<DeleteAccountCommand, Result
         if (user == null)
             return Result.NotFound("User account no longer exists.");
 
-        // Entity Framework Core will automatically handle cascade deletes
-        // for UserVocabularies, ReviewLogs, Subscriptions, Tags, and Settings 
-        // given how the foreign keys are set up.
         _uow.Users.Remove(user);
         await _uow.SaveChangesAsync(ct);
+
+        // Revoke active JWT tokens
+        await _cache.SetStringAsync($"user:deactivated:{userId.Value}", "true", 
+            new Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) }, ct);
 
         return Result.Success();
     }

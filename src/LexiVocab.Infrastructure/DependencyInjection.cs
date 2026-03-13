@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace LexiVocab.Infrastructure;
 
@@ -131,6 +132,25 @@ public static class DependencyInjection
                     ValidAudience = configuration["Jwt:Audience"],
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero // No clock skew for precise token expiry
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var cache = context.HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
+                        var userIdClaim = context.Principal?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub) 
+                                       ?? context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+                                       
+                        if (userIdClaim != null)
+                        {
+                            var isDeactivated = await cache.GetStringAsync($"user:deactivated:{userIdClaim.Value}");
+                            if (!string.IsNullOrEmpty(isDeactivated))
+                            {
+                                context.Fail("User account is deactivated or deleted.");
+                            }
+                        }
+                    }
                 };
             });
 

@@ -69,6 +69,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
                     FullName = googleUser.FullName,
                     AuthProvider = "Google",
                     AuthProviderId = googleUser.Subject,
+                    EmailConfirmed = true,
                     LastLogin = DateTime.UtcNow
                 };
                 await _uow.Users.AddAsync(user, ct);
@@ -76,7 +77,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
 
                 try
                 {
-                    var html = await _templateService.RenderTemplateAsync("Welcome", new Dictionary<string, string>
+                    var html = await _templateService.RenderTemplateAsync("WelcomeVerified", new Dictionary<string, string>
                     {
                         { "FullName", user.FullName },
                         { "AppUrl", _appUrl }

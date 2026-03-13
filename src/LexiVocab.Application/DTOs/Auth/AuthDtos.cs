@@ -41,3 +41,9 @@ public record UpdateProfileRequest(
 public record ChangePasswordRequest(
     string CurrentPassword,
     string NewPassword);
+
+public record ForgotPasswordRequest(string Email);
+
+public record ResetPasswordRequest(string Email, string Code, string NewPassword);
+
+public record VerifyEmailRequest(string Code);

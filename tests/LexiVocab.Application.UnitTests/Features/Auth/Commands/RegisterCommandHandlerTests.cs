@@ -32,6 +32,7 @@ public class RegisterCommandHandlerTests
 
         var config = new Mock<IConfiguration>();
         config.Setup(c => c["App:Url"]).Returns("https://test.lexivocab.store");
+        config.Setup(c => c["Auth:RequireEmailVerification"]).Returns("true");
 
         _mockHasher.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed_value");
         _mockJwt.Setup(j => j.GenerateAccessToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()))
@@ -42,9 +43,13 @@ public class RegisterCommandHandlerTests
             .ReturnsAsync("<html>Welcome</html>");
 
         _handler = new RegisterCommandHandler(
-            _mockUow.Object, _mockJwt.Object, _mockHasher.Object,
-            _mockCache.Object, _mockEmailQueue.Object, _mockTemplateService.Object,
-            config.Object);
+            uow: _mockUow.Object,
+            jwt: _mockJwt.Object,
+            hasher: _mockHasher.Object,
+            cache: _mockCache.Object,
+            emailQueue: _mockEmailQueue.Object,
+            templateService: _mockTemplateService.Object,
+            configuration: config.Object);
     }
 
     [Fact]

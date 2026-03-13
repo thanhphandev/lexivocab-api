@@ -67,7 +67,7 @@ public class MasterVocabularyUpdateJob : IMasterVocabularyUpdateJob
                 if (master == null)
                 {
                     // If API fails or word not found, create a minimal skeleton to avoid repeated lookups
-                    master = new MasterVocabulary { Word = word.ToLower() };
+                    master = new MasterVocabulary { Word = word.ToLower(), IsFetchFailed = true };
                 }
 
                 await _uow.MasterVocabularies.AddAsync(master, ct);
@@ -101,14 +101,18 @@ public class MasterVocabularyUpdateJob : IMasterVocabularyUpdateJob
                 vocab.AudioUrl ??= info.AudioUrl;
                 enrichedCount++;
             }
+            else
+            {
+                vocab.IsFetchFailed = true;
+            }
             
             await Task.Delay(500, ct);
         }
 
-        if (enrichedCount > 0)
+        if (pendingRecords.Count > 0)
         {
             await _uow.SaveChangesAsync(ct);
-            _logger.LogInformation("Enriched {Count} records successfully.", enrichedCount);
+            _logger.LogInformation("Processed {Count} records (Enriched: {EnrichedCount}).", pendingRecords.Count, enrichedCount);
         }
     }
 }

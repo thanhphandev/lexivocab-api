@@ -14,6 +14,7 @@ public class User : BaseEntity
     public string FullName { get; set; } = string.Empty;
     public DateTime? LastLogin { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool EmailConfirmed { get; set; }
     public UserRole Role { get; set; } = UserRole.User;
 
     /// <summary>OAuth provider (e.g., "Google"). Null for email/password accounts.</summary>
@@ -25,6 +26,12 @@ public class User : BaseEntity
     /// <summary>Hashed refresh token for JWT rotation. Null when no active session.</summary>
     public string? RefreshTokenHash { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
+
+    /// <summary>Brute-force protection: number of failed login attempts.</summary>
+    public int AccessFailedCount { get; set; }
+    
+    /// <summary>Brute-force protection: lockout end time.</summary>
+    public DateTime? LockoutEnd { get; set; }
 
 
     // Navigation properties

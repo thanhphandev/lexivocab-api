@@ -1,3 +1,4 @@
+using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LexiVocab.Application.Common;
@@ -61,6 +62,9 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         
         if (user is null || !user.IsActive)
             return Result<AuthResponse>.Unauthorized("Account is deactivated or does not exist.");
+
+        if (string.IsNullOrEmpty(user.RefreshTokenHash) || user.RefreshTokenExpiryTime < DateTime.UtcNow)
+            return Result<AuthResponse>.Unauthorized("Refresh token has been invalidated or expired.");
 
         var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
         var newRefreshToken = _jwt.GenerateRefreshToken();
