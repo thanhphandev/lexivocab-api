@@ -46,7 +46,7 @@ public class BatchImportHandlerTests
         });
 
         _mockFeatureGating.Setup(x => x.GetPermissionsAsync(_userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new UserPermissionsDto("Free", 50, 0, false, false, false, null)); // CanBatchImport = false
+            .ReturnsAsync(new UserPermissionsDto("Free", 0, null, new Dictionary<string, string>())); // CanBatchImport = false
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -68,7 +68,7 @@ public class BatchImportHandlerTests
         });
 
         _mockFeatureGating.Setup(x => x.GetPermissionsAsync(_userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new UserPermissionsDto("Premium", 9999, 0, true, true, true, null)); // CanBatchImport = true
+            .ReturnsAsync(new UserPermissionsDto("Premium", 0, null, new Dictionary<string, string> { { "BATCH_IMPORT", "true" } })); // CanBatchImport = true
 
         // Mock batch duplicate check: "banana" already exists
         _mockUow.Setup(x => x.Vocabularies.GetExistingWordsAsync(_userId, It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))

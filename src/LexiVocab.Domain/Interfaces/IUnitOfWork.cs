@@ -14,6 +14,7 @@ public interface IUnitOfWork : IDisposable
     ISubscriptionRepository Subscriptions { get; }
     IPaymentTransactionRepository PaymentTransactions { get; }
     IPlanDefinitionRepository PlanDefinitions { get; }
+    IFeatureDefinitionRepository FeatureDefinitions { get; }
 
     /// <summary>
     /// Persist all changes made through repositories as a single atomic transaction.

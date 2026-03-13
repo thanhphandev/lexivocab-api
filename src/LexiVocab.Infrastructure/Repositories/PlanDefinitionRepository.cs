@@ -36,4 +36,12 @@ public class PlanDefinitionRepository : GenericRepository<PlanDefinition>, IPlan
                 .ThenInclude(pf => pf.Feature)
             .FirstOrDefaultAsync(p => p.Name == name, ct);
     }
+
+    public async Task<PlanDefinition?> GetByIdWithFeaturesAsync(Guid id, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .Include(p => p.PlanFeatures)
+                .ThenInclude(pf => pf.Feature)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+    }
 }

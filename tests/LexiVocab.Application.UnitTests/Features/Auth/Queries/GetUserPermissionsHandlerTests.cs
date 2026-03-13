@@ -31,12 +31,9 @@ public class GetUserPermissionsHandlerTests
         // Arrange
         var expectedPermissions = new UserPermissionsDto(
             Plan: "Free",
-            MaxVocabularies: 100,
             CurrentCount: 42,
-            CanExportData: false,
-            CanUseAi: false,
-            CanBatchImport: false,
-            PlanExpiresAt: null);
+            PlanExpiresAt: null,
+            FeatureFlags: new Dictionary<string, string>());
 
         _mockFeatureGating
             .Setup(f => f.GetPermissionsAsync(_userId, It.IsAny<CancellationToken>()))

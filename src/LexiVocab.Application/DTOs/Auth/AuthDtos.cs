@@ -34,3 +34,10 @@ public record UserProfileDto(
     bool IsActive,
     DateTime CreatedAt,
     DateTime? LastLogin);
+
+public record UpdateProfileRequest(
+    string FullName);
+
+public record ChangePasswordRequest(
+    string CurrentPassword,
+    string NewPassword);

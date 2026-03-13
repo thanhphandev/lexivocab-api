@@ -21,6 +21,7 @@ public class UnitOfWork : IUnitOfWork
     public ISubscriptionRepository Subscriptions { get; }
     public IPaymentTransactionRepository PaymentTransactions { get; }
     public IPlanDefinitionRepository PlanDefinitions { get; }
+    public IFeatureDefinitionRepository FeatureDefinitions { get; }
 
     public UnitOfWork(
         AppDbContext context,
@@ -31,7 +32,8 @@ public class UnitOfWork : IUnitOfWork
         IVocabTagRepository tags,
         ISubscriptionRepository subscriptions,
         IPaymentTransactionRepository paymentTransactions,
-        IPlanDefinitionRepository planDefinitions)
+        IPlanDefinitionRepository planDefinitions,
+        IFeatureDefinitionRepository featureDefinitions)
     {
         _context = context;
         Users = users;
@@ -42,6 +44,7 @@ public class UnitOfWork : IUnitOfWork
         Subscriptions = subscriptions;
         PaymentTransactions = paymentTransactions;
         PlanDefinitions = planDefinitions;
+        FeatureDefinitions = featureDefinitions;
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)

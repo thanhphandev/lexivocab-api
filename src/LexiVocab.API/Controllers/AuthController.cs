@@ -111,6 +111,65 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
+// ─── Account Management ───────────────────────────────────────
+
+    /// <summary>Update the current user's profile information.</summary>
+    [HttpPut("me")]
+    [Authorize]
+    [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new UpdateProfileCommand(request.FullName), ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Change the current user's password (for Email/Password accounts only).</summary>
+    [HttpPut("me/password")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ChangePasswordCommand(request.CurrentPassword, request.NewPassword), ct);
+        if (result.IsSuccess)
+        {
+            // Revoke current session cookie since we invalidated the token hash.
+            Response.Cookies.Delete("refreshToken", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None
+            });
+            return Ok(new { success = true, message = "Password changed successfully. Please log in again." });
+        }
+        return ToActionResult(result);
+    }
+
+    /// <summary>Permanently delete the user's account and wipe all associated data.</summary>
+    [HttpDelete("me")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> DeleteAccount(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new DeleteAccountCommand(), ct);
+        if (result.IsSuccess)
+        {
+            Response.Cookies.Delete("refreshToken", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None
+            });
+            return Ok(new { success = true, message = "Account deleted successfully." });
+        }
+        return ToActionResult(result);
+    }
+
     private IActionResult ToAuthResult(Result<AuthResponse> result)
     {
         if (result.IsSuccess && result.Data is not null)
@@ -133,6 +192,22 @@ public class AuthController : ControllerBase
         };
         // Ensure consistency with the reader in RefreshToken / Logout
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+    }
+
+    private IActionResult ToActionResult(Result result)
+    {
+        if (result.IsSuccess) return Ok();
+
+        var errorObj = new { error = result.Error };
+        return result.StatusCode switch
+        {
+            400 => BadRequest(errorObj),
+            401 => Unauthorized(errorObj),
+            403 => StatusCode(403, errorObj),
+            404 => NotFound(errorObj),
+            409 => Conflict(errorObj),
+            _ => StatusCode(500, errorObj)
+        };
     }
 
     private IActionResult ToActionResult<T>(Result<T> result)

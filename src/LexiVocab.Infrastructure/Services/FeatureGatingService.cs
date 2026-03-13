@@ -45,8 +45,9 @@ public class FeatureGatingService : IFeatureGatingService
     public async Task<bool> CanCreateVocabularyAsync(Guid userId, CancellationToken ct)
     {
          var permissions = await GetPermissionsAsync(userId, ct);
-         if (permissions.MaxVocabularies >= 999999) return true;
-         return permissions.CurrentCount < permissions.MaxVocabularies;
+         int maxWords = permissions.GetLimit("MAX_WORDS", 50);
+         if (maxWords >= 999999) return true;
+         return permissions.CurrentCount < maxWords;
     }
 
     private async Task<Domain.Entities.PlanDefinition?> GetPlanByCodeAsync(string name, CancellationToken ct)
@@ -56,19 +57,15 @@ public class FeatureGatingService : IFeatureGatingService
 
     private static UserPermissionsDto CreatePermissionsDto(Domain.Entities.PlanDefinition? plan, int currentCount, DateTime? expiration)
     {
-        if (plan == null) return new UserPermissionsDto("None", 0, currentCount, false, false, false, expiration);
+        if (plan == null) return new UserPermissionsDto("None", currentCount, expiration, new Dictionary<string, string>());
 
-        var maxWordsValue = plan.PlanFeatures.FirstOrDefault(pf => pf.Feature.Code == "MAX_WORDS")?.Value ?? "50";
-        var maxVocab = maxWordsValue.Equals("Unlimited", StringComparison.OrdinalIgnoreCase) ? 999999 : int.Parse(maxWordsValue);
+        var flags = plan.PlanFeatures.ToDictionary(pf => pf.Feature.Code, pf => pf.Value);
 
         return new UserPermissionsDto(
             Plan: plan.Name,
-            MaxVocabularies: maxVocab,
             CurrentCount: currentCount,
-            CanExportData: plan.PlanFeatures.FirstOrDefault(pf => pf.Feature.Code == "EXPORT_PDF")?.Value.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false,
-            CanUseAi: plan.PlanFeatures.FirstOrDefault(pf => pf.Feature.Code == "AI_ACCESS")?.Value.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false,
-            CanBatchImport: plan.PlanFeatures.FirstOrDefault(pf => pf.Feature.Code == "BATCH_IMPORT")?.Value.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false, // Mapped from your tier requirements
-            PlanExpiresAt: expiration);
+            PlanExpiresAt: expiration,
+            FeatureFlags: flags);
     }
 
 }

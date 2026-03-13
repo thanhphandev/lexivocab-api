@@ -28,7 +28,7 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
         var userId = _currentUser.UserId!.Value;
         
         var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
-        if (!permissions.CanExportData)
+        if (!permissions.HasFeature("EXPORT_PDF"))
         {
             return Result<ExportDataDto>.Failure("ERR_PREMIUM_REQUIRED", 403);
         }

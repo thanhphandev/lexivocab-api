@@ -48,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
         services.AddScoped<IPlanDefinitionRepository, PlanDefinitionRepository>();
+        services.AddScoped<IFeatureDefinitionRepository, FeatureDefinitionRepository>();
 
         // ─── Background Jobs ──────────────────────────────────
         services.AddTransient<Services.ISubscriptionExpirationJob, Services.SubscriptionExpirationJob>();

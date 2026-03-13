@@ -52,4 +52,5 @@ public class Result : IResult
     public static Result Success() => new(true, null, 200);
     public static Result Failure(string error, int statusCode = 400) => new(false, error, statusCode);
     public static Result NotFound(string error = "Resource not found") => new(false, error, 404);
+    public static Result Conflict(string error) => new(false, error, 409);
 }

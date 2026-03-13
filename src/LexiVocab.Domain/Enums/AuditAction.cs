@@ -24,10 +24,12 @@ public enum AuditAction
     // ─── Reviews / SRS ───────────────────────────────────
     ReviewCompleted = 20,
 
-    // ─── User Settings ───────────────────────────────────
+    // ─── User Settings & Profile ─────────────────────────
     SettingsUpdated = 30,
     ProfileUpdated = 31,
-    PasswordChanged = 32,
+    UserUpdated = 32,
+    PasswordChanged = 33,
+    UserDeleted = 34,
 
     // ─── Subscription & Payment ──────────────────────────
     SubscriptionCreated = 40,
@@ -39,6 +41,7 @@ public enum AuditAction
     AdminUserDeactivated = 50,
     AdminUserActivated = 51,
     AdminRoleChanged = 52,
+    SystemSettingUpdated = 53,
 
     // ─── System ──────────────────────────────────────────
     RateLimited = 90,

@@ -38,7 +38,7 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
         var userId = _currentUser.UserId!.Value;
         
         var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
-        if (!permissions.CanBatchImport)
+        if (!permissions.HasFeature("BATCH_IMPORT"))
         {
             return Result<int>.Failure("ERR_PREMIUM_REQUIRED", 403);
         }

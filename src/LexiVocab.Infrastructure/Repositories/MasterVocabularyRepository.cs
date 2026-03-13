@@ -22,6 +22,28 @@ public class MasterVocabularyRepository : GenericRepository<MasterVocabulary>, I
             .AsNoTracking()
             .ToListAsync(ct);
 
+    public async Task<(IReadOnlyList<MasterVocabulary> Items, int TotalCount)> GetPagedAsync(
+        int page, int pageSize, string? searchQuery = null, CancellationToken ct = default)
+    {
+        var query = _dbSet.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            query = query.Where(m => EF.Functions.ILike(m.Word, $"%{searchQuery}%"));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderBy(m => m.Word)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
+
     public async Task<Dictionary<string, MasterVocabulary>> GetByWordsAsync(IEnumerable<string> words, CancellationToken ct = default)
     {
         var wordList = words.ToList();

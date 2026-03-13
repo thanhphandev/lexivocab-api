@@ -75,10 +75,34 @@ dotnet ef database update --project src/LexiVocab.Infrastructure --startup-proje
 
 - [ ] Entity inherits from `BaseEntity` (if Id/Audit fields are needed).
 - [ ] Repository is registered in `IUnitOfWork` and `UnitOfWork`.
+- [ ] **Repository is registered in `DependencyInjection.cs`** (Common oversight!).
 - [ ] Command has an accompanying Validator.
 - [ ] DTO contains no processing logic.
 - [ ] Controller has `[ProducesResponseType]` for Swagger/Scalar documentation.
+- [ ] **Controller syntax is correct** (Ensure no missing braces `}`).
 - [ ] `dotnet build` and `dotnet test` pass 100%.
+
+## ⚠️ 7. Common Pitfalls & How to Avoid Them
+
+Based on past feature development, pay strict attention to the following to avoid compilation and runtime errors:
+
+1. **Missing Dependency Injection**:
+   - *Mistake*: Creating a Repository but forgetting to register it in the DI container.
+   - *Fix*: ALWAYS add `services.AddScoped<IYourRepository, YourRepository>();` in `LexiVocab.Infrastructure/DependencyInjection.cs`.
+
+2. **Unit of Work Inconsistencies**:
+   - *Mistake*: Adding the Repository interface to `IUnitOfWork` but forgetting the implementation.
+   - *Fix*: Update BOTH `IUnitOfWork.cs` (Interface Property) AND `UnitOfWork.cs` (Constructor injection + Property implementation).
+
+3. **`IAuditedRequest` Interface Mismatch**:
+   - *Mistake*: Implementing `public AuditAction Action => ...` instead of `public AuditAction AuditAction => ...`.
+   - *Fix*: The interface specifically requires `AuditAction AuditAction { get; }`.
+   - *Mistake*: Using an `AuditAction` enum value that doesn't exist yet.
+   - *Fix*: Check `src/LexiVocab.Domain/Enums/AuditAction.cs` and manually add the new enum member if it doesn't exist before referencing it in your Command/Query.
+
+4. **`PagedResult<T>` Object Initialization**:
+   - *Mistake*: Using a non-existent parameterized constructor: `new PagedResult<T>(items, page, pageSize, total)`.
+   - *Fix*: `PagedResult<T>` has no custom constructor and relies on object initializers. Use `new PagedResult<T> { Items = items, Page = page, PageSize = pageSize, TotalCount = total };`.
 
 ---
 **Detailed Reference Documentation:**
