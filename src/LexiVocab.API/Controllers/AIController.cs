@@ -4,11 +4,14 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using Asp.Versioning;
+
 namespace LexiVocab.API.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/v1/ai")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/ai")]
 [Produces("application/json")]
 public class AIController : ControllerBase
 {

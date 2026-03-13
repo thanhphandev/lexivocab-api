@@ -14,6 +14,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.Dashboard;
+using Asp.Versioning;
 
 // ────────────────────────────────────────────────────────────────
 // Bootstrap Serilog (before anything else can crash)
@@ -72,6 +73,23 @@ try
             options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
         });
+
+    // ─── API Versioning ───────────────────────────────────────
+    builder.Services.AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = ApiVersionReader.Combine(
+            new UrlSegmentApiVersionReader(),
+            new HeaderApiVersionReader("x-api-version"),
+            new QueryStringApiVersionReader("api-version")
+        );
+    }).AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";
+        options.SubstituteApiVersionInUrl = true;
+    });
 
     // ─── Swagger / OpenAPI ────────────────────────────────────
     builder.Services.AddOpenApi(); // Supports OpenAPI 3.0/3.1

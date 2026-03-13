@@ -3,10 +3,13 @@ using LexiVocab.Application.Features.MasterVocabularies.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
+using Asp.Versioning;
+
 namespace LexiVocab.API.Controllers;
 
 [ApiController]
-[Route("api/v1/master-vocab")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/master-vocab")]
 [Produces("application/json")]
 public class MasterVocabController : ControllerBase
 {

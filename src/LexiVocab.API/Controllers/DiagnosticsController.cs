@@ -5,10 +5,13 @@ using System.Diagnostics;
 using LexiVocab.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
+using Asp.Versioning;
+
 namespace LexiVocab.API.Controllers;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Authorize(Roles = "Admin")]
 [Produces("application/json")]
 public class DiagnosticsController : ControllerBase

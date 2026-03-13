@@ -5,10 +5,13 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using Asp.Versioning;
+
 namespace LexiVocab.API.Controllers;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 [Produces("application/json")]
 public class AnalyticsController : ControllerBase
