@@ -45,7 +45,7 @@ public class UpdateUserStatusHandler : IRequestHandler<UpdateUserStatusCommand, 
         var redisKey = $"user:deactivated:{request.UserId}";
         if (!request.IsActive)
         {
-            await _cache.SetStringAsync(redisKey, "true", new Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) }, ct);
+            await _cache.SetStringAsync(redisKey, "true", new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) }, ct);
         }
         else
         {

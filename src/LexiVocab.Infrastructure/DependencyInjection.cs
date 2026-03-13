@@ -111,6 +111,13 @@ public static class DependencyInjection
         })
         .AddStandardResilienceHandler();
 
+        // ─── AI Services (Cloudflare Workers AI) ─────────────
+        services.AddHttpClient<IAIService, Services.CloudflareAIService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        })
+        .AddStandardResilienceHandler();
+
         var jwtSecret = configuration["Jwt:Secret"]
             ?? throw new InvalidOperationException("Jwt:Secret is not configured");
 

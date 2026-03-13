@@ -1,0 +1,9 @@
+name = "lexivocab-ai-worker"
+main = "src/index.ts"
+compatibility_date = "2024-04-03"
+
+[ai]
+binding = "AI"
+
+[vars]
+API_KEY = "161004" # User should change this in Cloudflare dashboard

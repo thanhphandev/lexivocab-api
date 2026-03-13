@@ -1,6 +1,7 @@
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace LexiVocab.Infrastructure.Services;
 
@@ -13,21 +14,27 @@ public class MasterVocabularyUpdateJob : IMasterVocabularyUpdateJob
 {
     private readonly IUnitOfWork _uow;
     private readonly IDictionaryService _dictService;
+    private readonly IAIService _aiService;
     private readonly ILogger<MasterVocabularyUpdateJob> _logger;
+    private readonly IConfiguration _configuration;
 
     public MasterVocabularyUpdateJob(
         IUnitOfWork uow,
         IDictionaryService dictService,
-        ILogger<MasterVocabularyUpdateJob> logger)
+        IAIService aiService,
+        ILogger<MasterVocabularyUpdateJob> logger,
+        IConfiguration configuration)
     {
         _uow = uow;
         _dictService = dictService;
+        _aiService = aiService;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task ExecuteAsync(CancellationToken ct)
     {
-        _logger.LogInformation("🚀 MasterVocabulary Enrichment Job starting...");
+        _logger.LogInformation("🚀 MasterVocabulary Enrichment Job starting (AI-enhanced)...");
 
         try
         {
@@ -53,31 +60,52 @@ public class MasterVocabularyUpdateJob : IMasterVocabularyUpdateJob
 
         _logger.LogInformation("Found {Count} unlinked words. Linking...", unlinkedWords.Count);
 
+        int aiEnrichedThisRun = 0;
+        var preferredSource = _configuration["CloudflareAI:PreferredSource"] ?? "AI";
+        var maxAiEnrichments = _configuration.GetValue<int>("CloudflareAI:MaxAiEnrichmentsPerRun", 10);
+
         foreach (var word in unlinkedWords)
         {
-            // Check if Master record exists (it might have been created by another process recently)
             var master = await _uow.MasterVocabularies.GetByWordAsync(word.ToLower(), ct);
 
             if (master == null)
             {
-                // Create skeleton or fetch from API immediately?
-                // Let's fetch from API to avoid double work later
-                master = await _dictService.FetchWordDefinitionAsync(word, ct);
+                if (preferredSource == "AI" && aiEnrichedThisRun < maxAiEnrichments)
+                {
+                    master = await _aiService.EnrichWordAsync(word, ct);
+                    if (master != null) aiEnrichedThisRun++;
+                }
+                else if (preferredSource == "API")
+                {
+                    master = await _dictService.FetchWordDefinitionAsync(word, ct);
+                }
+                
+                // Fallback if preferred failed
+                if (master == null)
+                {
+                    if (preferredSource == "AI")
+                    {
+                        _logger.LogInformation("AI skipped or failed for '{Word}', falling back to dictionary service...", word);
+                        master = await _dictService.FetchWordDefinitionAsync(word, ct);
+                    }
+                    else if (preferredSource == "API" && aiEnrichedThisRun < maxAiEnrichments)
+                    {
+                        _logger.LogInformation("API failed for '{Word}', falling back to AI enrichment...", word);
+                        master = await _aiService.EnrichWordAsync(word, ct);
+                        if (master != null) aiEnrichedThisRun++;
+                    }
+                }
                 
                 if (master == null)
                 {
-                    // If API fails or word not found, create a minimal skeleton to avoid repeated lookups
                     master = new MasterVocabulary { Word = word.ToLower(), IsFetchFailed = true };
                 }
 
                 await _uow.MasterVocabularies.AddAsync(master, ct);
-                await _uow.SaveChangesAsync(ct); // Save to get ID
+                await _uow.SaveChangesAsync(ct);
             }
 
-            // Link all UserVocabularies with this word to this Master ID
             await _uow.Vocabularies.LinkToMasterAsync(word, master.Id, ct);
-            
-            // Delay to be nice to APIs if we called it
             await Task.Delay(500, ct); 
         }
     }
@@ -89,10 +117,24 @@ public class MasterVocabularyUpdateJob : IMasterVocabularyUpdateJob
 
         _logger.LogInformation("Enriching {Count} existing master records...", pendingRecords.Count);
 
+        var preferredSource = _configuration["CloudflareAI:PreferredSource"] ?? "AI";
         int enrichedCount = 0;
+
         foreach (var vocab in pendingRecords)
         {
-            var info = await _dictService.FetchWordDefinitionAsync(vocab.Word, ct);
+            MasterVocabulary? info = null;
+
+            if (preferredSource == "AI")
+            {
+                info = await _aiService.EnrichWordAsync(vocab.Word, ct) 
+                      ?? await _dictService.FetchWordDefinitionAsync(vocab.Word, ct);
+            }
+            else
+            {
+                info = await _dictService.FetchWordDefinitionAsync(vocab.Word, ct)
+                      ?? await _aiService.EnrichWordAsync(vocab.Word, ct);
+            }
+
             if (info != null)
             {
                 vocab.PartOfSpeech ??= info.PartOfSpeech;
