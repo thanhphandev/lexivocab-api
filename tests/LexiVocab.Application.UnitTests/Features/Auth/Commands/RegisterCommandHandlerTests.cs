@@ -92,15 +92,16 @@ public class RegisterCommandHandlerTests
         result.Data.Should().NotBeNull();
         result.Data!.Email.Should().Be("test@email.com");
         result.Data.FullName.Should().Be("John Doe");
-        result.Data.AccessToken.Should().Be("test_access_token");
-        result.Data.RefreshToken.Should().Be("test_refresh_token");
+        result.Data!.AccessToken.Should().BeNull();
+        result.Data.RefreshToken.Should().BeNull();
+        result.Data.ExpiresAt.Should().BeNull();
 
         savedUser.Should().NotBeNull();
         savedUser!.Email.Should().Be("test@email.com"); // normalized
         savedUser.FullName.Should().Be("John Doe"); // trimmed
         savedUser.PasswordHash.Should().Be("hashed_value");
 
-        _mockUow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _mockUow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -119,7 +120,7 @@ public class RegisterCommandHandlerTests
             "rf_token:test_refresh_token",
             It.IsAny<byte[]>(),
             It.IsAny<DistributedCacheEntryOptions>(),
-            It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

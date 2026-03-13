@@ -31,8 +31,27 @@ public class VerifyEmailHandler : IRequestHandler<VerifyEmailCommand, Result>
         var cacheKey = $"email-verify:{email}";
 
         var savedCode = await _cache.GetStringAsync(cacheKey, ct);
-        if (string.IsNullOrEmpty(savedCode) || savedCode != request.Code)
+        var attemptsKey = $"email-verify-attempts:{email}";
+        
+        if (string.IsNullOrEmpty(savedCode))
             return Result.Failure("Invalid or expired verification code.", 400);
+
+        if (savedCode != request.Code)
+        {
+            var attemptsStr = await _cache.GetStringAsync(attemptsKey, ct);
+            int attempts = string.IsNullOrEmpty(attemptsStr) ? 0 : int.Parse(attemptsStr);
+            attempts++;
+
+            if (attempts >= 5)
+            {
+                await _cache.RemoveAsync(cacheKey, ct);
+                await _cache.RemoveAsync(attemptsKey, ct);
+                return Result.Failure("Too many failed attempts. Please request a new verification code.", 429);
+            }
+
+            await _cache.SetStringAsync(attemptsKey, attempts.ToString(), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15) }, ct);
+            return Result.Failure("Invalid verification code.", 400);
+        }
 
         var user = await _uow.Users.GetByEmailAsync(email, ct);
         if (user == null)
@@ -48,6 +67,7 @@ public class VerifyEmailHandler : IRequestHandler<VerifyEmailCommand, Result>
         await _uow.SaveChangesAsync(ct);
 
         await _cache.RemoveAsync(cacheKey, ct);
+        await _cache.RemoveAsync(attemptsKey, ct);
 
         return Result.Success();
     }

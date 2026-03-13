@@ -14,8 +14,6 @@ public interface IFeatureGatingService
     /// <summary>Gets the user's full permission matrix and quotas.</summary>
     Task<UserPermissionsDto> GetPermissionsAsync(Guid userId, CancellationToken ct);
 
-    /// <summary>Checks if a user is currently premium.</summary>
-    Task<bool> IsPremiumAsync(Guid userId, CancellationToken ct);
 
     /// <summary>Checks if a user has access to a specific feature.</summary>
     Task<bool> HasFeatureAsync(Guid userId, string featureCode, CancellationToken ct);

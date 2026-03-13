@@ -2,6 +2,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace LexiVocab.Infrastructure.Services;
 
@@ -14,14 +15,6 @@ public class FeatureGatingService : IFeatureGatingService
     {
         _uow = uow;
         _cache = cache;
-    }
-
-    public async Task<bool> IsPremiumAsync(Guid userId, CancellationToken ct)
-    {
-        // Check for ANY active subscription that is not the "Free" plan
-        var activeSub = await _uow.Subscriptions.GetActiveByUserIdAsync(userId, ct);
-
-        return activeSub != null && activeSub.PlanDefinition.Name != "Free";
     }
 
     public async Task<UserPermissionsDto> GetPermissionsAsync(Guid userId, CancellationToken ct)

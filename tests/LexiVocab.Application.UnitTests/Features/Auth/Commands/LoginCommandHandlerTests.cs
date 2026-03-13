@@ -42,7 +42,8 @@ public class LoginCommandHandlerTests
             Email = "test@test.com",
             PasswordHash = "hashed_password",
             FullName = "Test User",
-            IsActive = true
+            IsActive = true,
+            EmailConfirmed = true
         };
 
         _handler = new LoginCommandHandler(_mockUow.Object, _mockJwt.Object, _mockHasher.Object, _mockCache.Object, _mockConfig.Object);
@@ -108,6 +109,35 @@ public class LoginCommandHandlerTests
         result.IsSuccess.Should().BeFalse();
         result.StatusCode.Should().Be(403);
         result.Error.Should().Contain("deactivated");
+    }
+
+    [Fact]
+    public async Task Handle_WhenEmailNotVerified_ShouldReturnForbidden()
+    {
+        // Arrange
+        var unverifiedUser = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "test@test.com",
+            PasswordHash = "hashed_password",
+            FullName = "Unverified User",
+            IsActive = true,
+            EmailConfirmed = false
+        };
+
+        _mockConfig.Setup(c => c["Auth:RequireEmailVerification"]).Returns("true");
+        var command = new LoginCommand("test@test.com", "Password1", "Chrome", "127.0.0.1");
+        _mockUow.Setup(u => u.Users.GetByEmailAsync("test@test.com", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(unverifiedUser);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(403);
+        result.Error.Should().Contain("Your email is not verified");
+        result.Error.Should().Contain("request a new one");
     }
 
     [Fact]

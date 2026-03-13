@@ -74,7 +74,7 @@ try
         });
 
     // ─── Swagger / OpenAPI ────────────────────────────────────
-    builder.Services.AddOpenApi();
+    builder.Services.AddOpenApi(); // Supports OpenAPI 3.0/3.1
 
     // ─── CORS (Extension + Web Dashboard) ─────────────────────
     builder.Services.AddCors(options =>

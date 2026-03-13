@@ -7,6 +7,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
+using System.Security.Cryptography;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
@@ -81,7 +82,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         if (requireVerification)
         {
             // Enqueue verification email (returns immediately, processed in background)
-            var verifyCode = new Random().Next(100000, 999999).ToString();
+            var verifyCode = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
             await _cache.SetStringAsync($"email-verify:{user.Email}", verifyCode, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) }, ct);
 
             try
@@ -95,6 +96,10 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
                 _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! Please verify your email 🚀", html);
             }
             catch { /* Non-critical: don't block registration if template fails */ }
+
+            return Result<AuthResponse>.Created(new AuthResponse(
+                user.Id, user.Email, user.FullName, user.Role.ToString(),
+                null, null, null));
         }
         else
         {

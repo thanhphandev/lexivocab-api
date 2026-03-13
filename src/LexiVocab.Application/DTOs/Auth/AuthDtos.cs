@@ -22,9 +22,9 @@ public record AuthResponse(
     string Email,
     string FullName,
     string Role,
-    string AccessToken,
-    [property: JsonIgnore] string RefreshToken,
-    DateTime ExpiresAt);
+    string? AccessToken,
+    [property: JsonIgnore] string? RefreshToken,
+    DateTime? ExpiresAt);
 
 public record UserProfileDto(
     Guid Id,

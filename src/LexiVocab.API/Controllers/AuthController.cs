@@ -199,11 +199,24 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
+    /// <summary>Resend verification email for an unverified account.</summary>
+    [HttpPost("resend-verification-email")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ResendVerificationEmail([FromBody] ForgotPasswordRequest request, CancellationToken ct)
+    {
+        // ForgotPasswordRequest has 'Email', which is exactly what we need
+        var result = await _mediator.Send(new ResendVerificationEmailCommand(request.Email), ct);
+        return ToActionResult(result);
+    }
+
     private IActionResult ToAuthResult(Result<AuthResponse> result)
     {
         if (result.IsSuccess && result.Data is not null)
         {
-            SetRefreshTokenCookie(result.Data.RefreshToken);
+            if (!string.IsNullOrEmpty(result.Data.RefreshToken))
+            {
+                SetRefreshTokenCookie(result.Data.RefreshToken);
+            }
             return StatusCode(result.StatusCode, new { success = true, data = result.Data });
         }
 

@@ -58,7 +58,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
 
         var requireVerification = _configuration["Auth:RequireEmailVerification"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
         if (requireVerification && !user.EmailConfirmed)
-            return Result<AuthResponse>.Forbidden("Your email is not verified. Please check your inbox for the verification code.");
+            return Result<AuthResponse>.Forbidden("Your email is not verified. Please check your inbox for the verification code or request a new one.");
 
         if (!_hasher.Verify(request.Password, user.PasswordHash))
         {
