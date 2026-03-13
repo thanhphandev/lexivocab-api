@@ -18,11 +18,13 @@ public class FeatureDefinitionConfiguration : IEntityTypeConfiguration<FeatureDe
         var fSupport = new Guid("f3333333-3333-3333-3333-333333333333");
         var fExport = new Guid("f4444444-4444-4444-4444-444444444444");
 
+        var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
         builder.HasData(
-            new FeatureDefinition { Id = fMaxWords, Code = "MAX_WORDS", Name = "Maximum Words", Description = "Limit of vocabulary words saved" },
-            new FeatureDefinition { Id = fAiAccess, Code = "AI_ACCESS", Name = "AI Features", Description = "Access to AI analysis and generation" },
-            new FeatureDefinition { Id = fSupport, Code = "SUPPORT_LEVEL", Name = "Support Level", Description = "Customer support priority" },
-            new FeatureDefinition { Id = fExport, Code = "EXPORT_PDF", Name = "Export as PDF", Description = "Ability to export lists to PDF" }
+            new FeatureDefinition { Id = fMaxWords, Code = "MAX_WORDS", Name = "Maximum Words", Description = "Limit of vocabulary words saved", CreatedAt = seedDate },
+            new FeatureDefinition { Id = fAiAccess, Code = "AI_ACCESS", Name = "AI Features", Description = "Access to AI analysis and generation", CreatedAt = seedDate },
+            new FeatureDefinition { Id = fSupport, Code = "SUPPORT_LEVEL", Name = "Support Level", Description = "Customer support priority", CreatedAt = seedDate },
+            new FeatureDefinition { Id = fExport, Code = "EXPORT_PDF", Name = "Export as PDF", Description = "Ability to export lists to PDF", CreatedAt = seedDate }
         );
     }
 }

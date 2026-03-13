@@ -40,6 +40,14 @@ public class TransactionBehavior<TRequest, TResponse> : IPipelineBehavior<TReque
                 _logger.LogInformation("Starting transaction for {RequestName}", requestName);
                 
                 response = await next();
+
+                // Check for business failures using the Result pattern
+                if (response is IResult { IsSuccess: false })
+                {
+                    _logger.LogWarning("Business logic failed for {RequestName}. Rolling back transaction...", requestName);
+                    await _uow.RollbackTransactionAsync(cancellationToken);
+                    return;
+                }
                 
                 await _uow.CommitTransactionAsync(cancellationToken);
                 
@@ -47,7 +55,7 @@ public class TransactionBehavior<TRequest, TResponse> : IPipelineBehavior<TReque
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Transaction failed for {RequestName}. Rolling back...", requestName);
+                _logger.LogError(ex, "System exception occurred for {RequestName}. Rolling back transaction...", requestName);
                 await _uow.RollbackTransactionAsync(cancellationToken);
                 throw;
             }

@@ -30,4 +30,11 @@ public class MasterVocabularyRepository : GenericRepository<MasterVocabulary>, I
             .ToListAsync(ct);
         return results.ToDictionary(m => m.Word, StringComparer.OrdinalIgnoreCase);
     }
+
+    public async Task<IReadOnlyList<MasterVocabulary>> GetPendingEnrichmentAsync(int limit = 50, CancellationToken ct = default)
+        => await _dbSet
+            .Where(m => string.IsNullOrEmpty(m.PhoneticUk) || string.IsNullOrEmpty(m.AudioUrl))
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(limit)
+            .ToListAsync(ct);
 }

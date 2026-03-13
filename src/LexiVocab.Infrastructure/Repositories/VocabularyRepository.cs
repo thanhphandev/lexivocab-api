@@ -117,4 +117,20 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
             .ToListAsync(ct);
         return existingWords.ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
+
+    public async Task<List<string>> GetUnlinkedWordsAsync(int limit = 100, CancellationToken ct = default)
+        => await _dbSet
+            .Where(v => v.MasterVocabularyId == null)
+            .Select(v => v.WordText.ToLower())
+            .Distinct()
+            .Take(limit)
+            .ToListAsync(ct);
+
+    public async Task LinkToMasterAsync(string word, Guid masterId, CancellationToken ct = default)
+    {
+        var lowerWord = word.ToLower();
+        await _dbSet
+            .Where(v => v.MasterVocabularyId == null && v.WordText.ToLower() == lowerWord)
+            .ExecuteUpdateAsync(s => s.SetProperty(v => v.MasterVocabularyId, masterId), ct);
+    }
 }

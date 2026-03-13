@@ -56,4 +56,14 @@ public interface IVocabularyRepository : IRepository<UserVocabulary>
     /// Used by BatchImport to avoid N+1 queries.
     /// </summary>
     Task<HashSet<string>> GetExistingWordsAsync(Guid userId, IEnumerable<string> words, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets unique words from UserVocabulary entries that are not yet linked to MasterVocabulary.
+    /// </summary>
+    Task<List<string>> GetUnlinkedWordsAsync(int limit = 100, CancellationToken ct = default);
+
+    /// <summary>
+    /// Links all UserVocabulary records with a specific WordText to a MasterVocabulary ID.
+    /// </summary>
+    Task LinkToMasterAsync(string word, Guid masterId, CancellationToken ct = default);
 }

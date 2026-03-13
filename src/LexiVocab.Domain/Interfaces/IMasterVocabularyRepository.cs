@@ -15,4 +15,9 @@ public interface IMasterVocabularyRepository : IRepository<MasterVocabulary>
     /// Used by BatchImport to avoid N+1 queries.
     /// </summary>
     Task<Dictionary<string, MasterVocabulary>> GetByWordsAsync(IEnumerable<string> words, CancellationToken ct = default);
+
+    /// <summary>
+    /// Finds words that are missing phonetics or audio and need enrichment from external APIs.
+    /// </summary>
+    Task<IReadOnlyList<MasterVocabulary>> GetPendingEnrichmentAsync(int limit = 50, CancellationToken ct = default);
 }

@@ -18,6 +18,8 @@ public class PlanDefinitionConfiguration : IEntityTypeConfiguration<PlanDefiniti
         var premiumId = new Guid("22222222-2222-2222-2222-222222222222");
         var businessId = new Guid("33333333-3333-3333-3333-333333333333");
 
+        var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
         builder.HasData(
             new PlanDefinition
             {
@@ -28,7 +30,8 @@ public class PlanDefinitionConfiguration : IEntityTypeConfiguration<PlanDefiniti
                 Currency = "VND",
                 Description = "Perfect for beginners",
                 DurationDays = 0,
-                IsRecommended = false
+                IsRecommended = false,
+                CreatedAt = seedDate
             },
             new PlanDefinition
             {
@@ -39,7 +42,8 @@ public class PlanDefinitionConfiguration : IEntityTypeConfiguration<PlanDefiniti
                 Currency = "VND",
                 Description = "Unlock full potential",
                 DurationDays = 30,
-                IsRecommended = true
+                IsRecommended = true,
+                CreatedAt = seedDate
             },
             new PlanDefinition
             {
@@ -50,7 +54,8 @@ public class PlanDefinitionConfiguration : IEntityTypeConfiguration<PlanDefiniti
                 Currency = "VND",
                 Description = "For advanced learners and teams",
                 DurationDays = 365,
-                IsRecommended = false
+                IsRecommended = false,
+                CreatedAt = seedDate
             }
         );
     }

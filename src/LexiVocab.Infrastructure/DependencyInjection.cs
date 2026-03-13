@@ -52,6 +52,7 @@ public static class DependencyInjection
         // ─── Background Jobs ──────────────────────────────────
         services.AddTransient<Services.ISubscriptionExpirationJob, Services.SubscriptionExpirationJob>();
         services.AddTransient<Services.IReviewReminderJob, Services.ReviewReminderJob>();
+        services.AddTransient<Services.IMasterVocabularyUpdateJob, Services.MasterVocabularyUpdateJob>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -98,6 +99,13 @@ public static class DependencyInjection
         services.AddHttpClient<IGoogleAuthService, GoogleAuthService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(10);
+        })
+        .AddStandardResilienceHandler();
+
+        // ─── Dictionary Enrichment ───────────────────────────
+        services.AddHttpClient<IDictionaryService, Services.FreeDictionaryClient>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
         })
         .AddStandardResilienceHandler();
 

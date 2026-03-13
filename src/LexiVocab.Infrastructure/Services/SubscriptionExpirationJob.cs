@@ -117,7 +117,7 @@ public class SubscriptionExpirationJob : ISubscriptionExpirationJob
                         { "ExpiryDate", sub.EndDate!.Value.ToString("MMMM dd, yyyy") },
                         { "AppUrl", appUrl }
                     });
-                    _emailQueue.EnqueueEmail(user.Email, "⏰ Your Premium is Expiring Soon", html);
+                    _emailQueue.EnqueueEmail(user.Email, "⏰ Your Subscription is Expiring Soon", html);
                 }
                 catch (Exception ex)
                 {
