@@ -13,10 +13,13 @@ public record GetRelatedWordsQuery(string Word) : IRequest<Result<RelatedWordsDt
 
 public record GetWordQuizQuery(string Word) : IRequest<Result<QuizDto>>;
 
+public record StreamWordExplanationQuery(string Word, string? Context = null, bool AsJson = false) : IRequest<Result<IAsyncEnumerable<string>>>;
+
 public class AIHandlers : 
     IRequestHandler<GetWordExplanationQuery, Result<WordExplanationDto>>,
     IRequestHandler<GetRelatedWordsQuery, Result<RelatedWordsDto>>,
-    IRequestHandler<GetWordQuizQuery, Result<QuizDto>>
+    IRequestHandler<GetWordQuizQuery, Result<QuizDto>>,
+    IRequestHandler<StreamWordExplanationQuery, Result<IAsyncEnumerable<string>>>
 {
     private readonly IAIService _aiService;
     private readonly IFeatureGatingService _featureGating;
@@ -27,6 +30,21 @@ public class AIHandlers :
         _aiService = aiService;
         _featureGating = featureGating;
         _currentUser = currentUser;
+    }
+
+    public async Task<Result<IAsyncEnumerable<string>>> Handle(StreamWordExplanationQuery request, CancellationToken ct)
+    {
+        var userId = _currentUser.UserId;
+        if (!userId.HasValue) 
+            return Result<IAsyncEnumerable<string>>.Failure("Authentication required.", 401);
+        
+        // if (!await _featureGating.ConsumeQuotaAsync(userId.Value, "ADVANCED_AI", "AI_DAILY_LIMIT", ct))
+        // {
+        //     return Result<IAsyncEnumerable<string>>.Failure("Daily AI request limit reached. Upgrade to Pro for higher limits.", 403);
+        // }
+        
+        var stream = _aiService.StreamExplainUsageAsync(request.Word, request.Context, request.AsJson, ct);
+        return Result<IAsyncEnumerable<string>>.Success(stream);
     }
 
     public async Task<Result<WordExplanationDto>> Handle(GetWordExplanationQuery request, CancellationToken ct)

@@ -98,11 +98,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, Services.SeapayService>();
 
         // ─── Google OAuth ─────────────────────────────────────
-        services.AddHttpClient<IGoogleAuthService, GoogleAuthService>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(10);
-        })
-        .AddStandardResilienceHandler();
+        services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 
         // ─── Dictionary Enrichment ───────────────────────────
         services.AddHttpClient<IDictionaryService, Services.FreeDictionaryClient>(client =>

@@ -24,6 +24,11 @@ public interface IAIService
     Task<string?> GetRelatedWordsAsync(string word, CancellationToken ct = default);
 
     /// <summary>
+    /// Streams the explanation of usage and nuances of a word.
+    /// </summary>
+    IAsyncEnumerable<string> StreamExplainUsageAsync(string word, string? context = null, bool asJson = false, CancellationToken ct = default);
+
+    /// <summary>
     /// Generates a multiple-choice quiz for a word.
     /// </summary>
     Task<string?> GenerateQuizAsync(string word, CancellationToken ct = default);

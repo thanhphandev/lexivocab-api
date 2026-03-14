@@ -27,12 +27,20 @@ public class CreateTagHandler : IRequestHandler<CreateTagCommand, Result<TagDto>
     public async Task<Result<TagDto>> Handle(CreateTagCommand request, CancellationToken ct)
     {
         var userId = _currentUser.UserId!.Value;
+        var slug = request.Name.Trim().ToLowerInvariant().Replace(" ", "-");
+
+        // Check for duplicate slug per user
+        var existing = await _uow.Tags.GetBySlugAsync(userId, slug, ct);
+        if (existing != null)
+        {
+            return Result<TagDto>.Conflict($"Tag with name '{request.Name}' already exists.");
+        }
         
         var entity = new VocabTag
         {
             UserId = userId,
             Name = request.Name.Trim(),
-            Slug = request.Name.Trim().ToLowerInvariant().Replace(" ", "-"),
+            Slug = slug,
             Color = request.Color ?? "#6366F1",
             Icon = request.Icon ?? "📁"
         };

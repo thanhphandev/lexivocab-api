@@ -74,6 +74,61 @@ public class CloudflareAIService : IAIService
         return await CallWorkerAsync("generate-mnemonic", new { word, meaning }, ct);
     }
 
+    public async IAsyncEnumerable<string> StreamExplainUsageAsync(string word, string? context = null, bool asJson = false, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+    {
+        var payload = new 
+        { 
+            word, 
+            context, 
+            format = asJson ? "json" : null 
+        };
+
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{_workerUrl}/explain-usage-stream")
+        {
+            Content = JsonContent.Create(payload)
+        };
+        httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiKey);
+
+        using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+
+        using var stream = await response.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
+
+        while (!ct.IsCancellationRequested)
+        {
+            var line = await reader.ReadLineAsync(ct);
+            if (line == null) break; // End of stream
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            if (line.StartsWith("data: "))
+            {
+                var data = line["data: ".Length..];
+                if (data == "[DONE]") break;
+
+                string? contentToYield = null;
+                try
+                {
+                    using var doc = JsonDocument.Parse(data);
+                    if (doc.RootElement.TryGetProperty("response", out var text))
+                    {
+                        contentToYield = text.GetString();
+                    }
+                }
+                catch
+                {
+                    // If parsing fails, treat it as raw text
+                    contentToYield = data;
+                }
+
+                if (contentToYield != null)
+                {
+                    yield return contentToYield;
+                }
+            }
+        }
+    }
+
     private async Task<string?> CallWorkerAsync(string endpoint, object payload, CancellationToken ct)
     {
         try

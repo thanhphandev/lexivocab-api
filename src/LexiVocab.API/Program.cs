@@ -100,9 +100,9 @@ try
         options.AddPolicy("LexiVocabPolicy", policy =>
         {
             var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                ?? ["http://localhost:3000", "http://localhost:5173", "chrome-extension://*"];
+                ?? ["http://localhost:3000", "http://localhost:5173"];
 
-            policy.WithOrigins(origins)
+            policy.SetIsOriginAllowed(_ => true) // Allow any origin
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -210,6 +210,7 @@ try
     // ─── Middleware Pipeline ──────────────────────────────────
     // Order matters: Exception → Security Headers → HTTPS → CORS → RateLimit → Auth → Controllers
     app.UseMiddleware<GlobalExceptionMiddleware>();
+    app.UseCors("LexiVocabPolicy");
     app.UseMiddleware<SecurityHeadersMiddleware>();
 
     // HSTS: enforce HTTPS via browser cache (Production only)
@@ -237,7 +238,7 @@ try
     // In Docker behind a reverse proxy (or local dev), HTTPS is handled by the host/load balancer.
     // app.UseHttpsRedirection(); 
 
-    app.UseCors("LexiVocabPolicy");
+    // app.UseCors("LexiVocabPolicy"); // Moved earlier in the pipeline
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();

@@ -41,11 +41,21 @@ public class UpdateVocabularyTagHandler : IRequestHandler<UpdateVocabularyTagCom
                 return Result.NotFound("Tag not found.");
         }
 
+        var oldTagId = entity.TagId;
         entity.TagId = request.TagId;
         entity.UpdatedAt = DateTime.UtcNow;
 
         _uow.Vocabularies.Update(entity);
         await _uow.SaveChangesAsync(ct);
+
+        if (oldTagId != request.TagId)
+        {
+            if (oldTagId.HasValue)
+                await _uow.Tags.DecrementWordCountAsync(oldTagId.Value, 1, ct);
+            if (request.TagId.HasValue)
+                await _uow.Tags.IncrementWordCountAsync(request.TagId.Value, 1, ct);
+        }
+
         await _cache.SetStringAsync($"vocab-v:{_currentUser.UserId}", Guid.NewGuid().ToString(), ct);
 
         return Result.Success();

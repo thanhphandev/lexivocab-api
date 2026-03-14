@@ -51,4 +51,16 @@ public class VocabTagRepository : GenericRepository<VocabTag>, IVocabTagReposito
 
         return existing;
     }
+
+    public async Task IncrementWordCountAsync(Guid tagId, int count = 1, CancellationToken ct = default)
+    {
+        await _dbSet.Where(t => t.Id == tagId)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.WordCount, t => t.WordCount + count), ct);
+    }
+
+    public async Task DecrementWordCountAsync(Guid tagId, int count = 1, CancellationToken ct = default)
+    {
+        await _dbSet.Where(t => t.Id == tagId)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.WordCount, t => t.WordCount - count), ct);
+    }
 }

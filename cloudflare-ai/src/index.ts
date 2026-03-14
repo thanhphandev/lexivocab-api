@@ -23,12 +23,10 @@ export default {
           messages: [
             {
               role: "system",
-              content: `You are a professional lexicographer. Provide structured info for the word in JSON.
-              FATAL REQUIREMENT: OUTPUT ONLY VALID JSON. NO MARKDOWN (no \`\`\`json). NO CONVERSATIONAL TEXT.
-              Required keys: "partOfSpeech", "phoneticUk", "phoneticUs", "definition", "exampleSentence".`
-            },
-            { role: "user", content: `Enrich: "${word}"` }
+              content: `Enrich "${word}". Strictly JSON: { "partOfSpeech": "pos", "phoneticUk": "/.../", "phoneticUs": "/.../", "definition": "concise", "exampleSentence": "..." }`
+            }
           ],
+          max_tokens: 300,
           response_format: { type: "json_object" }
         });
 
@@ -49,12 +47,10 @@ export default {
           messages: [
             {
               role: "system",
-              content: `Explain the usage and nuances of the word "${word}"${context ? ` in the context of: "${context}"` : ""}. 
-              FATAL REQUIREMENT: OUTPUT ONLY VALID JSON object. NO MARKDOWN. NO CONVERSATIONAL TEXT.
-              Return JSON: { "explanation": "detailed string", "nuances": ["string"], "tips": ["string"] }`
-            },
-            { role: "user", content: `Explain: "${word}"` }
+              content: `Explain "${word}"${context ? ` in: "${context}"` : ""}. Strictly JSON: { "explanation": "brief usage", "nuances": ["diff 1"], "examples": ["ex 1"], "tip": "key takeaway" }`
+            }
           ],
+          max_tokens: 350,
           response_format: { type: "json_object" }
         });
 
@@ -73,12 +69,10 @@ export default {
           messages: [
             {
               role: "system",
-              content: `Provide synonyms, antonyms, and common collocations for "${word}".
-              FATAL REQUIREMENT: OUTPUT ONLY VALID JSON object. NO MARKDOWN. NO CONVERSATIONAL TEXT.
-              Return JSON: { "synonyms": ["string"], "antonyms": ["string"], "collocations": ["string"] }`
-            },
-            { role: "user", content: `Related: "${word}"` }
+              content: `Return synonyms, antonyms, collocations for "${word}". Strictly JSON: { "synonyms": [], "antonyms": [], "collocations": [] }`
+            }
           ],
+          max_tokens: 300,
           response_format: { type: "json_object" }
         });
 
@@ -97,17 +91,46 @@ export default {
           messages: [
             {
               role: "system",
-              content: `Generate a multiple-choice quiz question for the word "${word}".
-              FATAL REQUIREMENT: OUTPUT ONLY VALID JSON object. NO MARKDOWN. NO CONVERSATIONAL TEXT.
-              Required keys: "question" (string), "options" (array of 4 strings), "correctIndex" (number 0-3), "explanation" (string).`
-            },
-            { role: "user", content: `Quiz: "${word}"` }
+              content: `Generate MC-quiz for "${word}". Strictly JSON: { "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "..." }`
+            }
           ],
+          max_tokens: 300,
           response_format: { type: "json_object" }
         });
 
         return new Response(JSON.stringify(parseAiResponse(response)), {
           headers: { "Content-Type": "application/json" }
+        });
+      } catch (error: any) {
+        return errorResponse(error);
+      }
+    }
+
+    if (url.pathname === "/explain-usage-stream") {
+      try {
+        const { word, context, format } = await request.json() as { word: string, context?: string, format?: string };
+        if (!word) return new Response("Missing word", { status: 400 });
+
+        const isJson = format === "json";
+        const systemPrompt = isJson 
+          ? `Explain "${word}"${context ? ` in: "${context}"` : ""}. Strictly JSON: { "explanation": "brief usage", "nuances": ["diff"], "examples": ["ex"], "tip": "key takeaway" }`
+          : `Explain "${word}" in 1 sentence, then provide 2 nuances, 2 examples, and a Pro Tip. Use perfect markdown.`;
+
+        const stream = await env.AI.run("@cf/meta/llama-3.1-70b-instruct", {
+          messages: [
+            { role: "system", content: systemPrompt }
+          ],
+          max_tokens: 500,
+          stream: true,
+          response_format: isJson ? { type: "json_object" } : undefined
+        });
+
+        return new Response(stream, {
+          headers: { 
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive"
+          }
         });
       } catch (error: any) {
         return errorResponse(error);
@@ -139,11 +162,15 @@ function parseAiResponse(response: any) {
   try {
     return JSON.parse(content);
   } catch (e) {
+    // Attempt rescue: check if it's just missing a closing brace
+    try {
+      if (content.trim().endsWith('"]')) return JSON.parse(content + '}');
+      if (content.trim().endsWith('"}')) return JSON.parse(content); // Should have worked, but who knows
+    } catch {}
+
     console.error("Critical parse error. Raw content:", content);
     return { 
       error: "AI returned invalid JSON", 
-      raw: content,
-      // Fallback for UI if partial matches are possible
       explanation: typeof content === 'string' ? content : "Internal Error"
     };
   }

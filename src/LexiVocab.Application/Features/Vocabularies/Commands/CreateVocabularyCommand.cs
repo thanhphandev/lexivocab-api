@@ -55,7 +55,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         var masterVocab = await _uow.MasterVocabularies.GetByWordAsync(request.WordText.ToLowerInvariant().Trim(), ct);
 
         Guid? assignedTagId = request.TagId;
-        if (!string.IsNullOrWhiteSpace(request.SourceUrl))
+        if (assignedTagId == null && !string.IsNullOrWhiteSpace(request.SourceUrl))
         {
             var url = request.SourceUrl.Trim();
             if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && 
@@ -89,6 +89,12 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
 
         await _uow.Vocabularies.AddAsync(entity, ct);
         await _uow.SaveChangesAsync(ct);
+
+        if (assignedTagId.HasValue)
+        {
+            await _uow.Tags.IncrementWordCountAsync(assignedTagId.Value, 1, ct);
+        }
+
         await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
 
         return Result<VocabularyDto>.Created(MapToDto(entity, masterVocab));

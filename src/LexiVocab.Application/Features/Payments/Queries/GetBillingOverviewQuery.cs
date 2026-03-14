@@ -48,7 +48,7 @@ public class GetBillingOverviewHandler : IRequestHandler<GetBillingOverviewQuery
 
         return Result<BillingOverviewDto>.Success(new BillingOverviewDto(
             ActiveSubscription: subDto,
-            IsPremium: permissions.Plan != "Free" && permissions.Plan != "None",
+            FeatureFlags: permissions.FeatureFlags,
             Plan: permissions.Plan,
             PlanExpiresAt: permissions.PlanExpiresAt,
             TotalTransactions: totalTx));

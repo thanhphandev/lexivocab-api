@@ -33,8 +33,15 @@ public class DeleteVocabularyHandler : IRequestHandler<DeleteVocabularyCommand, 
         if (entity is null || entity.UserId != _currentUser.UserId)
             return Result.NotFound("Vocabulary not found.");
 
+        var tagId = entity.TagId;
         _uow.Vocabularies.Remove(entity);
         await _uow.SaveChangesAsync(ct);
+
+        if (tagId.HasValue)
+        {
+            await _uow.Tags.DecrementWordCountAsync(tagId.Value, 1, ct);
+        }
+
         await _cache.SetStringAsync($"vocab-v:{_currentUser.UserId}", Guid.NewGuid().ToString(), ct);
 
         return Result.Success();

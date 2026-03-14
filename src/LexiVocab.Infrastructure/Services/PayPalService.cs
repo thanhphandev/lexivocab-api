@@ -171,6 +171,14 @@ public class PayPalService : IPaymentService
 
     public async Task<bool> CaptureOrderAsync(string orderId, Guid userId, CancellationToken ct)
     {
+        // 1. Quick check: Is it already completed in our system?
+        var tx = await _uow.PaymentTransactions.GetByExternalOrderIdAsync(orderId, ct);
+        if (tx is { Status: PaymentStatus.Completed })
+        {
+            _logger.LogInformation("PayPal Capture: Order {OrderId} already marked as COMPLETED in DB. Skipping API call.", orderId);
+            return true;
+        }
+
         var token = await GetAccessTokenAsync(ct);
         
         var request = new HttpRequestMessage(HttpMethod.Post, $"/v2/checkout/orders/{orderId}/capture");
@@ -183,7 +191,15 @@ public class PayPalService : IPaymentService
         
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogError("PayPal Capture Failed: {Json}", json);
+            // Handle idempotency from PayPal's side
+            if (json.Contains("ORDER_ALREADY_CAPTURED"))
+            {
+                _logger.LogInformation("PayPal Capture: Order {OrderId} was already captured on PayPal side. Activating locally.", orderId);
+                await ActivateSubscriptionByOrderIdAsync(orderId, json, ct);
+                return true;
+            }
+
+            _logger.LogError("PayPal Capture Failed for order {OrderId}: {Json}", orderId, json);
             return false;
         }
 
@@ -196,6 +212,7 @@ public class PayPalService : IPaymentService
             return true;
         }
 
+        _logger.LogWarning("PayPal Capture returned status {Status} for order {OrderId}. Full JSON: {Json}", status, orderId, json);
         return false;
     }
 
@@ -430,16 +447,23 @@ public class PayPalService : IPaymentService
     /// </summary>
     private async Task ActivateSubscriptionByOrderIdAsync(string orderId, string rawPayload, CancellationToken ct)
     {
+        // Use a lock-like check via status update to prevent double activation
         var tx = await _uow.PaymentTransactions.GetByExternalOrderIdWithDetailsAsync(orderId, ct);
 
         if (tx == null)
         {
-            _logger.LogWarning("PaymentTransaction not found for order {OrderId}", orderId);
+            _logger.LogWarning("ActivateSubscription: PaymentTransaction not found for order {OrderId}", orderId);
             return;
         }
 
-        // Idempotent — if already processed via Webhook or UI redirect
-        if (tx.Status == PaymentStatus.Completed) return;
+        // Idempotent check
+        if (tx.Status == PaymentStatus.Completed)
+        {
+            _logger.LogInformation("ActivateSubscription: Order {OrderId} already COMPLETED. Skipping activation.", orderId);
+            return;
+        }
+
+        _logger.LogInformation("Activating subscription for Order {OrderId}, User {UserId}", orderId, tx.UserId);
 
         tx.Status = PaymentStatus.Completed;
         tx.PaidAt = DateTime.UtcNow;
@@ -447,12 +471,16 @@ public class PayPalService : IPaymentService
         
         // Activate the subscription (was Pending)
         tx.Subscription.Status = SubscriptionStatus.Active;
-        tx.Subscription.StartDate = DateTime.UtcNow;
-        // Re-calculate EndDate from now (not from when order was created)
+        // Re-calculate dates to ensure plan duration is respected starting from payment
+        var now = DateTime.UtcNow;
+        var oldStartDate = tx.Subscription.StartDate;
+        tx.Subscription.StartDate = now;
+        
         if (tx.Subscription.EndDate.HasValue)
         {
-            var duration = tx.Subscription.EndDate.Value - tx.Subscription.StartDate;
-            tx.Subscription.EndDate = DateTime.UtcNow + duration;
+            // Get original intended duration (e.g. 30 days)
+            var duration = tx.Subscription.EndDate.Value - oldStartDate;
+            tx.Subscription.EndDate = now + duration;
         }
 
         await _uow.SaveChangesAsync(ct);
@@ -461,10 +489,14 @@ public class PayPalService : IPaymentService
         try
         {
             var user = tx.Subscription.User;
+            var planName = tx.Subscription.PlanDefinition?.Name ?? "Premium";
+            
+            _logger.LogInformation("Sending success email to {Email} for plan {PlanName}", user.Email, planName);
+
             var html = await _templateService.RenderTemplateAsync("PaymentSuccess", new Dictionary<string, string>
             {
                 { "FullName", user.FullName },
-                { "PlanName", tx.Subscription.PlanDefinition?.Name ?? "Premium" },
+                { "PlanName", planName },
                 { "Amount", $"${tx.Amount:F2} {tx.Currency}" },
                 { "ExpiryDate", tx.Subscription.EndDate?.ToString("MMMM dd, yyyy") ?? "Lifetime" },
                 { "TransactionId", tx.ExternalOrderId ?? tx.Id.ToString() }

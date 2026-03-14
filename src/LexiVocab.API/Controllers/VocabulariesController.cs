@@ -110,13 +110,12 @@ public class VocabulariesController : ControllerBase
         return StatusCode(result.StatusCode, new { success = false, error = result.Error });
     }
 
-    /// <summary>Batch import multiple words at once.</summary>
     [HttpPost("batch")]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
     public async Task<IActionResult> BatchImport([FromBody] BatchImportRequest request, CancellationToken ct)
     {
         var commands = request.Words.Select(w =>
-            new CreateVocabularyCommand(w.WordText, w.CustomMeaning, w.ContextSentence, w.SourceUrl)).ToList();
+            new CreateVocabularyCommand(w.WordText, w.CustomMeaning, w.ContextSentence, w.SourceUrl, w.TagId)).ToList();
         var result = await _mediator.Send(new BatchImportCommand(commands), ct);
         return ToActionResult(result);
     }

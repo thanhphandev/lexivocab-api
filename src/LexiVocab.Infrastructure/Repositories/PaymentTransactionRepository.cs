@@ -41,7 +41,6 @@ public class PaymentTransactionRepository : GenericRepository<PaymentTransaction
     public async Task<PaymentTransaction?> GetByExternalOrderIdWithDetailsAsync(string orderId, CancellationToken ct = default)
     {
         return await _dbSet
-            .AsNoTracking()
             .Include(t => t.Subscription)
                 .ThenInclude(s => s.User)
             .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);

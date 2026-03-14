@@ -68,6 +68,7 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
             entities.Add(new UserVocabulary
             {
                 UserId = userId,
+                TagId = word.TagId,
                 WordText = word.WordText.Trim(),
                 CustomMeaning = word.CustomMeaning?.Trim(),
                 ContextSentence = word.ContextSentence?.Trim(),
@@ -81,6 +82,18 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
         {
             await _uow.Vocabularies.AddRangeAsync(entities, ct);
             await _uow.SaveChangesAsync(ct);
+
+            // Update tag word counts in bulk (grouped by TagId)
+            var tagCounts = entities
+                .Where(e => e.TagId.HasValue)
+                .GroupBy(e => e.TagId!.Value)
+                .Select(g => new { TagId = g.Key, Count = g.Count() });
+
+            foreach (var group in tagCounts)
+            {
+                await _uow.Tags.IncrementWordCountAsync(group.TagId, group.Count, ct);
+            }
+
             await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
         }
 

@@ -183,15 +183,27 @@ public class SeapayService : IPaymentService
             tx.ProviderResponseId = bankTransactionId;
         }
 
+        _logger.LogInformation("Activating SePay subscription for reference {Reference}, User {UserId}", reference, tx.UserId);
+
         tx.Status = PaymentStatus.Completed;
         tx.PaidAt = DateTime.UtcNow;
         tx.RawPayload = body;
         
+        // Activate and adjust dates
         tx.Subscription.Status = SubscriptionStatus.Active;
+        var now = DateTime.UtcNow;
+        var oldStartDate = tx.Subscription.StartDate;
+        tx.Subscription.StartDate = now;
+
+        if (tx.Subscription.EndDate.HasValue)
+        {
+            var duration = tx.Subscription.EndDate.Value - oldStartDate;
+            tx.Subscription.EndDate = now + duration;
+        }
 
         await _uow.SaveChangesAsync(ct);
 
-        _logger.LogInformation("SePay payment completed for reference {Reference}", reference);
+        _logger.LogInformation("SePay payment completed and subscription activated for reference {Reference}", reference);
 
         // Send Email
         try

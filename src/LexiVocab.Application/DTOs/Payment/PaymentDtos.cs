@@ -24,7 +24,7 @@ public record PaymentHistoryDto(
 /// <summary>DTO for billing overview page.</summary>
 public record BillingOverviewDto(
     SubscriptionDto? ActiveSubscription,
-    bool IsPremium,
+    Dictionary<string, string> FeatureFlags,
     string Plan,
     DateTime? PlanExpiresAt,
     int TotalTransactions);

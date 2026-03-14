@@ -6,8 +6,10 @@ public record WordExplanationDto(
     string Explanation,
     /// <summary>A list of subtle differences in meaning or formal/informal usage patterns.</summary>
     List<string> Nuances,
-    /// <summary>Practical advice on how to use the word correctly in conversation.</summary>
-    List<string> Tips
+    /// <summary>Practical examples of the word being used in sentences.</summary>
+    List<string> Examples,
+    /// <summary>A professional mnemonic or 'Pro Tip' for learners.</summary>
+    string Tip
 );
 
 /// <summary>Represents words and phrases related to a target word.</summary>
