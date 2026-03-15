@@ -6,6 +6,7 @@ using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -33,10 +34,11 @@ public class RegisterCommandHandlerTests
         var config = new Mock<IConfiguration>();
         config.Setup(c => c["App:Url"]).Returns("https://test.lexivocab.store");
         config.Setup(c => c["Auth:RequireEmailVerification"]).Returns("true");
+        config.Setup(c => c["Jwt:RefreshTokenExpiryDays"]).Returns("7");
 
         _mockHasher.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed_value");
         _mockJwt.Setup(j => j.GenerateAccessToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Returns("test_access_token");
+            .Returns(new TokenResult("test_access_token", DateTime.UtcNow.AddMinutes(15)));
         _mockJwt.Setup(j => j.GenerateRefreshToken()).Returns("test_refresh_token");
         _mockTemplateService
             .Setup(t => t.RenderTemplateAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
@@ -49,7 +51,8 @@ public class RegisterCommandHandlerTests
             cache: _mockCache.Object,
             emailQueue: _mockEmailQueue.Object,
             templateService: _mockTemplateService.Object,
-            configuration: config.Object);
+            configuration: config.Object,
+            logger: new Mock<ILogger<RegisterCommandHandler>>().Object);
     }
 
     [Fact]

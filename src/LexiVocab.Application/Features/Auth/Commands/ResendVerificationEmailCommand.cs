@@ -6,6 +6,7 @@ using LexiVocab.Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
@@ -21,6 +22,7 @@ public class ResendVerificationEmailHandler : IRequestHandler<ResendVerification
     private readonly IDistributedCache _cache;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
+    private readonly ILogger<ResendVerificationEmailHandler> _logger;
     private readonly string _appUrl;
 
     public ResendVerificationEmailHandler(
@@ -28,13 +30,15 @@ public class ResendVerificationEmailHandler : IRequestHandler<ResendVerification
         IDistributedCache cache,
         IEmailQueueService emailQueue,
         IEmailTemplateService templateService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<ResendVerificationEmailHandler> logger)
     {
         _uow = uow;
         _cache = cache;
         _emailQueue = emailQueue;
         _templateService = templateService;
         _appUrl = configuration["App:Url"] ?? "https://lexivocab.store";
+        _logger = logger;
     }
 
     public async Task<Result> Handle(ResendVerificationEmailCommand request, CancellationToken ct)
@@ -73,8 +77,9 @@ public class ResendVerificationEmailHandler : IRequestHandler<ResendVerification
             // Set cooldown
             await _cache.SetStringAsync(cooldownKey, "sent", new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2) }, ct);
         }
-        catch 
+        catch (Exception ex) 
         {
+            _logger.LogError(ex, "Failed to resend verification email to {Email}", email);
             return Result.Failure("Failed to send verification email. Please try again later.", 500);
         }
 

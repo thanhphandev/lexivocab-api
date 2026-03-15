@@ -8,6 +8,7 @@ using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
@@ -28,13 +29,15 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
     private readonly IJwtTokenService _jwt;
     private readonly IPasswordHasher _hasher;
     private readonly IDistributedCache _cache;
+    private readonly IConfiguration _configuration;
 
-    public RefreshTokenCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache)
+    public RefreshTokenCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache, IConfiguration configuration)
     {
         _uow = uow;
         _jwt = jwt;
         _hasher = hasher;
         _cache = cache;
+        _configuration = configuration;
     }
 
     public async Task<Result<AuthResponse>> Handle(RefreshTokenCommand request, CancellationToken ct)
@@ -66,26 +69,31 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         if (string.IsNullOrEmpty(user.RefreshTokenHash) || user.RefreshTokenExpiryTime < DateTime.UtcNow)
             return Result<AuthResponse>.Unauthorized("Refresh token has been invalidated or expired.");
 
-        var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
+        var accessTokenResult = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
+        var accessToken = accessTokenResult.Token;
+        var accessTokenExpiry = accessTokenResult.ExpiresAt;
         var newRefreshToken = _jwt.GenerateRefreshToken();
 
+        var refreshTokenExpiryDays = int.Parse(_configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
+        var gracePeriodSeconds = int.Parse(_configuration["Jwt:RefreshTokenGracePeriodSeconds"] ?? "60");
+
         user.RefreshTokenHash = _hasher.Hash(newRefreshToken);
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
         
         _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);
 
         var newMetadata = JsonSerializer.Serialize(new RefreshTokenMetadata(user.Id, request.DeviceInfo, request.IpAddress, DateTime.UtcNow));
-        await _cache.SetStringAsync($"rf_token:{newRefreshToken}", newMetadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7) }, ct);
+        await _cache.SetStringAsync($"rf_token:{newRefreshToken}", newMetadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(refreshTokenExpiryDays) }, ct);
 
         var authResponse = new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, newRefreshToken, DateTime.UtcNow.AddHours(1));
+            accessToken, newRefreshToken, accessTokenExpiry);
 
         await _cache.SetStringAsync(
             $"rf_token_grace:{request.RefreshToken}", 
             JsonSerializer.Serialize(authResponse),
-            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60) }, 
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(gracePeriodSeconds) }, 
             ct);
 
         await _cache.RemoveAsync($"rf_token:{request.RefreshToken}", ct);

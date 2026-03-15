@@ -5,6 +5,7 @@ using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -37,7 +38,8 @@ public class ResendVerificationEmailCommandHandlerTests
             _mockCache.Object,
             _mockEmailQueue.Object,
             _mockTemplateService.Object,
-            config.Object);
+            config.Object,
+            new Mock<ILogger<ResendVerificationEmailHandler>>().Object);
     }
 
     [Fact]

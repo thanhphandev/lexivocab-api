@@ -44,9 +44,12 @@ public class SecurityHeadersMiddleware
             "camera=(), microphone=(), geolocation=(), payment=()";
 
         var path = context.Request.Path;
-        var isDocsEndpoint = path.StartsWithSegments("/scalar") || path.StartsWithSegments("/openapi") || path.Value == "/";
+        var isUiEndpoint = path.StartsWithSegments("/scalar") 
+                        || path.StartsWithSegments("/openapi") 
+                        || path.StartsWithSegments("/hangfire")
+                        || path.Value == "/";
 
-        if (!isDocsEndpoint)
+        if (!isUiEndpoint)
         {
             // ─── Content Security Policy (API-focused) ──────────
             // For API-only endpoints: restrict everything heavily.
@@ -60,9 +63,9 @@ public class SecurityHeadersMiddleware
         }
         else
         {
-            // Relaxed CSP for API Documentation UI (Scalar needs inline scripts, eval, data URIs, and external connections)
+            // Relaxed CSP for UI dashboards (Scalar, Hangfire) that need inline scripts, styles, and self-hosted assets
             headers["Content-Security-Policy"] =
-                "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https: http:; connect-src 'self' ws: wss: *; frame-ancestors 'none'";
+                "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: https: http:; connect-src 'self' ws: wss: *; img-src 'self' data:; frame-ancestors 'none'";
         }
 
         // ─── Flash/PDF Cross-Domain ─────────────────────────

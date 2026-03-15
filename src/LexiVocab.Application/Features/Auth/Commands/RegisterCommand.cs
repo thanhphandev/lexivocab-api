@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
@@ -35,6 +36,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<RegisterCommandHandler> _logger;
     private readonly string _appUrl;
 
     public RegisterCommandHandler(
@@ -44,7 +46,8 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         IDistributedCache cache, 
         IEmailQueueService emailQueue, 
         IEmailTemplateService templateService, 
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<RegisterCommandHandler> logger)
     {
         _uow = uow;
         _jwt = jwt;
@@ -53,6 +56,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         _emailQueue = emailQueue;
         _templateService = templateService;
         _configuration = configuration;
+        _logger = logger;
         _appUrl = configuration["App:Url"] ?? "https://lexivocab.store";
     }
 
@@ -95,7 +99,10 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
                 });
                 _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! Please verify your email 🚀", html);
             }
-            catch { /* Non-critical: don't block registration if template fails */ }
+            catch (Exception ex) 
+            { 
+                _logger.LogError(ex, "Failed to send verification email to {Email}", user.Email);
+            }
 
             return Result<AuthResponse>.Created(new AuthResponse(
                 user.Id, user.Email, user.FullName, user.Role.ToString(),
@@ -112,21 +119,27 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
                 });
                 _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! 🚀", html);
             }
-            catch { }
+            catch (Exception ex) 
+            { 
+                _logger.LogError(ex, "Failed to send welcome email to {Email}", user.Email);
+            }
         }
 
-        var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
+        var accessTokenResult = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
+        var accessToken = accessTokenResult.Token;
+        var accessTokenExpiry = accessTokenResult.ExpiresAt;
         var refreshToken = _jwt.GenerateRefreshToken();
 
+        var refreshTokenExpiryDays = int.Parse(_configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
         user.RefreshTokenHash = _hasher.Hash(refreshToken);
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
         await _uow.SaveChangesAsync(ct);
 
         var metadata = JsonSerializer.Serialize(new RefreshTokenMetadata(user.Id, request.DeviceInfo, request.IpAddress, DateTime.UtcNow));
-        await _cache.SetStringAsync($"rf_token:{refreshToken}", metadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7) }, ct);
+        await _cache.SetStringAsync($"rf_token:{refreshToken}", metadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(refreshTokenExpiryDays) }, ct);
 
         return Result<AuthResponse>.Created(new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, refreshToken, DateTime.UtcNow.AddHours(1)));
+            accessToken, refreshToken, accessTokenExpiry));
     }
 }

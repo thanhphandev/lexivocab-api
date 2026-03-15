@@ -19,11 +19,16 @@ namespace LexiVocab.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IConfiguration _configuration;
 
     private string ClientDevice => Request.Headers.UserAgent.ToString() ?? "Unknown";
     private string ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
 
-    public AuthController(IMediator mediator) => _mediator = mediator;
+    public AuthController(IMediator mediator, IConfiguration configuration)
+    {
+        _mediator = mediator;
+        _configuration = configuration;
+    }
 
     /// <summary>Register a new account with email and password.</summary>
     [HttpPost("register")]
@@ -228,12 +233,13 @@ public class AuthController : ControllerBase
 
     private void SetRefreshTokenCookie(string refreshToken)
     {
+        var refreshTokenExpiryDays = int.Parse(_configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
             Secure = true, // Ensure it's transmitted over HTTPS only
             SameSite = SameSiteMode.None, // Support both Chrome Extensions and Next.js
-            Expires = DateTime.UtcNow.AddDays(7)
+            Expires = DateTime.UtcNow.AddDays(refreshTokenExpiryDays)
         };
         // Ensure consistency with the reader in RefreshToken / Logout
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);

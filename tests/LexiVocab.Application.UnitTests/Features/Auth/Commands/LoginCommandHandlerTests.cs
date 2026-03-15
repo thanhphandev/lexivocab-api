@@ -32,9 +32,11 @@ public class LoginCommandHandlerTests
         _mockConfig.Setup(c => c["Auth:RequireEmailVerification"]).Returns("false");
 
         _mockJwt.Setup(j => j.GenerateAccessToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Returns("test_access_token");
+            .Returns(new TokenResult("test_access_token", DateTime.UtcNow.AddMinutes(15)));
         _mockJwt.Setup(j => j.GenerateRefreshToken()).Returns("test_refresh_token");
         _mockHasher.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed_rt");
+
+        _mockConfig.Setup(c => c["Jwt:RefreshTokenExpiryDays"]).Returns("7");
 
         _activeUser = new User
         {
@@ -157,6 +159,7 @@ public class LoginCommandHandlerTests
         result.StatusCode.Should().Be(200);
         result.Data.Should().NotBeNull();
         result.Data!.AccessToken.Should().Be("test_access_token");
+        result.Data.ExpiresAt.Should().BeWithin(TimeSpan.FromMinutes(1));
         result.Data.RefreshToken.Should().Be("test_refresh_token");
         result.Data.Email.Should().Be("test@test.com");
 

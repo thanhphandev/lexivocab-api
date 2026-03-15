@@ -35,9 +35,10 @@ public class GoogleLoginCommandHandlerTests
 
         var config = new Mock<IConfiguration>();
         config.Setup(c => c["App:Url"]).Returns("https://test.lexivocab.store");
+        config.Setup(c => c["Jwt:RefreshTokenExpiryDays"]).Returns("7");
 
         _mockJwt.Setup(j => j.GenerateAccessToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Returns("test_access_token");
+            .Returns(new TokenResult("test_access_token", DateTime.UtcNow.AddMinutes(15)));
         _mockJwt.Setup(j => j.GenerateRefreshToken()).Returns("test_refresh_token");
         _mockHasher.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed_rt");
         _mockTemplateService

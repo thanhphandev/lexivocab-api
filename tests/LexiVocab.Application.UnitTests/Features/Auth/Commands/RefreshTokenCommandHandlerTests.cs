@@ -6,6 +6,7 @@ using LexiVocab.Application.Features.Auth.Commands;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 using Moq;
 using Xunit;
 
@@ -29,11 +30,15 @@ public class RefreshTokenCommandHandlerTests
         _mockCache = new Mock<IDistributedCache>();
 
         _mockJwt.Setup(j => j.GenerateAccessToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Returns("new_access_token");
+            .Returns(new TokenResult("new_access_token", DateTime.UtcNow.AddMinutes(15)));
         _mockJwt.Setup(j => j.GenerateRefreshToken()).Returns("new_refresh_token");
         _mockHasher.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed_new_rt");
 
-        _handler = new RefreshTokenCommandHandler(_mockUow.Object, _mockJwt.Object, _mockHasher.Object, _mockCache.Object);
+        var mockConfig = new Mock<IConfiguration>();
+        mockConfig.Setup(c => c["Jwt:RefreshTokenExpiryDays"]).Returns("7");
+        mockConfig.Setup(c => c["Jwt:RefreshTokenGracePeriodSeconds"]).Returns("60");
+
+        _handler = new RefreshTokenCommandHandler(_mockUow.Object, _mockJwt.Object, _mockHasher.Object, _mockCache.Object, mockConfig.Object);
     }
 
     private void SetupCachedToken(string refreshToken, Guid userId)

@@ -7,6 +7,7 @@ using LexiVocab.Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
@@ -22,6 +23,7 @@ public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordCommand, Resu
     private readonly IDistributedCache _cache;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
+    private readonly ILogger<ForgotPasswordHandler> _logger;
     private readonly string _appUrl;
 
     public ForgotPasswordHandler(
@@ -29,13 +31,15 @@ public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordCommand, Resu
         IDistributedCache cache, 
         IEmailQueueService emailQueue, 
         IEmailTemplateService templateService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<ForgotPasswordHandler> logger)
     {
         _uow = uow;
         _cache = cache;
         _emailQueue = emailQueue;
         _templateService = templateService;
         _appUrl = configuration["App:Url"] ?? "https://lexivocab.store";
+        _logger = logger;
     }
 
     public async Task<Result> Handle(ForgotPasswordCommand request, CancellationToken ct)
@@ -67,7 +71,10 @@ public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordCommand, Resu
 
             _emailQueue.EnqueueEmail(user.Email, "Reset Your LexiVocab Password 🔑", html);
         }
-        catch { /* Non-critical: logging would be nice here */ }
+        catch (Exception ex) 
+        { 
+            _logger.LogError(ex, "Failed to enqueue forgot password email for {Email}. Error: {Message}", user.Email, ex.Message);
+        }
 
         return Result.Success();
     }

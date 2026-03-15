@@ -30,6 +30,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
     private readonly IDistributedCache _cache;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
+    private readonly IConfiguration _configuration;
     private readonly string _appUrl;
 
     public GoogleLoginCommandHandler(
@@ -42,6 +43,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
         _cache = cache;
         _emailQueue = emailQueue;
         _templateService = templateService;
+        _configuration = configuration;
         _appUrl = configuration["App:Url"] ?? "https://lexivocab.store";
     }
 
@@ -93,19 +95,22 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
 
         user.LastLogin = DateTime.UtcNow;
 
-        var accessToken = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
+        var accessTokenResult = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
+        var accessToken = accessTokenResult.Token;
+        var accessTokenExpiry = accessTokenResult.ExpiresAt;
         var refreshToken = _jwt.GenerateRefreshToken();
 
+        var refreshTokenExpiryDays = int.Parse(_configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
         user.RefreshTokenHash = _hasher.Hash(refreshToken);
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
         _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);
 
         var metadata = JsonSerializer.Serialize(new RefreshTokenMetadata(user.Id, request.DeviceInfo, request.IpAddress, DateTime.UtcNow));
-        await _cache.SetStringAsync($"rf_token:{refreshToken}", metadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7) }, ct);
+        await _cache.SetStringAsync($"rf_token:{refreshToken}", metadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(refreshTokenExpiryDays) }, ct);
 
         return Result<AuthResponse>.Success(new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, refreshToken, DateTime.UtcNow.AddHours(1)));
+            accessToken, refreshToken, accessTokenExpiry));
     }
 }

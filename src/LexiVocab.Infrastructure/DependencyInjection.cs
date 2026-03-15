@@ -115,9 +115,15 @@ public static class DependencyInjection
         // ─── AI Services (Cloudflare Workers AI) ─────────────
         services.AddHttpClient<IAIService, Services.CloudflareAIService>(client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(30);
+            client.Timeout = TimeSpan.FromSeconds(60);
         })
-        .AddStandardResilienceHandler();
+        .AddStandardResilienceHandler(options =>
+        {
+            // AI inference calls can take 10-30s; default 10s attempt timeout is too aggressive
+            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(30);
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(90);
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
+        });
 
         var jwtSecret = configuration["Jwt:Secret"]
             ?? throw new InvalidOperationException("Jwt:Secret is not configured");

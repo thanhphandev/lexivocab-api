@@ -26,7 +26,7 @@ public class JwtTokenService : IJwtTokenService
         _signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
     }
 
-    public string GenerateAccessToken(Guid userId, string email, string role)
+    public TokenResult GenerateAccessToken(Guid userId, string email, string role)
     {
         var claims = new[]
         {
@@ -38,16 +38,18 @@ public class JwtTokenService : IJwtTokenService
                 ClaimValueTypes.Integer64)
         };
 
-        var expiryMinutes = int.Parse(_config["Jwt:AccessTokenExpiryMinutes"] ?? "60");
+        var expiryMinutes = int.Parse(_config["Jwt:AccessTokenExpiryMinutes"] ?? "15");
+        var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
 
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+            expires: expiresAt,
             signingCredentials: new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256));
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+        return new TokenResult(tokenString, expiresAt);
     }
 
     public string GenerateRefreshToken()
@@ -63,6 +65,7 @@ public class JwtTokenService : IJwtTokenService
         var handler = new JwtSecurityTokenHandler();
         try
         {
+            var clockSkewSeconds = int.Parse(_config["Jwt:ClockSkewSeconds"] ?? "0");
             var principal = handler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -72,7 +75,7 @@ public class JwtTokenService : IJwtTokenService
                 ValidateAudience = true,
                 ValidAudience = _config["Jwt:Audience"],
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.FromSeconds(clockSkewSeconds)
             }, out _);
 
             var userIdClaim = principal.FindFirst(JwtRegisteredClaimNames.Sub)
@@ -91,6 +94,7 @@ public class JwtTokenService : IJwtTokenService
         var handler = new JwtSecurityTokenHandler();
         try
         {
+            var clockSkewSeconds = int.Parse(_config["Jwt:ClockSkewSeconds"] ?? "0");
             var principal = handler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -100,7 +104,7 @@ public class JwtTokenService : IJwtTokenService
                 ValidateAudience = true,
                 ValidAudience = _config["Jwt:Audience"],
                 ValidateLifetime = false, // Allow expired token
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.FromSeconds(clockSkewSeconds)
             }, out var securityToken);
 
             if (securityToken is not JwtSecurityToken jwtSecurityToken ||
