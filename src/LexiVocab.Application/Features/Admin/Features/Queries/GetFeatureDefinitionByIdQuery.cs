@@ -25,8 +25,9 @@ public class GetFeatureDefinitionByIdHandler : IRequestHandler<GetFeatureDefinit
         return Result<FeatureDefinitionDto>.Success(new FeatureDefinitionDto(
             feature.Id,
             feature.Code,
-            feature.Name,
             feature.Description,
+            feature.ValueType,
+            feature.DefaultValue,
             feature.CreatedAt,
             feature.UpdatedAt));
     }

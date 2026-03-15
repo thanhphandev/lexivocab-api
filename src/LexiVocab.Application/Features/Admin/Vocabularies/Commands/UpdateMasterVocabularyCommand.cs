@@ -76,6 +76,8 @@ public class UpdateMasterVocabularyHandler : IRequestHandler<UpdateMasterVocabul
             existing.PhoneticUs,
             existing.AudioUrl,
             existing.PopularityRank,
+            existing.Meaning,
+            existing.CefrLevel,
             existing.CreatedAt,
             existing.UpdatedAt));
     }

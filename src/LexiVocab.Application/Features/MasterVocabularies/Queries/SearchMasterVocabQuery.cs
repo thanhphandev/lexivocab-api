@@ -31,7 +31,7 @@ public class SearchMasterVocabHandler
             request.Query.ToLowerInvariant().Trim(), request.Limit, ct);
 
         var dtos = results.Select(r => new MasterVocabularySearchResultDto(
-            r.Word, r.PartOfSpeech, r.PhoneticUs, r.PopularityRank))
+            r.Word, r.PartOfSpeech, r.PhoneticUs, r.PopularityRank, r.Meaning, r.CefrLevel))
             .ToList();
 
         return Result<IReadOnlyList<MasterVocabularySearchResultDto>>.Success(dtos);

@@ -141,6 +141,8 @@ public class MasterVocabularyUpdateJob : IMasterVocabularyUpdateJob
                 vocab.PhoneticUk ??= info.PhoneticUk;
                 vocab.PhoneticUs ??= info.PhoneticUs;
                 vocab.AudioUrl ??= info.AudioUrl;
+                vocab.Meaning ??= info.Meaning;
+                vocab.CefrLevel ??= info.CefrLevel;
                 enrichedCount++;
             }
             else

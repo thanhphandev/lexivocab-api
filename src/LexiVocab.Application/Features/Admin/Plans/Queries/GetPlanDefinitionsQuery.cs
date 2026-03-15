@@ -20,22 +20,16 @@ public class GetPlanDefinitionsHandler : IRequestHandler<GetPlanDefinitionsQuery
     {
         var plans = await _uow.PlanDefinitions.GetAllWithFeaturesAsync(ct);
 
-        var dtos = plans.Select(p => new PlanDefinitionDto(
-            p.Id,
-            p.Name,
-            p.NameKey,
-            p.Price,
-            p.Currency,
-            p.Description,
-            p.DurationDays,
-            p.IsRecommended,
-            p.PlanFeatures.Select(pf => new PlanFeatureDto(
-                pf.FeatureDefinitionId,
-                pf.Feature.Code,
-                pf.Feature.Name,
-                pf.Value)).ToList(),
-            p.CreatedAt,
-            p.UpdatedAt)).ToList();
+        var dtos = plans.Select(plan => new PlanDefinitionDto(
+            plan.Id,
+            plan.Name,
+            plan.Price,
+            plan.Currency,
+            plan.IntervalType,
+            plan.IsActive,
+            plan.PlanFeatures.ToDictionary(pf => pf.Feature.Code, pf => pf.Value),
+            plan.CreatedAt,
+            plan.UpdatedAt)).ToList();
 
         return Result<List<PlanDefinitionDto>>.Success(dtos);
     }

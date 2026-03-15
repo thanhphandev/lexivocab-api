@@ -25,17 +25,11 @@ public class GetPlanDefinitionByIdHandler : IRequestHandler<GetPlanDefinitionByI
         return Result<PlanDefinitionDto>.Success(new PlanDefinitionDto(
             plan.Id,
             plan.Name,
-            plan.NameKey,
             plan.Price,
             plan.Currency,
-            plan.Description,
-            plan.DurationDays,
-            plan.IsRecommended,
-            plan.PlanFeatures.Select(pf => new PlanFeatureDto(
-                pf.FeatureDefinitionId,
-                pf.Feature.Code,
-                pf.Feature.Name,
-                pf.Value)).ToList(),
+            plan.IntervalType,
+            plan.IsActive,
+            plan.PlanFeatures.ToDictionary(pf => pf.Feature.Code, pf => pf.Value),
             plan.CreatedAt,
             plan.UpdatedAt));
     }

@@ -15,7 +15,9 @@ public record CreateMasterVocabularyCommand(
     string? PhoneticUk,
     string? PhoneticUs,
     string? AudioUrl,
-    int? PopularityRank) : IRequest<Result<MasterVocabularyDto>>, IAuditedRequest
+    int? PopularityRank,
+    string? Meaning = null,
+    string? CefrLevel = null) : IRequest<Result<MasterVocabularyDto>>, IAuditedRequest
 {
     public AuditAction AuditAction => AuditAction.SystemSettingUpdated;
     public string EntityType => nameof(MasterVocabulary);
@@ -55,7 +57,9 @@ public class CreateMasterVocabularyHandler : IRequestHandler<CreateMasterVocabul
             PhoneticUk = request.PhoneticUk,
             PhoneticUs = request.PhoneticUs,
             AudioUrl = request.AudioUrl,
-            PopularityRank = request.PopularityRank
+            PopularityRank = request.PopularityRank,
+            Meaning = request.Meaning,
+            CefrLevel = request.CefrLevel
         };
 
         _uow.MasterVocabularies.Add(vocab);
@@ -69,6 +73,8 @@ public class CreateMasterVocabularyHandler : IRequestHandler<CreateMasterVocabul
             vocab.PhoneticUs,
             vocab.AudioUrl,
             vocab.PopularityRank,
+            vocab.Meaning,
+            vocab.CefrLevel,
             vocab.CreatedAt,
             vocab.UpdatedAt));
     }

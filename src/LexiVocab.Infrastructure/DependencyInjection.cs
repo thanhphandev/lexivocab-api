@@ -3,6 +3,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Infrastructure.Authentication;
 using LexiVocab.Infrastructure.Persistence;
+using LexiVocab.Infrastructure.Persistence.Seeding;
 using LexiVocab.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +52,10 @@ public static class DependencyInjection
         services.AddScoped<IPlanDefinitionRepository, PlanDefinitionRepository>();
         services.AddScoped<IFeatureDefinitionRepository, FeatureDefinitionRepository>();
 
+        // ─── Data Seeders ─────────────────────────────────────
+        services.AddScoped<IDataSeeder, FeatureDefinitionSeeder>();
+        services.AddScoped<IDataSeeder, PlanDefinitionSeeder>();
+        services.AddScoped<DbContextSeeder>();
         // ─── Background Jobs ──────────────────────────────────
         services.AddTransient<Services.ISubscriptionExpirationJob, Services.SubscriptionExpirationJob>();
         services.AddTransient<Services.IReviewReminderJob, Services.ReviewReminderJob>();

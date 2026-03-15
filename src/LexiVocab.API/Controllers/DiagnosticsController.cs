@@ -41,6 +41,10 @@ public class DiagnosticsController : ControllerBase
             if (dbCanConnect)
             {
                 using var conn = _dbContext.Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open)
+                {
+                    await conn.OpenAsync();
+                }
                 dbVersion = conn.ServerVersion;
             }
         }
@@ -48,6 +52,12 @@ public class DiagnosticsController : ControllerBase
         {
             dbVersion = $"Error: {ex.Message}";
         }
+
+        // Memory info (approximated)
+        var memStatus = new GCMemoryInfo();
+        try {
+            memStatus = GC.GetGCMemoryInfo();
+        } catch {}
 
         return Ok(new
         {
@@ -60,21 +70,32 @@ public class DiagnosticsController : ControllerBase
                     architecture = RuntimeInformation.OSArchitecture.ToString(),
                     runtime = RuntimeInformation.FrameworkDescription,
                     machineName = Environment.MachineName,
-                    processorCount = Environment.ProcessorCount
+                    processorCount = Environment.ProcessorCount,
+                    workingDirectory = Environment.CurrentDirectory
                 },
                 process = new
                 {
                     workingSet = process.WorkingSet64 / 1024 / 1024 + " MB",
                     privateMemory = process.PrivateMemorySize64 / 1024 / 1024 + " MB",
+                    peakWorkingSet = process.PeakWorkingSet64 / 1024 / 1024 + " MB",
                     startTime = process.StartTime,
-                    upTime = DateTime.Now - process.StartTime,
-                    threads = process.Threads.Count
+                    upTime = (DateTime.Now - process.StartTime).ToString(@"dd\.hh\:mm\:ss"),
+                    threads = process.Threads.Count,
+                    handleCount = process.HandleCount,
+                    is64Bit = Environment.Is64BitProcess
                 },
                 database = new
                 {
                     canConnect = dbCanConnect,
                     version = dbVersion,
-                    provider = _dbContext.Database.ProviderName
+                    provider = _dbContext.Database.ProviderName,
+                    server = _dbContext.Database.GetDbConnection().DataSource
+                },
+                runtime = new {
+                    heapSize = memStatus.HeapSizeBytes / 1024 / 1024 + " MB",
+                    totalAvailableMemory = memStatus.TotalAvailableMemoryBytes / 1024 / 1024 + " MB",
+                    highMemoryLoadThreshold = memStatus.HighMemoryLoadThresholdBytes / 1024 / 1024 + " MB",
+                    memoryLoad = memStatus.MemoryLoadBytes / 1024 / 1024 + " MB"
                 },
                 timestamp = DateTime.UtcNow
             }

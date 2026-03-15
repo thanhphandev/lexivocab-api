@@ -27,6 +27,12 @@ public class MasterVocabulary : BaseEntity
     /// <summary>Popularity rank (e.g., Oxford 3000). Lower = more common.</summary>
     public int? PopularityRank { get; set; }
 
+    /// <summary>Global dictionary definition or primary meaning.</summary>
+    public string? Meaning { get; set; }
+
+    /// <summary>CEFR Level (A1, A2, B1, B2, C1, C2).</summary>
+    public string? CefrLevel { get; set; }
+
     /// <summary>Flag to indicate that the external dictionary API failed to find this word, preventing infinite retries.</summary>
     public bool IsFetchFailed { get; set; }
 

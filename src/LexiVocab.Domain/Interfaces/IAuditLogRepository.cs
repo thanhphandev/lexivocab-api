@@ -22,6 +22,7 @@ public interface IAuditLogRepository
         string? entityType = null,
         DateTime? fromDate = null,
         DateTime? toDate = null,
+        string? search = null,
         int page = 1,
         int pageSize = 50,
         CancellationToken ct = default);

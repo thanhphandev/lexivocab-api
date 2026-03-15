@@ -9,11 +9,15 @@ using MediatR;
 
 namespace LexiVocab.Application.Features.Admin.Features.Commands;
 
+/// <summary>
+/// Command to update an existing feature definition.
+/// Matches UI UpdateFeatureDefinitionRequest structure.
+/// </summary>
 public record UpdateFeatureDefinitionCommand(
     Guid Id,
-    string Code,
-    string Name,
-    string Description) : IRequest<Result<FeatureDefinitionDto>>, IAuditedRequest
+    string Description,
+    string ValueType,
+    string DefaultValue) : IRequest<Result<FeatureDefinitionDto>>, IAuditedRequest
 {
     public AuditAction AuditAction => AuditAction.SystemSettingUpdated;
     public string EntityType => nameof(FeatureDefinition);
@@ -22,12 +26,17 @@ public record UpdateFeatureDefinitionCommand(
 
 public class UpdateFeatureDefinitionValidator : AbstractValidator<UpdateFeatureDefinitionCommand>
 {
+    private static readonly string[] ValidValueTypes = ["boolean", "integer", "string"];
+
     public UpdateFeatureDefinitionValidator()
     {
         RuleFor(x => x.Id).NotEmpty();
-        RuleFor(x => x.Code).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(500);
+        RuleFor(x => x.ValueType)
+            .NotEmpty()
+            .Must(vt => ValidValueTypes.Contains(vt))
+            .WithMessage($"ValueType must be one of: {string.Join(", ", ValidValueTypes)}");
+        RuleFor(x => x.DefaultValue).MaximumLength(100);
     }
 }
 
@@ -42,31 +51,24 @@ public class UpdateFeatureDefinitionHandler : IRequestHandler<UpdateFeatureDefin
 
     public async Task<Result<FeatureDefinitionDto>> Handle(UpdateFeatureDefinitionCommand request, CancellationToken ct)
     {
-        var existing = await _uow.FeatureDefinitions.GetByIdAsync(request.Id, ct);
-        if (existing == null)
+        var feature = await _uow.FeatureDefinitions.GetByIdAsync(request.Id, ct);
+        if (feature == null)
             return Result<FeatureDefinitionDto>.NotFound($"Feature with ID '{request.Id}' not found.");
 
-        // Check if code is being changed and if it already exists
-        if (existing.Code != request.Code)
-        {
-            var codeExists = await _uow.FeatureDefinitions.GetByCodeAsync(request.Code, ct);
-            if (codeExists != null)
-                return Result<FeatureDefinitionDto>.Conflict($"Feature with code '{request.Code}' already exists.");
-        }
+        feature.Description = request.Description;
+        feature.ValueType = request.ValueType;
+        feature.DefaultValue = request.DefaultValue;
 
-        existing.Code = request.Code;
-        existing.Name = request.Name;
-        existing.Description = request.Description;
-
-        _uow.FeatureDefinitions.Update(existing);
+        _uow.FeatureDefinitions.Update(feature);
         await _uow.SaveChangesAsync(ct);
 
         return Result<FeatureDefinitionDto>.Success(new FeatureDefinitionDto(
-            existing.Id,
-            existing.Code,
-            existing.Name,
-            existing.Description,
-            existing.CreatedAt,
-            existing.UpdatedAt));
+            feature.Id,
+            feature.Code,
+            feature.Description,
+            feature.ValueType,
+            feature.DefaultValue,
+            feature.CreatedAt,
+            feature.UpdatedAt));
     }
 }

@@ -9,10 +9,15 @@ using MediatR;
 
 namespace LexiVocab.Application.Features.Admin.Features.Commands;
 
+/// <summary>
+/// Command to create a new feature definition.
+/// Matches UI CreateFeatureDefinitionRequest structure.
+/// </summary>
 public record CreateFeatureDefinitionCommand(
     string Code,
-    string Name,
-    string Description) : IRequest<Result<FeatureDefinitionDto>>, IAuditedRequest
+    string Description,
+    string ValueType,
+    string DefaultValue) : IRequest<Result<FeatureDefinitionDto>>, IAuditedRequest
 {
     public AuditAction AuditAction => AuditAction.SystemSettingUpdated;
     public string EntityType => nameof(FeatureDefinition);
@@ -20,11 +25,17 @@ public record CreateFeatureDefinitionCommand(
 
 public class CreateFeatureDefinitionValidator : AbstractValidator<CreateFeatureDefinitionCommand>
 {
+    private static readonly string[] ValidValueTypes = ["boolean", "integer", "string"];
+
     public CreateFeatureDefinitionValidator()
     {
         RuleFor(x => x.Code).NotEmpty().MaximumLength(50);
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(500);
+        RuleFor(x => x.ValueType)
+            .NotEmpty()
+            .Must(vt => ValidValueTypes.Contains(vt))
+            .WithMessage($"ValueType must be one of: {string.Join(", ", ValidValueTypes)}");
+        RuleFor(x => x.DefaultValue).MaximumLength(100);
     }
 }
 
@@ -46,8 +57,10 @@ public class CreateFeatureDefinitionHandler : IRequestHandler<CreateFeatureDefin
         var feature = new FeatureDefinition
         {
             Code = request.Code,
-            Name = request.Name,
-            Description = request.Description
+            Name = request.Code, // Use code as name for now
+            Description = request.Description,
+            ValueType = request.ValueType,
+            DefaultValue = request.DefaultValue
         };
 
         _uow.FeatureDefinitions.Add(feature);
@@ -56,8 +69,9 @@ public class CreateFeatureDefinitionHandler : IRequestHandler<CreateFeatureDefin
         return Result<FeatureDefinitionDto>.Created(new FeatureDefinitionDto(
             feature.Id,
             feature.Code,
-            feature.Name,
             feature.Description,
+            feature.ValueType,
+            feature.DefaultValue,
             feature.CreatedAt,
             feature.UpdatedAt));
     }

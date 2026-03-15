@@ -9,17 +9,17 @@ using MediatR;
 
 namespace LexiVocab.Application.Features.Admin.Plans.Commands;
 
-public record CreatePlanFeatureRequest(Guid FeatureId, string Value);
-
+/// <summary>
+/// Command to create a new plan definition.
+/// Matches UI CreatePlanDefinitionRequest structure with Dictionary features.
+/// </summary>
 public record CreatePlanDefinitionCommand(
     string Name,
-    string NameKey,
     decimal Price,
     string Currency,
-    string Description,
-    int DurationDays,
-    bool IsRecommended,
-    List<CreatePlanFeatureRequest> Features) : IRequest<Result<PlanDefinitionDto>>, IAuditedRequest
+    string IntervalType,
+    bool IsActive,
+    Dictionary<string, string> Features) : IRequest<Result<PlanDefinitionDto>>, IAuditedRequest
 {
     public AuditAction AuditAction => AuditAction.SystemSettingUpdated;
     public string EntityType => nameof(PlanDefinition);
@@ -27,24 +27,18 @@ public record CreatePlanDefinitionCommand(
 
 public class CreatePlanDefinitionValidator : AbstractValidator<CreatePlanDefinitionCommand>
 {
+    private static readonly string[] ValidIntervals = ["Month", "Year", "Lifetime"];
+
     public CreatePlanDefinitionValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.NameKey).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Price).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Currency).NotEmpty().Length(3);
-        RuleFor(x => x.Description).MaximumLength(500);
-        RuleFor(x => x.DurationDays).GreaterThanOrEqualTo(0);
-        RuleForEach(x => x.Features).SetValidator(new CreatePlanFeatureRequestValidator());
-    }
-}
-
-public class CreatePlanFeatureRequestValidator : AbstractValidator<CreatePlanFeatureRequest>
-{
-    public CreatePlanFeatureRequestValidator()
-    {
-        RuleFor(x => x.FeatureId).NotEmpty();
-        RuleFor(x => x.Value).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.IntervalType)
+            .NotEmpty()
+            .Must(it => ValidIntervals.Contains(it))
+            .WithMessage($"IntervalType must be one of: {string.Join(", ", ValidIntervals)}");
+        RuleFor(x => x.Features).NotNull();
     }
 }
 
@@ -63,43 +57,61 @@ public class CreatePlanDefinitionHandler : IRequestHandler<CreatePlanDefinitionC
         if (existing != null)
             return Result<PlanDefinitionDto>.Conflict($"Plan with name '{request.Name}' already exists.");
 
+        // Calculate DurationDays from IntervalType
+        var durationDays = request.IntervalType switch
+        {
+            "Month" => 30,
+            "Year" => 365,
+            "Lifetime" => 0,
+            _ => 30
+        };
+
+        // Convert Dictionary features to PlanFeature entities
+        var planFeatures = new List<PlanFeature>();
+        foreach (var kvp in request.Features)
+        {
+            var featureDef = await _uow.FeatureDefinitions.GetByCodeAsync(kvp.Key, ct);
+            if (featureDef != null)
+            {
+                planFeatures.Add(new PlanFeature
+                {
+                    FeatureDefinitionId = featureDef.Id,
+                    Value = kvp.Value
+                });
+            }
+        }
+
         var plan = new PlanDefinition
         {
             Name = request.Name,
-            NameKey = request.NameKey,
+            NameKey = $"plan_{request.Name.ToLowerInvariant().Replace(" ", "_")}",
             Price = request.Price,
             Currency = request.Currency,
-            Description = request.Description,
-            DurationDays = request.DurationDays,
-            IsRecommended = request.IsRecommended,
-            PlanFeatures = request.Features.Select(f => new PlanFeature
-            {
-                FeatureDefinitionId = f.FeatureId,
-                Value = f.Value
-            }).ToList()
+            Description = "", // Can be set later via update
+            IntervalType = request.IntervalType,
+            DurationDays = durationDays,
+            IsActive = request.IsActive,
+            IsRecommended = false,
+            PlanFeatures = planFeatures
         };
 
         _uow.PlanDefinitions.Add(plan);
         await _uow.SaveChangesAsync(ct);
 
-        // Fetch back with included features
-        var savedPlan = await _uow.PlanDefinitions.GetByIdWithFeaturesAsync(plan.Id, ct);
+        // Build response with Dictionary features
+        var responseFeatures = plan.PlanFeatures.ToDictionary(
+            pf => pf.Feature?.Code ?? "",
+            pf => pf.Value);
 
         return Result<PlanDefinitionDto>.Created(new PlanDefinitionDto(
-            savedPlan!.Id,
-            savedPlan.Name,
-            savedPlan.NameKey,
-            savedPlan.Price,
-            savedPlan.Currency,
-            savedPlan.Description,
-            savedPlan.DurationDays,
-            savedPlan.IsRecommended,
-            savedPlan.PlanFeatures.Select(pf => new PlanFeatureDto(
-                pf.FeatureDefinitionId,
-                pf.Feature.Code,
-                pf.Feature.Name,
-                pf.Value)).ToList(),
-            savedPlan.CreatedAt,
-            savedPlan.UpdatedAt));
+            plan.Id,
+            plan.Name,
+            plan.Price,
+            plan.Currency,
+            plan.IntervalType,
+            plan.IsActive,
+            responseFeatures,
+            plan.CreatedAt,
+            plan.UpdatedAt));
     }
 }

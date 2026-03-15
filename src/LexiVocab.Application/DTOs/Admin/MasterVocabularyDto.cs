@@ -8,5 +8,11 @@ public record MasterVocabularyDto(
     string? PhoneticUs,
     string? AudioUrl,
     int? PopularityRank,
+    string? Meaning,
+    string? CefrLevel,
     DateTime CreatedAt,
-    DateTime? UpdatedAt);
+    DateTime? UpdatedAt)
+{
+    // Alias for frontend compatibility with UserVocabulary components
+    public string WordText => Word;
+}

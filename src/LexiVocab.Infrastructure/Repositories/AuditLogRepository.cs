@@ -38,6 +38,7 @@ public class AuditLogRepository : IAuditLogRepository
         string? entityType = null,
         DateTime? fromDate = null,
         DateTime? toDate = null,
+        string? search = null,
         int page = 1,
         int pageSize = 50,
         CancellationToken ct = default)
@@ -58,6 +59,15 @@ public class AuditLogRepository : IAuditLogRepository
 
         if (toDate.HasValue)
             query = query.Where(a => a.Timestamp <= toDate.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            search = search.ToLower();
+            query = query.Where(a => 
+                (a.UserEmail != null && a.UserEmail.ToLower().Contains(search)) ||
+                (a.EntityType != null && a.EntityType.ToLower().Contains(search)) ||
+                (a.AdditionalInfo != null && a.AdditionalInfo.ToLower().Contains(search)));
+        }
 
         var totalCount = await query.CountAsync(ct);
 

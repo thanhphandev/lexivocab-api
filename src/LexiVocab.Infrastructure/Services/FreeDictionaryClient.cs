@@ -51,10 +51,14 @@ public class FreeDictionaryClient : IDictionaryService
                 audio = "https:" + audio;
             }
 
+            var firstMeaning = entry.Meanings?.FirstOrDefault();
+            var firstDef = firstMeaning?.Definitions?.FirstOrDefault()?.Definition;
+
             return new MasterVocabulary
             {
                 Word = entry.Word,
-                PartOfSpeech = entry.Meanings?.FirstOrDefault()?.PartOfSpeech,
+                PartOfSpeech = firstMeaning?.PartOfSpeech,
+                Meaning = firstDef,
                 PhoneticUk = phonetic,
                 PhoneticUs = phonetic, // API doesn't always distinguish UK/US phonetics clearly
                 AudioUrl = audio
@@ -85,6 +89,12 @@ public class FreeDictionaryClient : IDictionaryService
     private class FreeDictMeaning
     {
         public string? PartOfSpeech { get; set; }
+        public List<FreeDictDefinition>? Definitions { get; set; }
+    }
+
+    private class FreeDictDefinition
+    {
+        public string? Definition { get; set; }
     }
     #endregion
 }

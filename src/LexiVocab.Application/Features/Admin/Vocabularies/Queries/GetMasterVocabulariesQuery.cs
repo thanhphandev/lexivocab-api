@@ -29,6 +29,8 @@ public class GetMasterVocabulariesHandler : IRequestHandler<GetMasterVocabularie
             v.PhoneticUs,
             v.AudioUrl,
             v.PopularityRank,
+            v.Meaning,
+            v.CefrLevel,
             v.CreatedAt,
             v.UpdatedAt)).ToList();
 

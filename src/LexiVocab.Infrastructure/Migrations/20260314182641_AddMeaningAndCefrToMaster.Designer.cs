@@ -3,6 +3,7 @@ using System;
 using LexiVocab.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LexiVocab.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260314182641_AddMeaningAndCefrToMaster")]
+    partial class AddMeaningAndCefrToMaster
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -119,10 +122,6 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("DefaultValue")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
@@ -133,10 +132,6 @@ namespace LexiVocab.Infrastructure.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ValueType")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -151,40 +146,32 @@ namespace LexiVocab.Infrastructure.Migrations
                             Id = new Guid("f1111111-1111-1111-1111-111111111111"),
                             Code = "MAX_WORDS",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DefaultValue = "false",
                             Description = "Limit of vocabulary words saved",
-                            Name = "Maximum Words",
-                            ValueType = "boolean"
+                            Name = "Maximum Words"
                         },
                         new
                         {
                             Id = new Guid("f2222222-2222-2222-2222-222222222222"),
                             Code = "AI_ACCESS",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DefaultValue = "false",
                             Description = "Access to AI analysis and generation",
-                            Name = "AI Features",
-                            ValueType = "boolean"
+                            Name = "AI Features"
                         },
                         new
                         {
                             Id = new Guid("f3333333-3333-3333-3333-333333333333"),
                             Code = "SUPPORT_LEVEL",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DefaultValue = "false",
                             Description = "Customer support priority",
-                            Name = "Support Level",
-                            ValueType = "boolean"
+                            Name = "Support Level"
                         },
                         new
                         {
                             Id = new Guid("f4444444-4444-4444-4444-444444444444"),
                             Code = "EXPORT_PDF",
                             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DefaultValue = "false",
                             Description = "Ability to export lists to PDF",
-                            Name = "Export as PDF",
-                            ValueType = "boolean"
+                            Name = "Export as PDF"
                         });
                 });
 
@@ -358,13 +345,6 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.Property<int>("DurationDays")
                         .HasColumnType("integer");
 
-                    b.Property<string>("IntervalType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsRecommended")
                         .HasColumnType("boolean");
 
@@ -396,8 +376,6 @@ namespace LexiVocab.Infrastructure.Migrations
                             Currency = "VND",
                             Description = "Perfect for beginners",
                             DurationDays = 0,
-                            IntervalType = "Month",
-                            IsActive = true,
                             IsRecommended = false,
                             Name = "Free",
                             NameKey = "free_plan",
@@ -410,8 +388,6 @@ namespace LexiVocab.Infrastructure.Migrations
                             Currency = "VND",
                             Description = "Unlock full potential",
                             DurationDays = 30,
-                            IntervalType = "Month",
-                            IsActive = true,
                             IsRecommended = true,
                             Name = "Premium",
                             NameKey = "premium_plan",
@@ -424,8 +400,6 @@ namespace LexiVocab.Infrastructure.Migrations
                             Currency = "VND",
                             Description = "For advanced learners and teams",
                             DurationDays = 365,
-                            IntervalType = "Month",
-                            IsActive = true,
                             IsRecommended = false,
                             Name = "Business",
                             NameKey = "business_plan",

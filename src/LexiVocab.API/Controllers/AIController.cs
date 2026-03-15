@@ -58,6 +58,7 @@ public class AIController : ControllerBase
     /// Uses Server-Sent Events (SSE).
     /// </summary>
     [HttpGet("explain-stream")]
+    [Produces("text/event-stream")]
     public async Task GetExplainStream([FromQuery] string word, [FromQuery] string? context, CancellationToken ct, [FromQuery] bool asJson = false)
     {
         var result = await _mediator.Send(new StreamWordExplanationQuery(word, context, asJson), ct);
@@ -73,6 +74,9 @@ public class AIController : ControllerBase
         Response.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache";
         Response.Headers.Connection = "keep-alive";
+        Response.Headers["X-Accel-Buffering"] = "no"; // Disable Nginx buffering
+        
+        await Response.Body.FlushAsync(ct); // Send headers immediately
 
         var stream = result.Data!;
 

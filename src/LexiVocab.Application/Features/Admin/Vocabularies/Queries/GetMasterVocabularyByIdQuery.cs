@@ -30,6 +30,8 @@ public class GetMasterVocabularyByIdHandler : IRequestHandler<GetMasterVocabular
             vocab.PhoneticUs,
             vocab.AudioUrl,
             vocab.PopularityRank,
+            vocab.Meaning,
+            vocab.CefrLevel,
             vocab.CreatedAt,
             vocab.UpdatedAt));
     }

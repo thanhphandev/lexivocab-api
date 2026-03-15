@@ -20,14 +20,13 @@ public class GetFeatureDefinitionsHandler : IRequestHandler<GetFeatureDefinition
     {
         var features = await _uow.FeatureDefinitions.GetAllAsync(ct);
 
-        var dtos = features.Select(f => new FeatureDefinitionDto(
+        return Result<List<FeatureDefinitionDto>>.Success(features.Select(f => new FeatureDefinitionDto(
             f.Id,
             f.Code,
-            f.Name,
             f.Description,
+            f.ValueType,
+            f.DefaultValue,
             f.CreatedAt,
-            f.UpdatedAt)).ToList();
-
-        return Result<List<FeatureDefinitionDto>>.Success(dtos);
+            f.UpdatedAt)).ToList());
     }
 }

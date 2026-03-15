@@ -34,6 +34,6 @@ public class LookupMasterVocabHandler : IRequestHandler<LookupMasterVocabQuery, 
         return Result<MasterVocabularyDto>.Success(new MasterVocabularyDto(
             result.Id, result.Word, result.PartOfSpeech,
             result.PhoneticUk, result.PhoneticUs, result.AudioUrl,
-            result.PopularityRank));
+            result.PopularityRank, result.Meaning, result.CefrLevel));
     }
 }

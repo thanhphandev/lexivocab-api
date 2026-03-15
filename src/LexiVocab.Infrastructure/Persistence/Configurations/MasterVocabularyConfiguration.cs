@@ -39,6 +39,13 @@ public class MasterVocabularyConfiguration : IEntityTypeConfiguration<MasterVoca
         builder.Property(m => m.PopularityRank)
             .HasColumnName("popularity_rank");
 
+        builder.Property(m => m.Meaning)
+            .HasColumnName("meaning");
+
+        builder.Property(m => m.CefrLevel)
+            .HasColumnName("cefr_level")
+            .HasMaxLength(10);
+
         builder.Property(m => m.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");

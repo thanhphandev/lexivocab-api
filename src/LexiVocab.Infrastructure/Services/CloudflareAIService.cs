@@ -44,6 +44,8 @@ public class CloudflareAIService : IAIService
                 PartOfSpeech = aiResult.PartOfSpeech,
                 PhoneticUk = aiResult.PhoneticUk,
                 PhoneticUs = aiResult.PhoneticUs,
+                Meaning = aiResult.Definition,
+                CefrLevel = aiResult.CefrLevel,
                 IsFetchFailed = false
             };
         }
@@ -171,5 +173,8 @@ public class CloudflareAIService : IAIService
 
         [JsonPropertyName("exampleSentence")]
         public string? ExampleSentence { get; set; }
+
+        [JsonPropertyName("cefrLevel")]
+        public string? CefrLevel { get; set; }
     }
 }

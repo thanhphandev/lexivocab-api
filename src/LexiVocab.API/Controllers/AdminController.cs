@@ -110,6 +110,7 @@ public class AdminController : ControllerBase
         [FromQuery] string? entityType = null,
         [FromQuery] DateTime? fromDate = null,
         [FromQuery] DateTime? toDate = null,
+        [FromQuery] string? search = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
         CancellationToken ct = default)
@@ -119,7 +120,7 @@ public class AdminController : ControllerBase
         page = Math.Max(1, page);
 
         var (items, totalCount) = await _auditLogRepository.GetPagedAsync(
-            userId, action, entityType, fromDate, toDate, page, pageSize, ct);
+            userId, action, entityType, fromDate, toDate, search, page, pageSize, ct);
 
         return Ok(new
         {
@@ -165,10 +166,13 @@ public class AdminController : ControllerBase
     /// <summary>Update an existing feature definition.</summary>
     [HttpPut("features/definitions/{id}")]
     [ProducesResponseType(typeof(FeatureDefinitionDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdateFeatureDefinition(Guid id, [FromBody] UpdateFeatureDefinitionCommand command, CancellationToken ct)
+    public async Task<IActionResult> UpdateFeatureDefinition(Guid id, [FromBody] UpdateFeatureDefinitionRequest request, CancellationToken ct)
     {
-        if (id != command.Id)
-            return BadRequest(new { success = false, error = "Path ID and Body ID mismatch." });
+        var command = new UpdateFeatureDefinitionCommand(
+            id,
+            request.Description,
+            request.ValueType,
+            request.DefaultValue);
 
         var result = await _mediator.Send(command, ct);
         return ToActionResult(result);
@@ -215,10 +219,16 @@ public class AdminController : ControllerBase
     /// <summary>Update an existing plan definition.</summary>
     [HttpPut("plans/definitions/{id}")]
     [ProducesResponseType(typeof(PlanDefinitionDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdatePlanDefinition(Guid id, [FromBody] UpdatePlanDefinitionCommand command, CancellationToken ct)
+    public async Task<IActionResult> UpdatePlanDefinition(Guid id, [FromBody] UpdatePlanDefinitionRequest request, CancellationToken ct)
     {
-        if (id != command.Id)
-            return BadRequest(new { success = false, error = "Path ID and Body ID mismatch." });
+        var command = new UpdatePlanDefinitionCommand(
+            id,
+            request.Name,
+            request.Price,
+            request.Currency,
+            request.IntervalType,
+            request.IsActive,
+            request.Features);
 
         var result = await _mediator.Send(command, ct);
         return ToActionResult(result);
