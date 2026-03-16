@@ -27,7 +27,15 @@ public class GetReviewSessionHandler : IRequestHandler<GetReviewSessionQuery, Re
     public async Task<Result<ReviewSessionDto>> Handle(GetReviewSessionQuery request, CancellationToken ct)
     {
         var userId = _currentUser.UserId!.Value;
-        var dueItems = await _uow.Vocabularies.GetDueForReviewAsync(userId, request.Limit, ct);
+        
+        // Fetch user settings to enforce limits
+        var user = await _uow.Users.GetByIdAsync(userId, ct);
+        var maxReviewLimit = user?.UserSetting?.DailyReviewLimit ?? 100;
+        
+        // Protect user from "Review Hell" by capping the limit
+        var actualLimit = Math.Min(request.Limit, maxReviewLimit);
+
+        var dueItems = await _uow.Vocabularies.GetDueForReviewAsync(userId, actualLimit, ct);
 
         var cards = dueItems.Select(v => new ReviewCardDto(
             v.Id,

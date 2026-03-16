@@ -23,6 +23,11 @@ public class EmailTemplateService : IEmailTemplateService
     {
         var template = await GetTemplateAsync(templateName);
 
+        if (!replacements.ContainsKey("CurrentYear"))
+        {
+            replacements["CurrentYear"] = DateTime.UtcNow.Year.ToString();
+        }
+
         foreach (var (key, value) in replacements)
         {
             template = template.Replace($"{{{{{key}}}}}", value);

@@ -29,9 +29,9 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
 
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            var lowerTerm = searchTerm.ToLower();
-            query = query.Where(v => v.WordText.ToLower().Contains(lowerTerm)
-                || (v.CustomMeaning != null && v.CustomMeaning.ToLower().Contains(lowerTerm)));
+            // Fix Table Scan: Use ILike for DB-native case-insensitive search
+            query = query.Where(v => EF.Functions.ILike(v.WordText, $"%{searchTerm}%")
+                || (v.CustomMeaning != null && EF.Functions.ILike(v.CustomMeaning, $"%{searchTerm}%")));
         }
 
         var totalCount = await query.CountAsync(ct);
@@ -92,6 +92,7 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
     {
         var stats = await _dbSet
             .Where(v => v.UserId == userId)
+            .AsNoTracking()
             .GroupBy(_ => 1)
             .Select(g => new
             {

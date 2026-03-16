@@ -68,7 +68,7 @@ public class PaymentsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
     {
-        var result = await _mediator.Send(new CreatePaymentOrderCommand(request.PlanId, request.Provider));
+        var result = await _mediator.Send(new CreatePaymentOrderCommand(request.PlanId, request.Provider, request.DurationMonths));
         return result.IsSuccess ? Ok(new { approvalUrl = result.Data }) : ToActionResult(result); // Changed to use controller's ToActionResult
     }
 

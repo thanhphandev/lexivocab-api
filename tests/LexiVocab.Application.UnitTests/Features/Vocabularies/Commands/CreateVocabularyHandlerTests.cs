@@ -126,7 +126,7 @@ public class CreateVocabularyHandlerTests
         savedEntity!.UserId.Should().Be(_userId);
         savedEntity.WordText.Should().Be("Ubiquitous");
         savedEntity.CustomMeaning.Should().Be("có mặt khắp nơi");
-        savedEntity.MasterVocabularyId.Should().Be(masterVocab.Id);
+        savedEntity.MasterVocabulary.Should().BeEquivalentTo(masterVocab);
         
         // Ensure cache invalidation was called
         _mockCache.Verify(x => x.SetAsync(

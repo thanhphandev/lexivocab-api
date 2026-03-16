@@ -40,21 +40,50 @@ public class SrsAlgorithmService : ISrsAlgorithm
 
         if (q < 3)
         {
-            // Failed recall → reset repetition cycle
+            // Failed recall (Lapse Rule)
             newRepCount = 0;
-            newInterval = 1;
+            
+            // Modern SRS penalty: Instead of dropping to 1 completely, keep a friction of the interval
+            // unless it's a very new card.
+            if (currentIntervalDays > 3)
+            {
+                newInterval = (int)Math.Max(1, Math.Floor(currentIntervalDays * 0.2)); // Keep 20% of interval
+            }
+            else
+            {
+                newInterval = 1;
+            }
         }
         else
         {
-            // Successful recall → advance
+            // Successful recall
             newRepCount = currentRepetitionCount + 1;
 
-            newInterval = newRepCount switch
+            if (newRepCount == 1)
             {
-                1 => 1,
-                2 => 6,
-                _ => (int)Math.Ceiling(currentIntervalDays * newEf)
-            };
+                newInterval = 1;
+            }
+            else if (newRepCount == 2)
+            {
+                newInterval = 6;
+            }
+            else
+            {
+                // Core SM-2 Formula
+                newInterval = (int)Math.Ceiling(currentIntervalDays * newEf);
+                
+                // Fuzz Factor (Adding ±5% noise to intervals >= 7 to prevent Clumping)
+                if (newInterval >= 7)
+                {
+                    var fuzzMin = newInterval * 0.95;
+                    var fuzzMax = newInterval * 1.05;
+                    // Provide a deterministic fuzz via card hash to maintain pure functional aspect,
+                    // or use a Random instance. We'll use Random here isolated.
+                    var random = new Random();
+                    var fuzzed = random.NextDouble() * (fuzzMax - fuzzMin) + fuzzMin;
+                    newInterval = (int)Math.Round(fuzzed);
+                }
+            }
         }
 
         var nextReviewDate = DateTime.UtcNow.AddDays(newInterval);

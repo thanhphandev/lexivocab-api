@@ -135,6 +135,8 @@ public class AdminController : ControllerBase
                     action = a.Action.ToString(),
                     a.EntityType,
                     a.EntityId,
+                    oldValues = a.OldValues,
+                    newValues = a.NewValues,
                     a.IpAddress,
                     a.UserAgent,
                     a.RequestName,

@@ -1,69 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Reminder</title>
 </head>
-
-<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
+<body style="margin: 0; padding: 0; background-color: #f6f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1a1a1a;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f6f9fc; padding: 40px 0;">
         <tr>
             <td align="center">
-                <table width="600" cellpadding="0" cellspacing="0"
-                    style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; margin: 0 auto;">
                     <tr>
-                        <td
-                            style="background:linear-gradient(135deg,#4299e1 0%,#3182ce 100%);padding:40px 40px 30px;text-align:center;">
-                            <h1 style="margin:0;color:#fff;font-size:28px;font-weight:700;">📚 Your Vocabulary Misses
-                                You!</h1>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding:40px;">
-                            <p style="font-size:18px;color:#2d3748;margin:0 0 12px;">Hello
-                                <strong>{{FullName}}</strong>,</p>
-                            <p style="font-size:15px;color:#4a5568;line-height:1.7;margin:0 0 20px;">
-                                We noticed you haven't reviewed your vocabulary since
-                                <strong>{{LastReviewDate}}</strong>.
-                                Consistent review is key to long-term retention!
+                        <td style="padding: 40px;">
+                            <div style="margin-bottom: 32px;">
+                                <span style="font-size: 24px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px;">LexiVocab<span style="color: #ea580c;">.</span></span>
+                            </div>
+                            
+                            <h1 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #1a1a1a;">Time for a quick review</h1>
+                            <p style="margin: 0 0 24px 0; font-size: 16px; color: #4b5563; line-height: 1.6;">
+                                Hi {{FullName}},<br><br>
+                                Consistent review is the key to lasting retention. We noticed you haven't reviewed your vocabulary since <strong>{{LastReviewDate}}</strong>.
                             </p>
-                            <!-- Stats Card -->
-                            <table width="100%" cellpadding="0" cellspacing="0"
-                                style="background:linear-gradient(135deg,#ebf8ff,#bee3f8);border-radius:12px;padding:24px;margin-bottom:24px;text-align:center;">
+                            
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 32px; overflow: hidden;">
                                 <tr>
-                                    <td style="padding:8px;">
-                                        <div style="font-size:36px;font-weight:700;color:#2b6cb0;">{{DueCount}}</div>
-                                        <div style="font-size:13px;color:#4a5568;margin-top:4px;">Cards due for review
-                                        </div>
+                                    <td width="50%" align="center" style="padding: 24px; border-right: 1px solid #e5e7eb; background-color: #fafafa;">
+                                        <div style="font-size: 32px; font-weight: 700; color: #1a1a1a;">{{DueCount}}</div>
+                                        <div style="font-size: 13px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px;">Cards Due</div>
                                     </td>
-                                    <td style="padding:8px;">
-                                        <div style="font-size:36px;font-weight:700;color:#e53e3e;">{{DaysMissed}}</div>
-                                        <div style="font-size:13px;color:#4a5568;margin-top:4px;">Days since last review
-                                        </div>
+                                    <td width="50%" align="center" style="padding: 24px;">
+                                        <div style="font-size: 32px; font-weight: 700; color: #ea580c;">{{DaysMissed}}</div>
+                                        <div style="font-size: 13px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px;">Days Missed</div>
                                     </td>
                                 </tr>
                             </table>
-                            <p style="font-size:15px;color:#4a5568;line-height:1.7;margin:0 0 24px;">
-                                Just 5 minutes a day can make a huge difference. Come back and keep your streak alive!
-                                🔥
+
+                            <p style="margin: 0 0 32px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
+                                It only takes a few minutes to clear your queue. Jump back in to maintain your progress.
                             </p>
-                            <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                            
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
                                 <tr>
-                                    <td
-                                        style="background:linear-gradient(135deg,#4299e1,#3182ce);border-radius:8px;padding:14px 32px;">
-                                        <a href="{{AppUrl}}/review"
-                                            style="color:#fff;text-decoration:none;font-size:16px;font-weight:600;">Start
-                                            Review Session →</a>
+                                    <td>
+                                        <a href="{{AppUrl}}/review" style="background-color: #ea580c; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 15px; display: inline-block;">Start Review</a>
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
+                </table>
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
                     <tr>
-                        <td
-                            style="padding:24px 40px;background:#f7fafc;text-align:center;border-top:1px solid #e2e8f0;">
-                            <p style="margin:0;font-size:13px;color:#a0aec0;">© 2026 LexiVocab. All rights reserved.</p>
+                        <td style="padding: 24px 40px; text-align: left;">
+                            <p style="margin: 0; font-size: 13px; color: #8898aa; line-height: 1.6;">
+                                &copy; {{CurrentYear}} LexiVocab Inc.<br>
+                                Don't want these reminders? <a href="{{AppUrl}}/settings/notifications" style="color: #8898aa; text-decoration: underline;">Manage your email preferences</a>.
+                            </p>
                         </td>
                     </tr>
                 </table>
@@ -71,5 +63,4 @@
         </tr>
     </table>
 </body>
-
 </html>

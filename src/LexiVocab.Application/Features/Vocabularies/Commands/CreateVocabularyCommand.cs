@@ -56,6 +56,16 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
 
         var masterVocab = await _uow.MasterVocabularies.GetByWordAsync(request.WordText.ToLowerInvariant().Trim(), ct);
 
+        // If master word does not exist, create it and link it.
+        if (masterVocab == null)
+        {
+            masterVocab = new MasterVocabulary
+            {
+                Word = request.WordText.ToLowerInvariant().Trim(),
+            };
+            await _uow.MasterVocabularies.AddAsync(masterVocab, ct);
+        }
+
         Guid? assignedTagId = request.TagId;
         if (assignedTagId == null && !string.IsNullOrWhiteSpace(request.SourceUrl))
         {
@@ -85,17 +95,12 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
             CustomMeaning = request.CustomMeaning?.Trim(),
             ContextSentence = request.ContextSentence?.Trim(),
             SourceUrl = request.SourceUrl?.Trim(),
-            MasterVocabularyId = masterVocab?.Id,
-            NextReviewDate = DateTime.UtcNow
-        };
-
-        var masterEntity = new MasterVocabulary
-        { 
-            Word = request.WordText.Trim(),
+            NextReviewDate = DateTime.UtcNow,
+            // Link to the master word directly, whether it existed previously or was just created
+            MasterVocabulary = masterVocab 
         };
 
         await _uow.Vocabularies.AddAsync(entity, ct);
-        await _uow.MasterVocabularies.AddAsync(masterEntity, ct);
         await _uow.SaveChangesAsync(ct);
 
         if (assignedTagId.HasValue)

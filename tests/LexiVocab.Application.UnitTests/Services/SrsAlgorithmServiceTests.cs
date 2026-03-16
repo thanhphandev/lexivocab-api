@@ -48,14 +48,17 @@ public class SrsAlgorithmServiceTests
         // Assert
         result.NewRepetitionCount.Should().Be(3);
         result.NewEasinessFactor.Should().Be(2.36); // EF drops
-        result.NewIntervalDays.Should().Be((int)Math.Ceiling(6 * 2.36)); // 15
+        
+        var expectedInterval = 15; // math.ceiling(6 * 2.36)
+        // With Fuzz (95% to 105%), range is [14, 16]
+        result.NewIntervalDays.Should().BeInRange((int)Math.Round(expectedInterval * 0.95), (int)Math.Round(expectedInterval * 1.05));
     }
 
     [Theory]
     [InlineData(QualityScore.CompleteBlackout)]
     [InlineData(QualityScore.IncorrectButRecognized)]
     [InlineData(QualityScore.IncorrectButEasyRecall)]
-    public void Calculate_WithFailingQuality_ShouldResetRepetition(QualityScore failingQuality)
+    public void Calculate_WithFailingQuality_ShouldApplyLapseFriction(QualityScore failingQuality)
     {
         // Arrange
         var currentRepCount = 5;
@@ -67,7 +70,7 @@ public class SrsAlgorithmServiceTests
 
         // Assert
         result.NewRepetitionCount.Should().Be(0);
-        result.NewIntervalDays.Should().Be(1);
+        result.NewIntervalDays.Should().Be(4); // 20 * 0.2 = 4
         result.NewEasinessFactor.Should().BeLessThan(2.5); // EF always drops on fail
     }
 

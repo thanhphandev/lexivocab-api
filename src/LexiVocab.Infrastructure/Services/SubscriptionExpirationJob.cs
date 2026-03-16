@@ -111,10 +111,15 @@ public class SubscriptionExpirationJob : ISubscriptionExpirationJob
                 var user = sub.User;
                 try
                 {
+                    var daysRemaining = Math.Max(0, (sub.EndDate!.Value - now).Days);
+                    var planName = sub.PlanDefinition?.Name ?? "Premium";
+                    
                     var html = await _templateService.RenderTemplateAsync("SubscriptionExpiring", new Dictionary<string, string>
                     {
                         { "FullName", user.FullName },
-                        { "ExpiryDate", sub.EndDate!.Value.ToString("MMMM dd, yyyy") },
+                        { "PlanName", planName },
+                        { "DaysRemaining", daysRemaining.ToString() },
+                        { "ExpiryDate", sub.EndDate.Value.ToString("MMMM dd, yyyy") },
                         { "AppUrl", appUrl }
                     });
                     _emailQueue.EnqueueEmail(user.Email, "⏰ Your Subscription is Expiring Soon", html);

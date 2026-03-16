@@ -23,6 +23,12 @@ public class UserSetting : BaseEntity
     /// <summary>Daily review goal (number of cards). Default 20.</summary>
     public int DailyGoal { get; set; } = 20;
 
+    /// <summary>Maximum number of new cards to learn per day.</summary>
+    public int DailyNewCardLimit { get; set; } = 20;
+
+    /// <summary>Maximum number of cards to review per day.</summary>
+    public int DailyReviewLimit { get; set; } = 100;
+
     /// <summary>JSON string storing other extension preferences.</summary>
     public string PreferencesJson { get; set; } = "{}";
 
