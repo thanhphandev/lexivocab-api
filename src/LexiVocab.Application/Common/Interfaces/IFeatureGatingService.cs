@@ -8,12 +8,8 @@ namespace LexiVocab.Application.Common.Interfaces;
 /// </summary>
 public interface IFeatureGatingService
 {
-    /// <summary>Checks if a user has reached their vocabulary limit.</summary>
-    Task<bool> CanCreateVocabularyAsync(Guid userId, CancellationToken ct);
-
     /// <summary>Gets the user's full permission matrix and quotas.</summary>
     Task<UserPermissionsDto> GetPermissionsAsync(Guid userId, CancellationToken ct);
-
 
     /// <summary>Checks if a user has access to a specific feature.</summary>
     Task<bool> HasFeatureAsync(Guid userId, string featureCode, CancellationToken ct);

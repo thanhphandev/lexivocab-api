@@ -3,7 +3,7 @@ using LexiVocab.Domain.Enums;
 namespace LexiVocab.Application.Common.Interfaces;
 
 /// <summary>
-/// Abstraction for payment gateways (e.g., PayPal, Stripe, Seapay).
+/// Abstraction for payment gateways (e.g., PayPal, Stripe, Sepay).
 /// Allows easily swapping providers without changing business logic.
 /// </summary>
 public interface IPaymentService
@@ -15,7 +15,7 @@ public interface IPaymentService
     /// Creates a checkout order/session.
     /// Returns the approval URL that the frontend should redirect the user to.
     /// </summary>
-    Task<string> CreateOrderAsync(Guid userId, string planId, CancellationToken ct);
+    Task<string> CreateOrderAsync(Guid userId, string planId, int durationMonths, CancellationToken ct);
 
     /// <summary>
     /// Captures the payment after the user approves it on the provider's checkout page.
@@ -33,4 +33,10 @@ public interface IPaymentService
     /// Should be called only after signature verification succeeds.
     /// </summary>
     Task ProcessWebhookEventAsync(string body, CancellationToken ct);
+
+    /// <summary>
+    /// Gets a static or reconstructible approval URL for a transaction.
+    /// Returns null if the provider doesn't support easy resumption (like PayPal).
+    /// </summary>
+    string? GetApprovalUrl(string reference, decimal amount);
 }

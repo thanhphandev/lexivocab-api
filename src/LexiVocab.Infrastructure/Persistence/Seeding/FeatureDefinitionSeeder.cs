@@ -87,6 +87,46 @@ public class FeatureDefinitionSeeder : IDataSeeder
                 ValueType = "boolean",
                 DefaultValue = "false",
                 CreatedAt = seedDate
+            },
+            new FeatureDefinition
+            {
+                Id = new Guid("f7777777-7777-7777-7777-777777777777"),
+                Code = "AI_DAILY_LIMIT",
+                Name = "AI Daily Limit",
+                Description = "Maximum AI requests per day",
+                ValueType = "integer",
+                DefaultValue = "10",
+                CreatedAt = seedDate
+            },
+            new FeatureDefinition
+            {
+                Id = new Guid("f8888888-8888-8888-8888-888888888888"),
+                Code = "MAX_QUIZ_PER_DAY",
+                Name = "Quiz Daily Limit",
+                Description = "Maximum quiz generation requests per day",
+                ValueType = "integer",
+                DefaultValue = "5",
+                CreatedAt = seedDate
+            },
+            new FeatureDefinition
+            {
+                Id = new Guid("f9999999-9999-9999-9999-999999999999"),
+                Code = "ADVANCED_AI",
+                Name = "Advanced AI Features",
+                Description = "Access to advanced AI analysis and generation",
+                ValueType = "boolean",
+                DefaultValue = "false",
+                CreatedAt = seedDate
+            },
+            new FeatureDefinition
+            {
+                Id = new Guid("faaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                Code = "QUIZ_GENERATION",
+                Name = "Quiz Generation",
+                Description = "Ability to generate AI-powered quizzes",
+                ValueType = "boolean",
+                DefaultValue = "false",
+                CreatedAt = seedDate
             }
         };
 

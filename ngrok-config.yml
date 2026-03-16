@@ -1,0 +1,19 @@
+# Ngrok configuration for LexiVocab webhook testing
+# Reference: https://ngrok.com/docs/agent/config/
+
+version: 2
+
+# Tunnels configuration
+tunnels:
+  api:
+    proto: http
+    addr: api:8080  # Forward to the API service in Docker network (internal container port)
+    
+    # Additional metadata
+    inspect: true
+
+# Global configuration
+region: ap  # Asia Pacific (closest to Vietnam)
+
+# Web UI configuration
+web_addr: 0.0.0.0:4040

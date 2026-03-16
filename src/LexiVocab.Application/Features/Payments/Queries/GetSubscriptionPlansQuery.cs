@@ -23,12 +23,12 @@ public class GetSubscriptionPlansHandler : IRequestHandler<GetSubscriptionPlansQ
         var dtos = plans.Select(p => new SubscriptionPlanDto(
             p.Id.ToString(),
             p.NameKey,
-            p.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
-            p.DurationDays switch { 30 => "monthly", 365 => "yearly", _ => "one_time" },
+            p.Price.ToString("F0", System.Globalization.CultureInfo.InvariantCulture),
+            p.DurationDays switch { 30 => "monthly", 365 => "yearly", 0 => "lifetime", _ => "one_time" },
             p.Description,
             p.IsRecommended,
             p.PlanFeatures.Select(f => new PlanFeatureDto(
-                $"{f.Feature.Name}: {f.Value}", 
+                f.Feature.Code, 
                 !f.Value.Equals("false", StringComparison.OrdinalIgnoreCase))
             ).ToList()
         )).ToList();

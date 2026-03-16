@@ -43,7 +43,8 @@ public class GetBillingOverviewHandler : IRequestHandler<GetBillingOverviewQuery
                 activeSub.StartDate,
                 activeSub.EndDate,
                 activeSub.Provider.ToString(),
-                activeSub.ExternalSubscriptionId)
+                activeSub.ExternalSubscriptionId,
+                activeSub.DurationMonths)
             : null;
 
         return Result<BillingOverviewDto>.Success(new BillingOverviewDto(

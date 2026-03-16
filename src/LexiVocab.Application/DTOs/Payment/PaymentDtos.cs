@@ -8,7 +8,8 @@ public record SubscriptionDto(
     DateTime StartDate,
     DateTime? EndDate,
     string Provider,
-    string? ExternalSubscriptionId);
+    string? ExternalSubscriptionId,
+    int? DurationMonths);
 
 /// <summary>DTO for individual payment transaction history.</summary>
 public record PaymentHistoryDto(
@@ -19,7 +20,8 @@ public record PaymentHistoryDto(
     string Currency,
     string Status,
     DateTime CreatedAt,
-    DateTime? PaidAt);
+    DateTime? PaidAt,
+    string? ApprovalUrl = null);
 
 /// <summary>DTO for billing overview page.</summary>
 public record BillingOverviewDto(

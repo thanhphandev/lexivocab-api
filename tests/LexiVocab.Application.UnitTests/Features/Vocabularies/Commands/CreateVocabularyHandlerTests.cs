@@ -1,5 +1,6 @@
 using FluentAssertions;
 using LexiVocab.Application.Common.Interfaces;
+using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Application.Features.Vocabularies.Commands;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
@@ -42,9 +43,11 @@ public class CreateVocabularyHandlerTests
         // Arrange
         var command = new CreateVocabularyCommand("hello", "xin chao", null, null);
         
+        var permissions = new UserPermissionsDto("Free", 50, null, new Dictionary<string, string> { ["MAX_WORDS"] = "50" });
+        
         _mockFeatureGating
-            .Setup(x => x.CanCreateVocabularyAsync(_userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false); // Quota exceeded
+            .Setup(x => x.GetPermissionsAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(permissions); // CurrentCount >= MAX_WORDS (50 >= 50)
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -65,9 +68,11 @@ public class CreateVocabularyHandlerTests
         // Arrange
         var command = new CreateVocabularyCommand("hello", "xin chao", null, null);
         
+        var permissions = new UserPermissionsDto("Free", 10, null, new Dictionary<string, string> { ["MAX_WORDS"] = "50" });
+        
         _mockFeatureGating
-            .Setup(x => x.CanCreateVocabularyAsync(_userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetPermissionsAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(permissions);
 
         _mockUow.Setup(x => x.Vocabularies.WordExistsForUserAsync(_userId, "hello", It.IsAny<CancellationToken>()))
             .ReturnsAsync(true); // Word exists
@@ -90,9 +95,11 @@ public class CreateVocabularyHandlerTests
         // Arrange
         var command = new CreateVocabularyCommand("  Ubiquitous  ", "có mặt khắp nơi", null, null);
         
+        var permissions = new UserPermissionsDto("Free", 10, null, new Dictionary<string, string> { ["MAX_WORDS"] = "50" });
+        
         _mockFeatureGating
-            .Setup(x => x.CanCreateVocabularyAsync(_userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetPermissionsAsync(_userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(permissions);
 
         _mockUow.Setup(x => x.Vocabularies.WordExistsForUserAsync(_userId, "  Ubiquitous  ", It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);

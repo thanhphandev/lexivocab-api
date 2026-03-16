@@ -37,14 +37,6 @@ public class FeatureGatingService : IFeatureGatingService
         return CreatePermissionsDto(activeSub.PlanDefinition, currentCount, activeSub.EndDate);
     }
 
-    public async Task<bool> CanCreateVocabularyAsync(Guid userId, CancellationToken ct)
-    {
-         var permissions = await GetPermissionsAsync(userId, ct);
-         int maxWords = permissions.GetLimit("MAX_WORDS", 50);
-         if (maxWords >= 999999) return true;
-         return permissions.CurrentCount < maxWords;
-    }
-
     public async Task<bool> HasFeatureAsync(Guid userId, string featureCode, CancellationToken ct)
     {
         var permissions = await GetPermissionsAsync(userId, ct);

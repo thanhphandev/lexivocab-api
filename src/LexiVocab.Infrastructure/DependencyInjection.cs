@@ -92,6 +92,7 @@ public static class DependencyInjection
         
         // ─── Freemium & Payments ─────────────────────────────
         services.AddScoped<IFeatureGatingService, Services.FeatureGatingService>();
+        services.AddScoped<IPricingCalculator, Services.PricingCalculator>();
         services.AddScoped<IPaymentServiceFactory, Services.PaymentServiceFactory>();
         
         services.AddHttpClient<IPaymentService, Services.PayPalService>(client =>
@@ -100,7 +101,7 @@ public static class DependencyInjection
         })
         .AddStandardResilienceHandler();
 
-        services.AddScoped<IPaymentService, Services.SeapayService>();
+        services.AddScoped<IPaymentService, Services.SepayService>();
 
         // ─── Google OAuth ─────────────────────────────────────
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();

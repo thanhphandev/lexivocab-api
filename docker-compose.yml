@@ -29,11 +29,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: '1.0'
+    networks:
+      - lexivocab-network
 
   # ─── Redis 7 ─────────────────────────────────────────────────
   redis:
@@ -56,6 +53,8 @@ services:
         limits:
           memory: 256M
           cpus: '0.5'
+    networks:
+      - lexivocab-network
 
   # ─── SEQ (Logging & Observability) ───────────────────────────
   seq:
@@ -67,18 +66,29 @@ services:
     ports:
       - "5341:5341" # Ingestion port
       - "8081:80"   # UI port
-      
-  # ─── CloudBeaver (Database Manager hiện đại) ────────────────
-  dashboard:
-    image: dbeaver/cloudbeaver:latest
-    container_name: lexivocab-dashboard
+    networks:
+      - lexivocab-network
+
+  # ─── pgAdmin 4 (Database Manager) ──────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: lexivocab-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@lexivocab.store}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'True'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      PGADMIN_CONFIG_UPGRADE_CHECK_ENABLED: 'False'
     ports:
-      - "8080:8978" # Truy cập tại http://localhost:8080
+      - "5050:80"
     volumes:
-      - cloudbeaver-data:/opt/cloudbeaver/workspace
+      - pgadmin-data:/var/lib/pgadmin
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - lexivocab-network
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -106,6 +116,8 @@ services:
         condition: service_healthy
       seq:
         condition: service_started
+    networks:
+      - lexivocab-network
     restart: unless-stopped
     deploy:
       resources:
@@ -116,4 +128,8 @@ services:
 volumes:
   pgdata:
   redisdata:
-  cloudbeaver-data:
+  pgadmin-data:
+
+networks:
+  lexivocab-network:
+    driver: bridge

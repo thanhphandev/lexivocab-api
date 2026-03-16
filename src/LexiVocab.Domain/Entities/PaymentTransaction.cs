@@ -34,7 +34,7 @@ public class PaymentTransaction : BaseEntity
     /// <summary>Raw webhook/response payload for audit trail.</summary>
     public string? RawPayload { get; set; }
 
-    /// <summary>Unique ID from the provider (e.g. SePay ID or PayPal Capture ID).</summary>
+    /// <summary>Unique ID from the provider (e.g. Sepay ID or PayPal Capture ID).</summary>
     public string? ProviderResponseId { get; set; }
 
     // ─── Navigation ──────────────────────────────────────────────

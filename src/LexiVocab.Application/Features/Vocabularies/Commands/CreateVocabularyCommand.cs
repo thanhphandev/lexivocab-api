@@ -44,7 +44,9 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
     {
         var userId = _currentUser.UserId!.Value;
 
-        if (!await _featureGating.CanCreateVocabularyAsync(userId, ct))
+        var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
+        var maxWords = permissions.GetLimit("MAX_WORDS"); // Returns int, maybe Int32.MaxValue for unlimited?
+        if (maxWords > 0 && permissions.CurrentCount >= maxWords)
         {
             return Result<VocabularyDto>.Failure("ERR_QUOTA_EXCEEDED", 403);
         }
@@ -87,7 +89,13 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
             NextReviewDate = DateTime.UtcNow
         };
 
+        var masterEntity = new MasterVocabulary
+        { 
+            Word = request.WordText.Trim(),
+        };
+
         await _uow.Vocabularies.AddAsync(entity, ct);
+        await _uow.MasterVocabularies.AddAsync(masterEntity, ct);
         await _uow.SaveChangesAsync(ct);
 
         if (assignedTagId.HasValue)

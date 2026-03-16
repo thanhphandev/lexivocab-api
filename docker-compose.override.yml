@@ -1,0 +1,50 @@
+# ──────────────────────────────────────────────────────────────────
+# Docker Compose Override — Development with Public Tunnel
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d
+#
+# This adds an ngrok tunnel to expose the API for webhook testing.
+# Get your auth token from: https://dashboard.ngrok.com/get-started/your-authtoken
+# ──────────────────────────────────────────────────────────────────
+
+services:
+  # ─── Ngrok Tunnel (Public URL for Webhook Testing) ───────────
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: lexivocab-ngrok
+    command:
+      - "start"
+      - "api"
+      - "--config"
+      - "/etc/ngrok.yml"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-35QFzz8BWWahUfmFZTClj72CnWy_7r5LM8XuRJES33oVMYo89}
+    ports:
+      - "4040:4040"  # Ngrok inspect UI: http://localhost:4040
+    volumes:
+      - ./ngrok-config.yml:/etc/ngrok.yml:ro
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - lexivocab-network
+
+  # ─── API: Override for webhook header forwarding ─────────────
+  api:
+    # Ensure API can receive forwarded headers from ngrok
+    environment:
+      # Trust proxy headers from ngrok
+      - ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      # Sepay config - REQUIRED for QR generation
+      - Sepay__ApiKey=${SEPAY_API_KEY:-test_key}
+      - Sepay__BankAccount=${SEPAY_BANK_ACCOUNT:-}
+      - Sepay__BankName=${SEPAY_BANK_NAME:-}
+      - Sepay__ApiBaseUrl=${SEPAY_API_BASE_URL:-https://my.sepay.vn/api}
+      - Sepay__QrTemplate=${SEPAY_QR_TEMPLATE:-https://qr.sepay.vn/img?acc={0}&bank={1}&amount={2}&des={3}}
+    networks:
+      - lexivocab-network
+
+networks:
+  lexivocab-network:
+    driver: bridge

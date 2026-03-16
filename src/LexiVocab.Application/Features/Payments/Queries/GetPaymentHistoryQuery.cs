@@ -13,11 +13,13 @@ public class GetPaymentHistoryHandler : IRequestHandler<GetPaymentHistoryQuery, 
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IPaymentServiceFactory _paymentFactory;
 
-    public GetPaymentHistoryHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public GetPaymentHistoryHandler(IUnitOfWork uow, ICurrentUserService currentUser, IPaymentServiceFactory paymentFactory)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _paymentFactory = paymentFactory;
     }
 
     public async Task<Result<PagedResult<PaymentHistoryDto>>> Handle(GetPaymentHistoryQuery request, CancellationToken ct)
@@ -27,15 +29,25 @@ public class GetPaymentHistoryHandler : IRequestHandler<GetPaymentHistoryQuery, 
         var (transactions, totalCount) = await _uow.PaymentTransactions
             .GetPaginatedByUserAsync(userId, request.Page, request.PageSize, ct);
 
-        var items = transactions.Select(t => new PaymentHistoryDto(
-            t.Id,
-            t.Provider.ToString(),
-            t.ExternalOrderId,
-            t.Amount,
-            t.Currency,
-            t.Status.ToString(),
-            t.CreatedAt,
-            t.PaidAt)).ToList();
+        var items = transactions.Select(t => {
+            string? approvalUrl = null;
+            if (t.Status == LexiVocab.Domain.Enums.PaymentStatus.Pending)
+            {
+                var service = _paymentFactory.GetService(t.Provider);
+                approvalUrl = service.GetApprovalUrl(t.ExternalOrderId, t.Amount);
+            }
+
+            return new PaymentHistoryDto(
+                t.Id,
+                t.Provider.ToString(),
+                t.ExternalOrderId,
+                t.Amount,
+                t.Currency,
+                t.Status.ToString(),
+                t.CreatedAt,
+                t.PaidAt,
+                approvalUrl);
+        }).ToList();
 
         return Result<PagedResult<PaymentHistoryDto>>.Success(new PagedResult<PaymentHistoryDto>
         {

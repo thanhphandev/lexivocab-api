@@ -4,6 +4,7 @@ using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Infrastructure.Services;
+using Microsoft.Extensions.Caching.Distributed;
 using Moq;
 using Xunit;
 
@@ -12,13 +13,15 @@ namespace LexiVocab.Infrastructure.UnitTests.Services;
 public class FeatureGatingServiceTests
 {
     private readonly Mock<IUnitOfWork> _mockUow;
+    private readonly Mock<IDistributedCache> _mockCache;
     private readonly FeatureGatingService _service;
     private readonly Guid _userId = Guid.NewGuid();
 
     public FeatureGatingServiceTests()
     {
         _mockUow = new Mock<IUnitOfWork>();
-        _service = new FeatureGatingService(_mockUow.Object);
+        _mockCache = new Mock<IDistributedCache>();
+        _service = new FeatureGatingService(_mockUow.Object, _mockCache.Object);
     }
 
     [Fact]
@@ -57,8 +60,8 @@ public class FeatureGatingServiceTests
 
         // Assert
         result.Plan.Should().Be("Premium");
-        result.CanUseAi.Should().BeTrue();
-        result.MaxVocabularies.Should().Be(999999);
+        result.HasFeature("AI_ACCESS").Should().BeTrue();
+        result.GetLimit("MAX_WORDS").Should().Be(999999);
         result.CurrentCount.Should().Be(10);
     }
 
@@ -71,7 +74,8 @@ public class FeatureGatingServiceTests
             Name = "Free",
             PlanFeatures = new List<PlanFeature>
             {
-                new() { Feature = new FeatureDefinition { Code = "MAX_WORDS" }, Value = "50" }
+                new() { Feature = new FeatureDefinition { Code = "MAX_WORDS" }, Value = "50" },
+                new() { Feature = new FeatureDefinition { Code = "AI_ACCESS" }, Value = "false" }
             }
         };
 
@@ -89,7 +93,7 @@ public class FeatureGatingServiceTests
 
         // Assert
         result.Plan.Should().Be("Free");
-        result.MaxVocabularies.Should().Be(50);
-        result.CanUseAi.Should().BeFalse();
+        result.GetLimit("MAX_WORDS").Should().Be(50);
+        result.HasFeature("AI_ACCESS").Should().BeFalse();
     }
 }

@@ -103,7 +103,6 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
         var refreshTokenExpiryDays = int.Parse(_configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
         user.RefreshTokenHash = _hasher.Hash(refreshToken);
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
-        _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);
 
         var metadata = JsonSerializer.Serialize(new RefreshTokenMetadata(user.Id, request.DeviceInfo, request.IpAddress, DateTime.UtcNow));

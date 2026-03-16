@@ -20,6 +20,7 @@ public class PayPalService : IPaymentService
 {
     private readonly HttpClient _httpClient;
     private readonly IUnitOfWork _uow;
+    private readonly IPricingCalculator _pricingCalculator;
     private readonly ILogger<PayPalService> _logger;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
@@ -37,6 +38,7 @@ public class PayPalService : IPaymentService
     public PayPalService(
         HttpClient httpClient,
         IUnitOfWork uow,
+        IPricingCalculator pricingCalculator,
         IConfiguration config,
         IHostEnvironment env,
         ILogger<PayPalService> logger,
@@ -45,6 +47,7 @@ public class PayPalService : IPaymentService
     {
         _httpClient = httpClient;
         _uow = uow;
+        _pricingCalculator = pricingCalculator;
         _logger = logger;
         _emailQueue = emailQueue;
         _templateService = templateService;
@@ -75,7 +78,7 @@ public class PayPalService : IPaymentService
         return doc.RootElement.GetProperty("access_token").GetString() ?? "";
     }
 
-    public async Task<string> CreateOrderAsync(Guid userId, string planId, CancellationToken ct)
+    public async Task<string> CreateOrderAsync(Guid userId, string planId, int durationMonths, CancellationToken ct)
     {
         var token = await GetAccessTokenAsync(ct);
 
@@ -84,9 +87,11 @@ public class PayPalService : IPaymentService
 
         var plan = await _uow.PlanDefinitions.GetByIdAsync(planGuid, ct)
                    ?? throw new ArgumentException("Subscription plan not found.");
-        
-        var amount = plan.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-        var description = $"LexiVocab {plan.Name} - {plan.Description}";
+
+        // Calculate dynamic price with discount
+        var pricing = _pricingCalculator.CalculatePrice(plan.Price, durationMonths);
+        var amount = pricing.FinalPrice.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        var description = $"LexiVocab {plan.Name} - {durationMonths} month(s) (Save {pricing.DiscountPercent:F0}%)";
 
         var payload = new
         {
@@ -119,7 +124,7 @@ public class PayPalService : IPaymentService
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var response = await _httpClient.SendAsync(request, ct);
-        
+
         var json = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
@@ -129,7 +134,7 @@ public class PayPalService : IPaymentService
 
         using var doc = JsonDocument.Parse(json);
         var links = doc.RootElement.GetProperty("links").EnumerateArray();
-        
+
         foreach (var link in links)
         {
             if (link.GetProperty("rel").GetString() == "approve")
@@ -143,17 +148,18 @@ public class PayPalService : IPaymentService
                     PlanDefinitionId = plan.Id,
                     Status = SubscriptionStatus.Pending,
                     StartDate = DateTime.UtcNow,
-                    EndDate = plan.DurationDays > 0 ? DateTime.UtcNow.AddDays(plan.DurationDays) : null,
-                    Provider = PaymentProvider.PayPal
+                    EndDate = DateTime.UtcNow.AddMonths(durationMonths),
+                    Provider = PaymentProvider.PayPal,
+                    DurationMonths = durationMonths // Store the duration
                 };
-                
+
                 var tx = new PaymentTransaction
                 {
                     UserId = userId,
                     Subscription = sub,
                     Provider = PaymentProvider.PayPal,
                     ExternalOrderId = orderId,
-                    Amount = decimal.Parse(amount, System.Globalization.CultureInfo.InvariantCulture),
+                    Amount = pricing.FinalPrice,
                     Currency = CurrencyCode,
                     Status = PaymentStatus.Pending
                 };
@@ -507,5 +513,10 @@ public class PayPalService : IPaymentService
         {
             _logger.LogError(ex, "Failed to send payment success email for order {OrderId}", orderId);
         }
+    }
+
+    public string? GetApprovalUrl(string reference, decimal amount)
+    {
+        return null; // PayPal URLs are short-lived and dynamic
     }
 }

@@ -40,7 +40,7 @@ public class PaymentCommandsTests
         var command = new CreatePaymentOrderCommand("premium_id", PaymentProvider.PayPal);
         var expectedUrl = "https://www.sandbox.paypal.com/checkoutnow?token=EC-1234567890";
 
-        _mockPaymentService.Setup(x => x.CreateOrderAsync(_userId, "premium_id", It.IsAny<CancellationToken>()))
+        _mockPaymentService.Setup(x => x.CreateOrderAsync(_userId, "premium_id", It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedUrl);
 
         // Act
@@ -58,7 +58,7 @@ public class PaymentCommandsTests
         var handler = new CreatePaymentOrderHandler(_mockPaymentFactory.Object, _mockCurrentUser.Object, _mockCreateLogger.Object);
         var command = new CreatePaymentOrderCommand("premium_id", PaymentProvider.PayPal);
 
-        _mockPaymentService.Setup(x => x.CreateOrderAsync(_userId, "premium_id", It.IsAny<CancellationToken>()))
+        _mockPaymentService.Setup(x => x.CreateOrderAsync(_userId, "premium_id", It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("PayPal API Error"));
 
         // Act
@@ -93,7 +93,7 @@ public class PaymentCommandsTests
     {
         // Arrange
         var handler = new ProcessPaymentWebhookHandler(_mockPaymentFactory.Object, _mockWebhookLogger.Object);
-        var command = new ProcessPaymentWebhookCommand(PaymentProvider.Seapay, "{}", new Dictionary<string, string>());
+        var command = new ProcessPaymentWebhookCommand(PaymentProvider.Sepay, "{}", new Dictionary<string, string>());
 
         _mockPaymentService.Setup(x => x.VerifyWebhookSignatureAsync(It.IsAny<string>(), It.IsAny<IDictionary<string, string>>()))
             .ReturnsAsync(true);
@@ -111,7 +111,7 @@ public class PaymentCommandsTests
     {
         // Arrange
         var handler = new ProcessPaymentWebhookHandler(_mockPaymentFactory.Object, _mockWebhookLogger.Object);
-        var command = new ProcessPaymentWebhookCommand(PaymentProvider.Seapay, "{}", new Dictionary<string, string>());
+        var command = new ProcessPaymentWebhookCommand(PaymentProvider.Sepay, "{}", new Dictionary<string, string>());
 
         _mockPaymentService.Setup(x => x.VerifyWebhookSignatureAsync(It.IsAny<string>(), It.IsAny<IDictionary<string, string>>()))
             .ReturnsAsync(false);

@@ -25,7 +25,7 @@ public class PlanDefinitionSeeder : IDataSeeder
             return; // Already seeded
         }
 
-        var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var seedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         // Feature IDs
         var maxWordsId = new Guid("f1111111-1111-1111-1111-111111111111");
@@ -34,6 +34,10 @@ public class PlanDefinitionSeeder : IDataSeeder
         var exportPdfId = new Guid("f4444444-4444-4444-4444-444444444444");
         var maxTagsId = new Guid("f5555555-5555-5555-5555-555555555555");
         var batchImportId = new Guid("f6666666-6666-6666-6666-666666666666");
+        var aiDailyLimitId = new Guid("f7777777-7777-7777-7777-777777777777");
+        var maxQuizPerDayId = new Guid("f8888888-8888-8888-8888-888888888888");
+        var advancedAiId = new Guid("f9999999-9999-9999-9999-999999999999");
+        var quizGenerationId = new Guid("faaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
         // Free Plan
         var freePlan = new PlanDefinition
@@ -44,7 +48,7 @@ public class PlanDefinitionSeeder : IDataSeeder
             Price = 0m,
             Currency = "VND",
             Description = "Perfect for beginners to get started",
-            IntervalType = "Month",
+            IntervalType = "Lifetime",
             DurationDays = 0,
             IsActive = true,
             IsRecommended = false,
@@ -52,25 +56,29 @@ public class PlanDefinitionSeeder : IDataSeeder
             PlanFeatures =
             [
                 new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "50" },
-                new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "false" },
+                new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "Community" },
                 new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "false" },
                 new PlanFeature { FeatureDefinitionId = maxTagsId, Value = "3" },
-                new PlanFeature { FeatureDefinitionId = batchImportId, Value = "false" }
+                new PlanFeature { FeatureDefinitionId = batchImportId, Value = "false" },
+                new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "10" },
+                new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "5" },
+                new PlanFeature { FeatureDefinitionId = advancedAiId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = quizGenerationId, Value = "true" }
             ]
         };
 
-        // Premium Monthly Plan
+        // Premium Plan (Base - Price per month, interval flexible from client)
         var premiumPlan = new PlanDefinition
         {
             Id = new Guid("22222222-2222-2222-2222-222222222222"),
             Name = "Premium",
             NameKey = "plan_premium",
-            Price = 199000m,
+            Price = 5000m, // Base price per month
             Currency = "VND",
             Description = "Unlock full potential with AI features",
-            IntervalType = "Month",
-            DurationDays = 30,
+            IntervalType = "Month", // Client can request 1, 3, 6, 12 months
+            DurationDays = 30, // Minimum 1 month
             IsActive = true,
             IsRecommended = true,
             CreatedAt = seedDate,
@@ -81,32 +89,11 @@ public class PlanDefinitionSeeder : IDataSeeder
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "Email" },
                 new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = maxTagsId, Value = "50" },
-                new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" }
-            ]
-        };
-
-        // Premium Yearly Plan
-        var yearlyPlan = new PlanDefinition
-        {
-            Id = new Guid("33333333-3333-3333-3333-333333333333"),
-            Name = "Premium Yearly",
-            NameKey = "plan_premium_yearly",
-            Price = 1990000m,
-            Currency = "VND",
-            Description = "Save 17% with yearly billing",
-            IntervalType = "Year",
-            DurationDays = 365,
-            IsActive = true,
-            IsRecommended = false,
-            CreatedAt = seedDate,
-            PlanFeatures =
-            [
-                new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "Unlimited" },
-                new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "true" },
-                new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "Priority" },
-                new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "true" },
-                new PlanFeature { FeatureDefinitionId = maxTagsId, Value = "Unlimited" },
-                new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" }
+                new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "50" },
+                new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "20" },
+                new PlanFeature { FeatureDefinitionId = advancedAiId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = quizGenerationId, Value = "true" }
             ]
         };
 
@@ -131,12 +118,16 @@ public class PlanDefinitionSeeder : IDataSeeder
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "24/7 Priority" },
                 new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = maxTagsId, Value = "Unlimited" },
-                new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" }
+                new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "Unlimited" },
+                new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "Unlimited" },
+                new PlanFeature { FeatureDefinitionId = advancedAiId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = quizGenerationId, Value = "true" }
             ]
         };
 
         await _dbContext.PlanDefinitions.AddRangeAsync(
-            [freePlan, premiumPlan, yearlyPlan, businessPlan], cancellationToken);
+            [freePlan, premiumPlan, businessPlan], cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

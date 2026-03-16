@@ -24,6 +24,9 @@ public class Subscription : BaseEntity
     /// <summary>When this subscription period ends. Null = lifetime.</summary>
     public DateTime? EndDate { get; set; }
 
+    /// <summary>Number of months purchased (for flexible duration plans).</summary>
+    public int? DurationMonths { get; set; }
+
     // ─── Payment Provider Reference ──────────────────────────────
     /// <summary>Which provider processed the payment.</summary>
     public PaymentProvider Provider { get; set; } = PaymentProvider.Mock;

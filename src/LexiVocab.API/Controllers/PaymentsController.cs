@@ -98,23 +98,23 @@ public class PaymentsController : ControllerBase
         using var reader = new StreamReader(Request.Body);
         var body = await reader.ReadToEndAsync(ct);
 
-        var headers = Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString());
+        var headers = Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString(), StringComparer.OrdinalIgnoreCase);
         var command = new ProcessPaymentWebhookCommand(PaymentProvider.PayPal, body, headers);
         
         var result = await _mediator.Send(command, ct);
         return result.IsSuccess ? Ok() : ToActionResult(result);
     }
 
-    // ─── SePay Webhook ──────────────────────────────────────────
+    // ─── Sepay Webhook ──────────────────────────────────────────
     [HttpPost("webhook/sepay")]
     [AllowAnonymous] // Assuming this should also be anonymous like PayPal webhook
-    public async Task<IActionResult> SePayWebhook()
+    public async Task<IActionResult> SepayWebhook()
     {
         using var reader = new StreamReader(Request.Body);
         var body = await reader.ReadToEndAsync();
         
-        var headers = Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString());
-        var command = new ProcessPaymentWebhookCommand(PaymentProvider.Seapay, body, headers);
+        var headers = Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString(), StringComparer.OrdinalIgnoreCase);
+        var command = new ProcessPaymentWebhookCommand(PaymentProvider.Sepay, body, headers);
         
         var result = await _mediator.Send(command, HttpContext.RequestAborted);
         return result.IsSuccess ? Ok() : ToActionResult(result);

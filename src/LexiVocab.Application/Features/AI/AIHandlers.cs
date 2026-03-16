@@ -84,8 +84,8 @@ public class AIHandlers :
     public async Task<Result<QuizDto>> Handle(GetWordQuizQuery request, CancellationToken ct)
     {
         var userId = _currentUser.UserId!.Value;
-        if (!await _featureGating.ConsumeQuotaAsync(userId, "QUIZ_GENERATION", "AI_DAILY_LIMIT", ct))
-            return Result<QuizDto>.Failure("Daily AI request limit reached or feature not available. Upgrade to Pro for higher limits.", 403);
+        if (!await _featureGating.ConsumeQuotaAsync(userId, "QUIZ_GENERATION", "MAX_QUIZ_PER_DAY", ct))
+            return Result<QuizDto>.Failure("Daily quiz limit reached or feature not available. Upgrade to Pro for higher limits.", 403);
 
         var json = await _aiService.GenerateQuizAsync(request.Word, ct);
         if (string.IsNullOrEmpty(json)) return Result<QuizDto>.Failure("AI failed to generate quiz");

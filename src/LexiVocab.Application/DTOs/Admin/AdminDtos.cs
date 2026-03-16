@@ -32,7 +32,8 @@ public record AdminSubscriptionDto(
     DateTime StartDate,
     DateTime? EndDate,
     string Provider,
-    string? ExternalSubscriptionId);
+    string? ExternalSubscriptionId,
+    int? DurationMonths);
 
 public record UpdateUserRoleRequest(string Role);
 public record UpdateUserStatusRequest(bool IsActive);
