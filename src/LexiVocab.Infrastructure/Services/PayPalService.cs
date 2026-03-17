@@ -383,6 +383,12 @@ public class PayPalService : IPaymentService
                 return;
             }
 
+            if (tx.IsTerminal)
+            {
+                _logger.LogInformation("Payment already in terminal state {Status} for order {OrderId}. Skipping refund handler.", tx.Status, orderId);
+                return;
+            }
+
             tx.Status = PaymentStatus.Refunded;
             tx.Subscription.Status = SubscriptionStatus.Cancelled;
 
@@ -436,11 +442,33 @@ public class PayPalService : IPaymentService
 
             if (tx == null) return;
 
+            if (tx.IsTerminal)
+            {
+                _logger.LogInformation("Payment already in terminal state {Status} for order {OrderId}. Skipping failed handler.", tx.Status, orderId);
+                return;
+            }
+
             tx.Status = PaymentStatus.Failed;
             tx.Subscription.Status = SubscriptionStatus.Cancelled;
 
             await _uow.SaveChangesAsync(ct);
             _logger.LogInformation("Marked payment as failed for order {OrderId}", orderId);
+
+            // Send payment failed email
+            try
+            {
+                var user = tx.User;
+                var html = await _templateService.RenderTemplateAsync("PaymentFailed", new Dictionary<string, string>
+                {
+                    { "FullName", user.FullName },
+                    { "Amount", $"${tx.Amount:F2} {tx.Currency}" }
+                });
+                _emailQueue.EnqueueEmail(user.Email, "❌ Payment Failed", html);
+            }
+            catch (Exception ex2)
+            {
+                _logger.LogError(ex2, "Failed to send payment failed email for order {OrderId}", orderId);
+            }
         }
         catch (Exception ex)
         {
@@ -466,9 +494,9 @@ public class PayPalService : IPaymentService
         }
 
         // Idempotent check
-        if (tx.Status == PaymentStatus.Completed)
+        if (tx.IsTerminal)
         {
-            _logger.LogInformation("ActivateSubscription: Order {OrderId} already COMPLETED. Skipping activation.", orderId);
+            _logger.LogInformation("ActivateSubscription: Order {OrderId} already in terminal state {Status}. Skipping activation.", orderId, tx.Status);
             return;
         }
 

@@ -1,6 +1,7 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Payment;
+using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
 
@@ -26,12 +27,15 @@ public class GetPaymentHistoryHandler : IRequestHandler<GetPaymentHistoryQuery, 
     {
         var userId = _currentUser.UserId!.Value;
 
+        // Lazy-expire: flip expired pending transactions before fetching
+        await ExpirePendingTransactionsAsync(userId, ct);
+
         var (transactions, totalCount) = await _uow.PaymentTransactions
             .GetPaginatedByUserAsync(userId, request.Page, request.PageSize, ct);
 
         var items = transactions.Select(t => {
             string? approvalUrl = null;
-            if (t.Status == LexiVocab.Domain.Enums.PaymentStatus.Pending)
+            if (t.Status == PaymentStatus.Pending)
             {
                 var service = _paymentFactory.GetService(t.Provider);
                 approvalUrl = service.GetApprovalUrl(t.ExternalOrderId, t.Amount);
@@ -58,5 +62,25 @@ public class GetPaymentHistoryHandler : IRequestHandler<GetPaymentHistoryQuery, 
             Page = request.Page,
             PageSize = request.PageSize
         });
+    }
+
+    /// <summary>
+    /// Finds tracked pending expired transactions for the user and flips them to Expired.
+    /// </summary>
+    private async Task ExpirePendingTransactionsAsync(Guid userId, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+
+        var expiredTransactions = await _uow.PaymentTransactions
+            .GetExpiredPendingByUserAsync(userId, now, ct);
+
+        if (expiredTransactions.Count == 0) return;
+
+        foreach (var tx in expiredTransactions)
+        {
+            PaymentExpirationHelper.ExpireIfNeeded(tx, now);
+        }
+
+        await _uow.SaveChangesAsync(ct);
     }
 }

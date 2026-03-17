@@ -15,4 +15,10 @@ public interface IPaymentTransactionRepository : IRepository<PaymentTransaction>
     Task<PaymentTransaction?> GetByExternalOrderIdAsync(string externalOrderId, CancellationToken ct = default);
     Task<PaymentTransaction?> GetByExternalOrderIdWithDetailsAsync(string orderId, CancellationToken ct = default);
     Task<bool> ExistsByProviderResponseIdAsync(string responseId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets pending transactions that have expired (ExpiresAt <= now) for a specific user.
+    /// </summary>
+    Task<IReadOnlyList<PaymentTransaction>> GetExpiredPendingByUserAsync(
+        Guid userId, DateTime now, CancellationToken ct = default);
 }

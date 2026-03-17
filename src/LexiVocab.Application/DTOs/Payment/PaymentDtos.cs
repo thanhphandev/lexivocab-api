@@ -39,7 +39,8 @@ public record PaymentStatusDto(
 
 public record PlanFeatureDto(
     string TextKey,
-    bool Included);
+    bool Included,
+    Dictionary<string, object>? Params = null);
 
 public record SubscriptionPlanDto(
     string Id,

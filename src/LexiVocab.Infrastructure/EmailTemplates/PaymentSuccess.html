@@ -1,60 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Successful - LexiVocab</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f6f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1a1a1a;">
-    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f6f9fc; padding: 40px 0;">
+
+<body
+    style="margin: 0; padding: 0; background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #111827;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 48px 0;">
         <tr>
             <td align="center">
-                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; margin: 0 auto;">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0"
+                    style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; margin: 0 auto; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);">
                     <tr>
-                        <td style="padding: 40px;">
+                        <td style="padding: 48px;">
                             <!-- Header / Logo -->
-                            <div style="margin-bottom: 32px;">
-                                <span style="font-size: 24px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px;">LexiVocab<span style="color: #ea580c;">.</span></span>
+                            <div style="margin-bottom: 40px; text-align: left;">
+                                <span
+                                    style="font-size: 24px; font-weight: 700; color: #111827; letter-spacing: -0.025em;">LexiVocab<span
+                                        style="color: #eb6725;">.</span></span>
                             </div>
-                            
+
                             <!-- Content -->
-                            <h1 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #1a1a1a;">Payment confirmed</h1>
+                            <h1
+                                style="margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: #111827; letter-spacing: -0.025em;">
+                                Payment confirmed</h1>
                             <p style="margin: 0 0 32px 0; font-size: 16px; color: #4b5563; line-height: 1.6;">
                                 Hi {{FullName}},<br><br>
-                                Your payment has been successfully processed and your LexiVocab account has been instantly upgraded. Welcome to <strong>{{PlanName}}</strong>.
+                                Your payment has been successfully processed. Your account has been upgraded to
+                                <strong>{{PlanName}}</strong>.
                             </p>
-                            
-                            <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 32px; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
+
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0"
+                                style="margin-bottom: 32px; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
                                 <tr>
-                                    <td style="padding: 16px 20px; background-color: #f9fafb; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb;">
-                                        Order Details
+                                    <td
+                                        style="padding: 16px 24px; background-color: #f9fafb; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb;">
+                                        Order Summary
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style="padding: 20px;">
+                                    <td style="padding: 24px;">
                                         <table width="100%" border="0" cellpadding="0" cellspacing="0">
                                             <tr>
-                                                <td style="padding-bottom: 12px; font-size: 14px; color: #4b5563;">Plan</td>
-                                                <td style="padding-bottom: 12px; font-size: 14px; color: #1a1a1a; text-align: right; font-weight: 500;">{{PlanName}}</td>
+                                                <td style="padding-bottom: 12px; font-size: 14px; color: #6b7280;">Plan
+                                                </td>
+                                                <td
+                                                    style="padding-bottom: 12px; font-size: 14px; color: #111827; text-align: right; font-weight: 600;">
+                                                    {{PlanName}}</td>
                                             </tr>
                                             <tr>
-                                                <td style="padding-bottom: 12px; font-size: 14px; color: #4b5563;">Amount</td>
-                                                <td style="padding-bottom: 12px; font-size: 14px; color: #1a1a1a; text-align: right; font-weight: 500;">{{Amount}}</td>
+                                                <td style="padding-bottom: 12px; font-size: 14px; color: #6b7280;">
+                                                    Amount</td>
+                                                <td
+                                                    style="padding-bottom: 12px; font-size: 14px; color: #111827; text-align: right; font-weight: 600;">
+                                                    {{Amount}}</td>
                                             </tr>
                                             <tr>
-                                                <td style="padding-bottom: 12px; font-size: 14px; color: #4b5563;">Status</td>
-                                                <td style="padding-bottom: 12px; font-size: 14px; color: #16a34a; text-align: right; font-weight: 500;">Paid</td>
+                                                <td style="padding-bottom: 12px; font-size: 14px; color: #6b7280;">
+                                                    Status</td>
+                                                <td
+                                                    style="padding-bottom: 12px; font-size: 14px; color: #10b981; text-align: right; font-weight: 600;">
+                                                    Paid</td>
                                             </tr>
                                             <tr>
-                                                <td style="font-size: 14px; color: #4b5563;">Valid Until</td>
-                                                <td style="font-size: 14px; color: #1a1a1a; text-align: right; font-weight: 500;">{{ExpiryDate}}</td>
+                                                <td style="font-size: 14px; color: #6b7280;">Valid Until</td>
+                                                <td
+                                                    style="font-size: 14px; color: #111827; text-align: right; font-weight: 600;">
+                                                    {{ExpiryDate}}</td>
                                             </tr>
                                         </table>
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td style="padding: 16px 20px; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb; background-color: #f9fafb;">
-                                        Reference ID: <span style="font-family: monospace;">{{TransactionId}}</span>
+                                    <td
+                                        style="padding: 16px 24px; font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; background-color: #f9fafb;">
+                                        Reference ID: <span
+                                            style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: #6b7280;">{{TransactionId}}</span>
                                     </td>
                                 </tr>
                             </table>
@@ -62,20 +86,24 @@
                             <table width="100%" border="0" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td>
-                                        <a href="https://lexivocab.store/dashboard" style="background-color: #1a1a1a; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 15px; display: inline-block;">Go to Dashboard</a>
+                                        <a href="https://lexivocab.store/dashboard"
+                                            style="background-color: #eb6725; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block;">Go
+                                            to Dashboard</a>
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
                 </table>
-                <!-- Footer here -->
-                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
+                <!-- Footer -->
+                <table width="100%" border="0" cellpadding="0" cellspacing="0"
+                    style="max-width: 600px; margin: 0 auto;">
                     <tr>
-                        <td style="padding: 24px 40px; text-align: left;">
-                            <p style="margin: 0; font-size: 13px; color: #8898aa; line-height: 1.6;">
-                                &copy; {{CurrentYear}} LexiVocab Inc.<br>
-                                Need help? <a href="mailto:support@lexivocab.com" style="color: #8898aa; text-decoration: underline;">Contact support</a>
+                        <td style="padding: 32px 48px; text-align: left;">
+                            <p style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.6;">
+                                &copy; {{CurrentYear}} LexiVocab Inc. All rights reserved.<br>
+                                Need help? <a href="mailto:support@lexivocab.com"
+                                    style="color: #6b7280; text-decoration: underline;">Contact support</a>
                             </p>
                         </td>
                     </tr>
@@ -84,4 +112,5 @@
         </tr>
     </table>
 </body>
+
 </html>

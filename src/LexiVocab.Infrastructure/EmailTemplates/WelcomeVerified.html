@@ -1,45 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to LexiVocab</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f6f9fc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1a1a1a;">
-    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f6f9fc; padding: 40px 0;">
+
+<body
+    style="margin: 0; padding: 0; background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #111827;">
+    <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; padding: 48px 0;">
         <tr>
             <td align="center">
-                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; border: 1px solid #e5e7eb; margin: 0 auto;">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0"
+                    style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; margin: 0 auto; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);">
                     <tr>
-                        <td style="padding: 40px;">
+                        <td style="padding: 48px;">
                             <!-- Header / Logo -->
-                            <div style="margin-bottom: 32px;">
-                                <span style="font-size: 24px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px;">LexiVocab<span style="color: #ea580c;">.</span></span>
+                            <div style="margin-bottom: 40px; text-align: left;">
+                                <span
+                                    style="font-size: 24px; font-weight: 700; color: #111827; letter-spacing: -0.025em;">LexiVocab<span
+                                        style="color: #eb6725;">.</span></span>
                             </div>
-                            
+
                             <!-- Content -->
-                            <h1 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600; color: #1a1a1a;">You're all set</h1>
-                            <p style="margin: 0 0 24px 0; font-size: 16px; color: #4b5563; line-height: 1.6;">
+                            <h1
+                                style="margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: #111827; letter-spacing: -0.025em;">
+                                You're all set</h1>
+                            <p style="margin: 0 0 32px 0; font-size: 16px; color: #4b5563; line-height: 1.6;">
                                 Hi {{FullName}},<br><br>
-                                Your email has been successfully verified. You are now ready to start adding vocabulary, organizing your study list, and getting AI-powered insights.
+                                Your email has been successfully verified. You are now ready to start adding vocabulary,
+                                organizing your study list, and mastering new words with AI-powered insights.
                             </p>
-                            
-                            <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top: 32px;">
+
+                            <table width="100%" border="0" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td>
-                                        <a href="{{AppUrl}}" style="background-color: #ea580c; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 15px; display: inline-block;">Start Learning</a>
+                                        <a href="{{AppUrl}}"
+                                            style="background-color: #eb6725; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block;">Start
+                                            Learning</a>
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
                 </table>
-                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto;">
+                <!-- Footer -->
+                <table width="100%" border="0" cellpadding="0" cellspacing="0"
+                    style="max-width: 600px; margin: 0 auto;">
                     <tr>
-                        <td style="padding: 24px 40px; text-align: left;">
-                            <p style="margin: 0; font-size: 13px; color: #8898aa; line-height: 1.6;">
-                                &copy; {{CurrentYear}} LexiVocab Inc.<br>
-                                Need help? <a href="mailto:support@lexivocab.com" style="color: #8898aa; text-decoration: underline;">Contact support</a>
+                        <td style="padding: 32px 48px; text-align: left;">
+                            <p style="margin: 0; font-size: 13px; color: #9ca3af; line-height: 1.6;">
+                                &copy; {{CurrentYear}} LexiVocab Inc. All rights reserved.<br>
+                                Need help? <a href="mailto:support@lexivocab.com"
+                                    style="color: #6b7280; text-decoration: underline;">Contact support</a>
                             </p>
                         </td>
                     </tr>
@@ -48,4 +62,5 @@
         </tr>
     </table>
 </body>
+
 </html>

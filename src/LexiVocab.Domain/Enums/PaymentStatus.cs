@@ -10,5 +10,5 @@ public enum PaymentStatus
     Failed = 2,
     Refunded = 3,
     Expired = 4,
-    Cancelled = 5
+    Cancelled = 5  // User-initiated cancellation (distinct from Expired)
 }

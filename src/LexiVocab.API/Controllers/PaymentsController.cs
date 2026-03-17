@@ -103,6 +103,17 @@ public class PaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
+    /// <summary>Cancel a pending payment transaction (user-initiated).</summary>
+    [HttpPost("cancel/{reference}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelPayment(string reference, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new CancelPaymentCommand(reference), ct);
+        return ToActionResult(result);
+    }
+
     /// <summary>Capture a PayPal order after user approval.</summary>
     [HttpPost("capture-order")]
     [ProducesResponseType(StatusCodes.Status200OK)]

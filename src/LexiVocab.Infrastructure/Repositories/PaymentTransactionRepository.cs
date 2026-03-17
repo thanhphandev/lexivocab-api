@@ -1,4 +1,5 @@
 using LexiVocab.Domain.Entities;
+using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -55,4 +56,17 @@ public class PaymentTransactionRepository : GenericRepository<PaymentTransaction
 
     public async Task<bool> ExistsByProviderResponseIdAsync(string responseId, CancellationToken ct = default)
         => !string.IsNullOrEmpty(responseId) && await _dbSet.AnyAsync(t => t.ProviderResponseId == responseId, ct);
+
+    public async Task<IReadOnlyList<PaymentTransaction>> GetExpiredPendingByUserAsync(
+        Guid userId, DateTime now, CancellationToken ct = default)
+    {
+        return await _dbSet
+            .Include(t => t.Subscription)
+            .Where(t =>
+                t.UserId == userId &&
+                t.Status == PaymentStatus.Pending &&
+                t.ExpiresAt.HasValue &&
+                t.ExpiresAt.Value <= now)
+            .ToListAsync(ct);
+    }
 }

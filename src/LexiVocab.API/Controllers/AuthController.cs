@@ -15,7 +15,6 @@ namespace LexiVocab.API.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Produces("application/json")]
-[EnableRateLimiting("AuthLimit")]
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -32,6 +31,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Register a new account with email and password.</summary>
     [HttpPost("register")]
+    [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -44,6 +44,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Login with email and password. Returns JWT tokens.</summary>
     [HttpPost("login")]
+    [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
@@ -54,6 +55,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Initiate password reset flow by sending a 6-digit code to the email.</summary>
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken ct)
     {
@@ -63,6 +65,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Reset password using the 6-digit code received via email.</summary>
     [HttpPost("reset-password")]
+    [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken ct)
@@ -73,6 +76,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Verify user's email address using the 6-digit code.</summary>
     [HttpPost("verify-email")]
+    [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request, [FromQuery] string email, CancellationToken ct)
@@ -83,6 +87,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Login or register with a Google ID token. Auto-links existing email accounts.</summary>
     [HttpPost("google")]
+    [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request, CancellationToken ct)
@@ -129,6 +134,7 @@ public class AuthController : ControllerBase
     /// <summary>Get the currently authenticated user's profile.</summary>
     [HttpGet("me")]
     [Authorize]
+    [EnableRateLimiting("UserReadLimit")]
     [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetCurrentUser(CancellationToken ct)
@@ -140,6 +146,7 @@ public class AuthController : ControllerBase
     /// <summary>Get the current user's feature permissions and quotas.</summary>
     [HttpGet("permissions")]
     [Authorize]
+    [EnableRateLimiting("UserReadLimit")]
     [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetPermissions(CancellationToken ct)
@@ -165,6 +172,7 @@ public class AuthController : ControllerBase
     /// <summary>Change the current user's password (for Email/Password accounts only).</summary>
     [HttpPut("me/password")]
     [Authorize]
+    [EnableRateLimiting("SensitiveWriteLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -190,6 +198,7 @@ public class AuthController : ControllerBase
     /// <summary>Permanently delete the user's account and wipe all associated data.</summary>
     [HttpDelete("me")]
     [Authorize]
+    [EnableRateLimiting("SensitiveWriteLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> DeleteAccount(CancellationToken ct)
@@ -211,6 +220,7 @@ public class AuthController : ControllerBase
     /// <summary>Revoke all active sessions for the current user across all devices.</summary>
     [HttpPost("revoke-all-sessions")]
     [Authorize]
+    [EnableRateLimiting("SensitiveWriteLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RevokeAllSessions(CancellationToken ct)
@@ -232,6 +242,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Resend verification email for an unverified account.</summary>
     [HttpPost("resend-verification-email")]
+    [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ResendVerificationEmail([FromBody] ForgotPasswordRequest request, CancellationToken ct)
     {

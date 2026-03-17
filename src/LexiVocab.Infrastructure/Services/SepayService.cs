@@ -177,9 +177,9 @@ public class SepayService : IPaymentService
             return;
         }
 
-        if (tx.Status == PaymentStatus.Completed)
+        if (tx.IsTerminal)
         {
-            _logger.LogInformation("Sepay transaction {Reference} already completed.", reference);
+            _logger.LogInformation("Sepay transaction {Reference} already in terminal state {Status}.", reference, tx.Status);
             return;
         }
 

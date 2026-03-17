@@ -29,6 +29,20 @@ public class PaymentTransaction : BaseEntity
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
 
     /// <summary>
+    /// True if payment is in a terminal state (Completed, Failed, Refunded, Expired, Cancelled).
+    /// Terminal transactions cannot be modified further.
+    /// </summary>
+    public bool IsTerminal => Status switch
+    {
+        PaymentStatus.Completed => true,
+        PaymentStatus.Failed => true,
+        PaymentStatus.Refunded => true,
+        PaymentStatus.Expired => true,
+        PaymentStatus.Cancelled => true,
+        _ => false
+    };
+
+    /// <summary>
     /// When the payment/QR is no longer valid. Used to automatically expire/cancel pending transactions.
     /// </summary>
     public DateTime? ExpiresAt { get; set; }

@@ -141,8 +141,8 @@ try
                     QueueLimit = 10
                 }));
 
-        // Auth endpoints: strict 5 requests per minute per IP (anti brute-force)
-        options.AddPolicy("AuthLimit", context =>
+        // Strict: login/register/forgot-password — chống brute-force (5 req/min)
+        options.AddPolicy("AuthStrictLimit", context =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
                 factory: _ => new FixedWindowRateLimiterOptions
@@ -150,10 +150,22 @@ try
                     PermitLimit = 5,
                     Window = TimeSpan.FromMinutes(1),
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0 // No queueing — reject immediately
+                    QueueLimit = 0 // Reject immediately
                 }));
 
-        // Refresh endpoints: a bit more lenient to allow multi-tab bursting
+        // Lenient: /me, /permissions, profile reads — nhiều tab/client gọi liên tục (60 req/min)
+        options.AddPolicy("UserReadLimit", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 60,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 5
+                }));
+
+        // Refresh token: multi-tab bursting, nhưng vẫn có giới hạn (30 req/min)
         options.AddPolicy("RefreshLimit", context =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
@@ -162,7 +174,19 @@ try
                     PermitLimit = 30,
                     Window = TimeSpan.FromMinutes(1),
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0 // No queueing
+                    QueueLimit = 0
+                }));
+
+        // Sensitive writes: đổi password, đổi email, xóa tài khoản (10 req/min)
+        options.AddPolicy("SensitiveWriteLimit", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
                 }));
     });
 

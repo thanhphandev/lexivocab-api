@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to LexiVocab</title>
+    <title>Payment Failed - LexiVocab</title>
 </head>
 
 <body
@@ -26,33 +26,32 @@
                             <!-- Content -->
                             <h1
                                 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: #111827; letter-spacing: -0.025em;">
-                                Verify your email address</h1>
-                            <p style="margin: 0 0 32px 0; font-size: 16px; color: #4b5563; line-height: 1.6;">
+                                Payment failed</h1>
+                            <p style="margin: 0 0 24px 0; font-size: 16px; color: #4b5563; line-height: 1.6;">
                                 Hi {{FullName}},<br><br>
-                                Welcome to LexiVocab. To complete your registration and start mastering your vocabulary,
-                                please use the verification code below.
+                                Unfortunately, your payment of <strong>{{Amount}}</strong> could not be processed. This
+                                may be due to insufficient funds or a temporary issue with your payment method.
                             </p>
 
                             <div
-                                style="background-color: #f3f4f6; border-radius: 12px; padding: 32px; text-align: center; margin-bottom: 32px;">
-                                <span
-                                    style="display: block; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; font-weight: 600;">Verification
-                                    Code</span>
-                                <span
-                                    style="font-size: 42px; font-weight: 800; color: #111827; letter-spacing: 0.2em; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">{{Code}}</span>
+                                style="background-color: #fef2f2; padding: 24px; margin-bottom: 32px; border-radius: 4px;">
+                                <p
+                                    style="margin: 0; font-size: 15px; color: #991b1b; line-height: 1.5; font-weight: 500;">
+                                    Your subscription has not been activated. You can retry the payment or try a
+                                    different payment method to upgrade your account.
+                                </p>
                             </div>
 
-                            <p style="margin: 0 0 40px 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
-                                If you did not create an account, you can safely ignore this email. This code will
-                                expire in 10 minutes.
+                            <p style="margin: 0 0 32px 0; font-size: 15px; color: #6b7280; line-height: 1.6;">
+                                If you need assistance, please contact our support team. We're here to help.
                             </p>
 
                             <table width="100%" border="0" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td>
-                                        <a href="{{AppUrl}}"
-                                            style="background-color: #eb6725; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block;">Go
-                                            to Application</a>
+                                        <a href="mailto:support@lexivocab.com"
+                                            style="background-color: #eb6725; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block;">Contact
+                                            Support</a>
                                     </td>
                                 </tr>
                             </table>
