@@ -28,6 +28,30 @@ public class PaymentsController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>Cancel the current user's active subscription immediately.</summary>
+    [HttpPost("cancel-subscription")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CancelMySubscription(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new CancelMySubscriptionCommand(), ct);
+        if (result.IsSuccess)
+            return Ok(new { success = true, message = "Subscription cancelled successfully." });
+        return ToActionResult(result);
+    }
+
+    /// <summary>Download a CSV invoice for a specific payment transaction.</summary>
+    [HttpGet("invoice/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetInvoice(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetInvoiceQuery(id), ct);
+        if (result.IsSuccess)
+            return File(result.Data!.Bytes, result.Data.ContentType, result.Data.FileName);
+        return ToActionResult(result);
+    }
+
     /// <summary>Get billing overview: subscription status, plan info, transaction count.</summary>
     [HttpGet("billing")]
     [ProducesResponseType(typeof(BillingOverviewDto), StatusCodes.Status200OK)]
@@ -76,7 +100,7 @@ public class PaymentsController : ControllerBase
     public async Task<IActionResult> GetStatus(string reference)
     {
         var result = await _mediator.Send(new GetPaymentStatusQuery(reference));
-        return result.IsSuccess ? Ok(new { status = result.Data }) : ToActionResult(result);
+        return ToActionResult(result);
     }
 
     /// <summary>Capture a PayPal order after user approval.</summary>
@@ -107,16 +131,17 @@ public class PaymentsController : ControllerBase
 
     // ─── Sepay Webhook ──────────────────────────────────────────
     [HttpPost("webhook/sepay")]
-    [AllowAnonymous] // Assuming this should also be anonymous like PayPal webhook
-    public async Task<IActionResult> SepayWebhook()
+    [AllowAnonymous]
+    [Consumes("application/json")]
+    public async Task<IActionResult> SepayWebhook(CancellationToken ct)
     {
         using var reader = new StreamReader(Request.Body);
-        var body = await reader.ReadToEndAsync();
+        var body = await reader.ReadToEndAsync(ct);
         
         var headers = Request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString(), StringComparer.OrdinalIgnoreCase);
         var command = new ProcessPaymentWebhookCommand(PaymentProvider.Sepay, body, headers);
         
-        var result = await _mediator.Send(command, HttpContext.RequestAborted);
+        var result = await _mediator.Send(command, ct);
         return result.IsSuccess ? Ok() : ToActionResult(result);
     }
 
@@ -124,6 +149,12 @@ public class PaymentsController : ControllerBase
     {
         if (result.IsSuccess)
             return StatusCode(result.StatusCode, new { success = true, data = result.Data });
+        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+    }
+
+    private IActionResult ToActionResult(Result result)
+    {
+        if (result.IsSuccess) return Ok(new { success = true });
         return StatusCode(result.StatusCode, new { success = false, error = result.Error });
     }
 }

@@ -171,7 +171,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
     {
-        var result = await _mediator.Send(new ChangePasswordCommand(request.CurrentPassword, request.NewPassword), ct);
+        var currentRefreshToken = Request.Cookies["refreshToken"];
+        var result = await _mediator.Send(new ChangePasswordCommand(request.CurrentPassword, request.NewPassword, currentRefreshToken), ct);
         if (result.IsSuccess)
         {
             // Revoke current session cookie since we invalidated the token hash.
@@ -203,6 +204,28 @@ public class AuthController : ControllerBase
                 SameSite = SameSiteMode.None
             });
             return Ok(new { success = true, message = "Account deleted successfully." });
+        }
+        return ToActionResult(result);
+    }
+
+    /// <summary>Revoke all active sessions for the current user across all devices.</summary>
+    [HttpPost("revoke-all-sessions")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RevokeAllSessions(CancellationToken ct)
+    {
+        var currentRefreshToken = Request.Cookies["refreshToken"];
+        var result = await _mediator.Send(new RevokeAllSessionsCommand(currentRefreshToken), ct);
+        if (result.IsSuccess)
+        {
+            Response.Cookies.Delete("refreshToken", new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None
+            });
+            return Ok(new { success = true, message = "All sessions revoked. Please log in again." });
         }
         return ToActionResult(result);
     }

@@ -4,12 +4,14 @@ using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
 public record ChangePasswordCommand(
     string CurrentPassword,
-    string NewPassword
+    string NewPassword,
+    string? CurrentRefreshToken = null
 ) : IRequest<Result>, IAuditedRequest
 {
     public AuditAction AuditAction => AuditAction.UserUpdated;
@@ -30,12 +32,18 @@ public class ChangePasswordHandler : IRequestHandler<ChangePasswordCommand, Resu
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly IDistributedCache _cache;
 
-    public ChangePasswordHandler(IUnitOfWork uow, ICurrentUserService currentUser, IPasswordHasher passwordHasher)
+    public ChangePasswordHandler(
+        IUnitOfWork uow,
+        ICurrentUserService currentUser,
+        IPasswordHasher passwordHasher,
+        IDistributedCache cache)
     {
         _uow = uow;
         _currentUser = currentUser;
         _passwordHasher = passwordHasher;
+        _cache = cache;
     }
 
     public async Task<Result> Handle(ChangePasswordCommand request, CancellationToken ct)
@@ -56,10 +64,13 @@ public class ChangePasswordHandler : IRequestHandler<ChangePasswordCommand, Resu
 
         user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;
-        
-        // Revoke all existing sessions by regenerating the refresh token hash or clearing it entirely.
-        // For security, we'll force the user to re-login on other devices next time token expires.
-        user.RefreshTokenHash = null; 
+
+        // Revoke all sessions: clear DB hash AND evict current Redis key so attacker
+        // cannot reuse a stolen refresh token for the remaining TTL window.
+        if (!string.IsNullOrEmpty(request.CurrentRefreshToken))
+            await _cache.RemoveAsync($"rf_token:{request.CurrentRefreshToken}", ct);
+
+        user.RefreshTokenHash = null;
         user.RefreshTokenExpiryTime = null;
 
         _uow.Users.Update(user);

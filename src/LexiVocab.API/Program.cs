@@ -205,6 +205,11 @@ try
             "MasterVocabularyEnrichmentJob",
             job => job.ExecuteAsync(CancellationToken.None),
             Cron.Hourly()); // Run hourly
+
+        recurringJobManager.AddOrUpdate<IPendingPaymentCleanupJob>(
+            "PendingPaymentCleanupJob",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Minutely()); // Sweep pending tx frequently (expiry/auto-cancel)
     }
 
     // ─── Middleware Pipeline ──────────────────────────────────

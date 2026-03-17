@@ -30,6 +30,7 @@ public class PayPalService : IPaymentService
     private readonly string _returnUrl;
     private readonly string _cancelUrl;
     private readonly bool _isProduction;
+    private readonly int _pendingPaymentExpiresInMinutes;
 
     private const string CurrencyCode = "USD";
 
@@ -53,6 +54,7 @@ public class PayPalService : IPaymentService
         _templateService = templateService;
         _isProduction = env.IsProduction();
 
+        _pendingPaymentExpiresInMinutes = config.GetValue<int?>("Payments:PendingPaymentExpiresInMinutes") ?? 10;
         _clientId = config["PayPal:ClientId"] ?? "";
         _clientSecret = config["PayPal:ClientSecret"] ?? "";
         _webhookId = config["PayPal:WebhookId"] ?? "";
@@ -161,7 +163,8 @@ public class PayPalService : IPaymentService
                     ExternalOrderId = orderId,
                     Amount = pricing.FinalPrice,
                     Currency = CurrencyCode,
-                    Status = PaymentStatus.Pending
+                    Status = PaymentStatus.Pending,
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(_pendingPaymentExpiresInMinutes)
                 };
 
                 _uow.Subscriptions.Add(sub);

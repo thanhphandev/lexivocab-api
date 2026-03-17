@@ -4,6 +4,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -20,6 +21,7 @@ public class SepayService : IPaymentService
     private readonly ILogger<SepayService> _logger;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
+    private readonly int _pendingPaymentExpiresInMinutes;
     private readonly string _apiKey;
     private readonly string _apiBaseUrl;
     private readonly string _qrTemplate;
@@ -42,6 +44,7 @@ public class SepayService : IPaymentService
         _emailQueue = emailQueue;
         _templateService = templateService;
         
+        _pendingPaymentExpiresInMinutes = config.GetValue<int?>("Payments:PendingPaymentExpiresInMinutes") ?? 10;
         _apiKey = config["Sepay:ApiKey"] ?? "";
         _apiBaseUrl = config["Sepay:ApiBaseUrl"] ?? "https://my.sepay.vn/api";
         _qrTemplate = config["Sepay:QrTemplate"] ?? "https://qr.sepay.vn/img?acc={0}&bank={1}&amount={2}&des={3}";
@@ -90,7 +93,8 @@ public class SepayService : IPaymentService
             ExternalOrderId = reference,
             Amount = pricing.FinalPrice,
             Currency = plan.Currency,
-            Status = PaymentStatus.Pending
+            Status = PaymentStatus.Pending,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(_pendingPaymentExpiresInMinutes)
         };
 
         _uow.Subscriptions.Add(sub);
@@ -236,7 +240,17 @@ public class SepayService : IPaymentService
             tx.Subscription.EndDate = now + duration;
         }
 
-        await _uow.SaveChangesAsync(ct);
+        try
+        {
+            await _uow.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("unique constraint") == true ||
+                                           ex.InnerException?.Message.Contains("23505") == true)
+        {
+            // Unique constraint violation on ProviderResponseId - another webhook already processed this
+            _logger.LogWarning("Duplicate Sepay webhook detected for transaction ID {BankTxId}. Another thread already processed this.", bankTransactionId);
+            return;
+        }
 
         _logger.LogInformation("Sepay payment completed successfully for reference {Reference}", reference);
 

@@ -46,6 +46,8 @@ public class GetPaymentHistoryHandler : IRequestHandler<GetPaymentHistoryQuery, 
                 t.Status.ToString(),
                 t.CreatedAt,
                 t.PaidAt,
+                t.ExpiresAt,
+                t.CancelledAt,
                 approvalUrl);
         }).ToList();
 

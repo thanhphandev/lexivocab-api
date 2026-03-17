@@ -21,6 +21,8 @@ public record PaymentHistoryDto(
     string Status,
     DateTime CreatedAt,
     DateTime? PaidAt,
+    DateTime? ExpiresAt = null,
+    DateTime? CancelledAt = null,
     string? ApprovalUrl = null);
 
 /// <summary>DTO for billing overview page.</summary>
@@ -30,6 +32,10 @@ public record BillingOverviewDto(
     string Plan,
     DateTime? PlanExpiresAt,
     int TotalTransactions);
+
+public record PaymentStatusDto(
+    string Status,
+    DateTime? ExpiresAt);
 
 public record PlanFeatureDto(
     string TextKey,

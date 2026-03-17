@@ -28,8 +28,19 @@ public class PaymentTransaction : BaseEntity
     public string Currency { get; set; } = "USD";
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
 
+    /// <summary>
+    /// When the payment/QR is no longer valid. Used to automatically expire/cancel pending transactions.
+    /// </summary>
+    public DateTime? ExpiresAt { get; set; }
+
     /// <summary>When the payment was actually confirmed/captured.</summary>
     public DateTime? PaidAt { get; set; }
+
+    /// <summary>When the transaction was cancelled/expired in our system.</summary>
+    public DateTime? CancelledAt { get; set; }
+
+    /// <summary>Reason for cancellation/expiry (optional, for audit).</summary>
+    public string? CancelReason { get; set; }
 
     /// <summary>Raw webhook/response payload for audit trail.</summary>
     public string? RawPayload { get; set; }

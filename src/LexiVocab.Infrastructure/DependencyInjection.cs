@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.AddTransient<Services.ISubscriptionExpirationJob, Services.SubscriptionExpirationJob>();
         services.AddTransient<Services.IReviewReminderJob, Services.ReviewReminderJob>();
         services.AddTransient<Services.IMasterVocabularyUpdateJob, Services.MasterVocabularyUpdateJob>();
+        services.AddTransient<Services.IPendingPaymentCleanupJob, Services.PendingPaymentCleanupJob>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 

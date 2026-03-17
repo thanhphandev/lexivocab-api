@@ -3,17 +3,20 @@ using System;
 using LexiVocab.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LexiVocab.Infrastructure.Migrations
+namespace LexiVocab.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317080734_FixPendingModelChanges")]
+    partial class FixPendingModelChanges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -310,9 +313,7 @@ namespace LexiVocab.Infrastructure.Migrations
                         .HasColumnName("provider");
 
                     b.Property<string>("ProviderResponseId")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("provider_response_id");
+                        .HasColumnType("text");
 
                     b.Property<string>("RawPayload")
                         .HasColumnType("text")
@@ -342,10 +343,6 @@ namespace LexiVocab.Infrastructure.Migrations
 
                     b.HasIndex("ExternalOrderId")
                         .IsUnique();
-
-                    b.HasIndex("ProviderResponseId")
-                        .IsUnique()
-                        .HasFilter("provider_response_id IS NOT NULL");
 
                     b.HasIndex("SubscriptionId");
 

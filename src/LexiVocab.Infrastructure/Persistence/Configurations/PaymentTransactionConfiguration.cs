@@ -53,11 +53,28 @@ public class PaymentTransactionConfiguration : IEntityTypeConfiguration<PaymentT
             .HasDefaultValue(PaymentStatus.Pending)
             .IsRequired();
 
+        builder.Property(p => p.ExpiresAt).HasColumnName("expires_at");
+
         builder.Property(p => p.PaidAt).HasColumnName("paid_at");
+
+        builder.Property(p => p.CancelledAt).HasColumnName("cancelled_at");
+
+        builder.Property(p => p.CancelReason)
+            .HasColumnName("cancel_reason")
+            .HasMaxLength(500);
 
         builder.Property(p => p.RawPayload)
             .HasColumnName("raw_payload")
             .HasColumnType("text");
+
+        builder.Property(p => p.ProviderResponseId)
+            .HasColumnName("provider_response_id")
+            .HasMaxLength(255);
+
+        // Idempotency: ensure provider response ID is unique to prevent duplicate webhooks
+        builder.HasIndex(p => p.ProviderResponseId)
+            .IsUnique()
+            .HasFilter("provider_response_id IS NOT NULL");
 
         builder.Property(p => p.CreatedAt)
             .HasColumnName("created_at")

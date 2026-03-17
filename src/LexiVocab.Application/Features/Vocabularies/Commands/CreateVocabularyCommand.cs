@@ -48,7 +48,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         var maxWords = permissions.GetLimit("MAX_WORDS"); // Returns int, maybe Int32.MaxValue for unlimited?
         if (maxWords > 0 && permissions.CurrentCount >= maxWords)
         {
-            return Result<VocabularyDto>.Failure("ERR_QUOTA_EXCEEDED", 403);
+            return Result<VocabularyDto>.Failure($"ERR_QUOTA_EXCEEDED: You have reached the limit of {maxWords} vocabulary words.", 403);
         }
 
         if (await _uow.Vocabularies.WordExistsForUserAsync(userId, request.WordText, ct))
