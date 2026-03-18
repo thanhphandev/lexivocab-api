@@ -8,6 +8,8 @@ public class PlanFeatureConfiguration : IEntityTypeConfiguration<PlanFeature>
 {
     public void Configure(EntityTypeBuilder<PlanFeature> builder)
     {
+        builder.ToTable("plan_features");
+
         builder.HasKey(pf => new { pf.PlanDefinitionId, pf.FeatureDefinitionId });
 
         builder.HasOne(pf => pf.Plan)

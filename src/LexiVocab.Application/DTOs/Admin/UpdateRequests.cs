@@ -16,9 +16,6 @@ public record UpdateFeatureDefinitionRequest(
 /// </summary>
 public record UpdatePlanDefinitionRequest(
     string Name,
-    decimal Price,
-    string Currency,
-    string IntervalType,
     bool IsActive,
     Dictionary<string, string> Features
 );

@@ -8,8 +8,7 @@ public record SubscriptionDto(
     DateTime StartDate,
     DateTime? EndDate,
     string Provider,
-    string? ExternalSubscriptionId,
-    int? DurationMonths);
+    string? ExternalSubscriptionId);
 
 /// <summary>DTO for individual payment transaction history.</summary>
 public record PaymentHistoryDto(
@@ -42,15 +41,23 @@ public record PlanFeatureDto(
     bool Included,
     Dictionary<string, object>? Params = null);
 
+public record PlanPricingDto(
+    string Id,
+    string BillingCycle,
+    string Price,
+    string Currency,
+    int? DurationDays,
+    string LabelKey);
+
 public record SubscriptionPlanDto(
     string Id,
     string NameKey,
-    string Price,
-    string IntervalKey,
     string DescriptionKey,
     bool IsRecommended,
-    List<PlanFeatureDto> Features);
+    int DisplayOrder,
+    List<PlanFeatureDto> Features,
+    List<PlanPricingDto> Pricings);
 
 // ─── Requests ────────────────────────────────────────────────
-public record CreateOrderRequest(string PlanId, LexiVocab.Domain.Enums.PaymentProvider Provider = LexiVocab.Domain.Enums.PaymentProvider.PayPal, int DurationMonths = 1);
+public record CreateOrderRequest(string PricingId, LexiVocab.Domain.Enums.PaymentProvider Provider = LexiVocab.Domain.Enums.PaymentProvider.PayPal);
 public record CaptureOrderRequest(string OrderId);

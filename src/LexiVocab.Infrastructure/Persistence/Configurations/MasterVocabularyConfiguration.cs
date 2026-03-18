@@ -18,7 +18,7 @@ public class MasterVocabularyConfiguration : IEntityTypeConfiguration<MasterVoca
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.HasIndex(m => m.Word).IsUnique();
+        builder.HasIndex(m => m.Word).HasDatabaseName("ix_master_vocabularies_word").IsUnique();
 
         builder.Property(m => m.PartOfSpeech)
             .HasColumnName("part_of_speech")

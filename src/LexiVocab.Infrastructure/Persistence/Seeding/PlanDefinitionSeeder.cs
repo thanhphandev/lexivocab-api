@@ -1,10 +1,11 @@
 using LexiVocab.Domain.Entities;
+using LexiVocab.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace LexiVocab.Infrastructure.Persistence.Seeding;
 
 /// <summary>
-/// Seeds PlanDefinition entities with default subscription plans and their features.
+/// Seeds PlanDefinition entities with default subscription plans and their features, as well as pricing details.
 /// Requires FeatureDefinitionSeeder to run first.
 /// </summary>
 public class PlanDefinitionSeeder : IDataSeeder
@@ -44,14 +45,25 @@ public class PlanDefinitionSeeder : IDataSeeder
             Id = new Guid("11111111-1111-1111-1111-111111111111"),
             Name = "Free",
             NameKey = "plan_free",
-            Price = 0m,
-            Currency = "VND",
             Description = "Perfect for beginners to get started",
-            IntervalType = "Lifetime",
-            DurationDays = 0,
+            DisplayOrder = 1,
             IsActive = true,
             IsRecommended = false,
             CreatedAt = seedDate,
+            Pricings =
+            [
+                new PlanPricing {
+                    Id = new Guid("p1111111-1111-1111-1111-111111111111"),
+                    BillingCycle = BillingCycle.Free,
+                    Price = 0m,
+                    Currency = "VND",
+                    DurationDays = null,
+                    LabelKey = "",
+                    SortOrder = 1,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                }
+            ],
             PlanFeatures =
             [
                 new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "50" },
@@ -66,20 +78,64 @@ public class PlanDefinitionSeeder : IDataSeeder
             ]
         };
 
-        // Premium Plan (Base - Price per month, interval flexible from client)
+        // Premium Plan
         var premiumPlan = new PlanDefinition
         {
             Id = new Guid("22222222-2222-2222-2222-222222222222"),
             Name = "Premium",
             NameKey = "plan_premium",
-            Price = 5000m, // Base price per month
-            Currency = "VND",
             Description = "Unlock full potential with AI features",
-            IntervalType = "Month", // Client can request 1, 3, 6, 12 months
-            DurationDays = 30, // Minimum 1 month
+            DisplayOrder = 2,
             IsActive = true,
             IsRecommended = true,
             CreatedAt = seedDate,
+            Pricings =
+            [
+                new PlanPricing {
+                    Id = new Guid("p2222222-2222-2222-2222-111111111111"),
+                    BillingCycle = BillingCycle.Monthly,
+                    Price = 50000m, 
+                    Currency = "VND",
+                    DurationDays = 30,
+                    LabelKey = "duration_1m",
+                    SortOrder = 1,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("p2222222-2222-2222-2222-222222222222"),
+                    BillingCycle = BillingCycle.Quarterly,
+                    Price = 142500m, // 5% off (base 50k)
+                    Currency = "VND",
+                    DurationDays = 90,
+                    LabelKey = "duration_3m",
+                    SortOrder = 2,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("p2222222-2222-2222-2222-333333333333"),
+                    BillingCycle = BillingCycle.SemiAnnual,
+                    Price = 270000m, // 10% off (base 50k)
+                    Currency = "VND",
+                    DurationDays = 180,
+                    LabelKey = "duration_6m",
+                    SortOrder = 3,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("p2222222-2222-2222-2222-444444444444"),
+                    BillingCycle = BillingCycle.Annual,
+                    Price = 480000m, // 20% off (base 50k)
+                    Currency = "VND",
+                    DurationDays = 365,
+                    LabelKey = "duration_12m",
+                    SortOrder = 4,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                }
+            ],
             PlanFeatures =
             [
                 new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "1000" },
@@ -94,20 +150,31 @@ public class PlanDefinitionSeeder : IDataSeeder
             ]
         };
 
-        // Business Plan (Lifetime)
+        // Business Plan
         var businessPlan = new PlanDefinition
         {
             Id = new Guid("44444444-4444-4444-4444-444444444444"),
             Name = "Business",
             NameKey = "plan_business",
-            Price = 4990000m,
-            Currency = "VND",
             Description = "Lifetime access for professionals and teams",
-            IntervalType = "Lifetime",
-            DurationDays = 0,
+            DisplayOrder = 3,
             IsActive = true,
             IsRecommended = false,
             CreatedAt = seedDate,
+            Pricings =
+            [
+                new PlanPricing {
+                    Id = new Guid("p4444444-4444-4444-4444-111111111111"),
+                    BillingCycle = BillingCycle.Lifetime,
+                    Price = 4990000m,
+                    Currency = "VND",
+                    DurationDays = null,
+                    LabelKey = "duration_lifetime",
+                    SortOrder = 1,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                }
+            ],
             PlanFeatures =
             [
                 new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "Unlimited" },

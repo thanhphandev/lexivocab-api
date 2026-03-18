@@ -16,9 +16,6 @@ namespace LexiVocab.Application.Features.Admin.Plans.Commands;
 public record UpdatePlanDefinitionCommand(
     Guid Id,
     string Name,
-    decimal Price,
-    string Currency,
-    string IntervalType,
     bool IsActive,
     Dictionary<string, string> Features) : IRequest<Result<PlanDefinitionDto>>, IAuditedRequest
 {
@@ -35,12 +32,6 @@ public class UpdatePlanDefinitionValidator : AbstractValidator<UpdatePlanDefinit
     {
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.Price).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.Currency).NotEmpty().Length(3);
-        RuleFor(x => x.IntervalType)
-            .NotEmpty()
-            .Must(it => ValidIntervals.Contains(it))
-            .WithMessage($"IntervalType must be one of: {string.Join(", ", ValidIntervals)}");
         RuleFor(x => x.Features).NotNull();
     }
 }
@@ -67,21 +58,8 @@ public class UpdatePlanDefinitionHandler : IRequestHandler<UpdatePlanDefinitionC
                 return Result<PlanDefinitionDto>.Conflict($"Plan with name '{request.Name}' already exists.");
         }
 
-        // Calculate DurationDays from IntervalType
-        var durationDays = request.IntervalType switch
-        {
-            "Month" => 30,
-            "Year" => 365,
-            "Lifetime" => 0,
-            _ => 30
-        };
-
         plan.Name = request.Name;
         plan.NameKey = $"plan_{request.Name.ToLowerInvariant().Replace(" ", "_")}";
-        plan.Price = request.Price;
-        plan.Currency = request.Currency;
-        plan.IntervalType = request.IntervalType;
-        plan.DurationDays = durationDays;
         plan.IsActive = request.IsActive;
 
         // Rebuild PlanFeatures from Dictionary
@@ -111,9 +89,6 @@ public class UpdatePlanDefinitionHandler : IRequestHandler<UpdatePlanDefinitionC
         return Result<PlanDefinitionDto>.Success(new PlanDefinitionDto(
             plan.Id,
             plan.Name,
-            plan.Price,
-            plan.Currency,
-            plan.IntervalType,
             plan.IsActive,
             responseFeatures,
             plan.CreatedAt,

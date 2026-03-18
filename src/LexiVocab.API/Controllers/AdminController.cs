@@ -226,9 +226,6 @@ public class AdminController : ControllerBase
         var command = new UpdatePlanDefinitionCommand(
             id,
             request.Name,
-            request.Price,
-            request.Currency,
-            request.IntervalType,
             request.IsActive,
             request.Features);
 

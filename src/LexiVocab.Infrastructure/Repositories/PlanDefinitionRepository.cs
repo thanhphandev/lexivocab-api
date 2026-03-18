@@ -15,9 +15,10 @@ public class PlanDefinitionRepository : GenericRepository<PlanDefinition>, IPlan
     {
         return await _dbSet
             .AsNoTracking()
+            .Include(p => p.Pricings)
             .Include(p => p.PlanFeatures)
                 .ThenInclude(pf => pf.Feature)
-            .OrderBy(p => p.Price)
+            .OrderBy(p => p.DisplayOrder)
             .ToListAsync(ct);
     }
 

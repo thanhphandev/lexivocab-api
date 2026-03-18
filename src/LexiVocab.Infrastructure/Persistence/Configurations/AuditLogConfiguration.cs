@@ -12,7 +12,7 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
     public void Configure(EntityTypeBuilder<AuditLog> builder)
     {
-        builder.ToTable("AuditLogs");
+        builder.ToTable("audit_logs");
 
         builder.HasKey(a => a.Id);
 
@@ -61,22 +61,22 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         // ─── Indexes for common query patterns ───────────────
         // UserId + Timestamp: "Show me user X's activity in the last 7 days"
         builder.HasIndex(a => new { a.UserId, a.Timestamp })
-            .HasDatabaseName("IX_AuditLogs_UserId_Timestamp")
+            .HasDatabaseName("ix_audit_logs_user_id_timestamp")
             .IsDescending(false, true);
 
         // Action + Timestamp: "Show all failed logins today"
         builder.HasIndex(a => new { a.Action, a.Timestamp })
-            .HasDatabaseName("IX_AuditLogs_Action_Timestamp")
+            .HasDatabaseName("ix_audit_logs_action_timestamp")
             .IsDescending(false, true);
 
         // IpAddress + Timestamp: brute-force detection
         builder.HasIndex(a => new { a.IpAddress, a.Timestamp })
-            .HasDatabaseName("IX_AuditLogs_IpAddress_Timestamp")
+            .HasDatabaseName("ix_audit_logs_ip_address_timestamp")
             .IsDescending(false, true);
 
         // Timestamp alone for date-range scans
         builder.HasIndex(a => a.Timestamp)
-            .HasDatabaseName("IX_AuditLogs_Timestamp")
+            .HasDatabaseName("ix_audit_logs_timestamp")
             .IsDescending(true);
 
         // ─── Relationship ────────────────────────────────────

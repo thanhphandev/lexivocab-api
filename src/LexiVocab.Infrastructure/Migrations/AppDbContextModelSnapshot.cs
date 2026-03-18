@@ -88,21 +88,21 @@ namespace LexiVocab.Infrastructure.Migrations
 
                     b.HasIndex("Timestamp")
                         .IsDescending()
-                        .HasDatabaseName("IX_AuditLogs_Timestamp");
+                        .HasDatabaseName("ix_audit_logs_timestamp");
 
                     b.HasIndex("Action", "Timestamp")
                         .IsDescending(false, true)
-                        .HasDatabaseName("IX_AuditLogs_Action_Timestamp");
+                        .HasDatabaseName("ix_audit_logs_action_timestamp");
 
                     b.HasIndex("IpAddress", "Timestamp")
                         .IsDescending(false, true)
-                        .HasDatabaseName("IX_AuditLogs_IpAddress_Timestamp");
+                        .HasDatabaseName("ix_audit_logs_ip_address_timestamp");
 
                     b.HasIndex("UserId", "Timestamp")
                         .IsDescending(false, true)
-                        .HasDatabaseName("IX_AuditLogs_UserId_Timestamp");
+                        .HasDatabaseName("ix_audit_logs_user_id_timestamp");
 
-                    b.ToTable("AuditLogs", (string)null);
+                    b.ToTable("audit_logs", (string)null);
                 });
 
             modelBuilder.Entity("LexiVocab.Domain.Entities.FeatureDefinition", b =>
@@ -141,16 +141,17 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_feature_definitions_code");
 
-                    b.ToTable("FeatureDefinitions");
+                    b.ToTable("feature_definitions", (string)null);
 
                     b.HasData(
                         new
                         {
                             Id = new Guid("f1111111-1111-1111-1111-111111111111"),
                             Code = "MAX_WORDS",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DefaultValue = "false",
                             Description = "Limit of vocabulary words saved",
                             Name = "Maximum Words",
@@ -160,7 +161,7 @@ namespace LexiVocab.Infrastructure.Migrations
                         {
                             Id = new Guid("f2222222-2222-2222-2222-222222222222"),
                             Code = "AI_ACCESS",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DefaultValue = "false",
                             Description = "Access to AI analysis and generation",
                             Name = "AI Features",
@@ -170,7 +171,7 @@ namespace LexiVocab.Infrastructure.Migrations
                         {
                             Id = new Guid("f3333333-3333-3333-3333-333333333333"),
                             Code = "SUPPORT_LEVEL",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DefaultValue = "false",
                             Description = "Customer support priority",
                             Name = "Support Level",
@@ -180,7 +181,7 @@ namespace LexiVocab.Infrastructure.Migrations
                         {
                             Id = new Guid("f4444444-4444-4444-4444-444444444444"),
                             Code = "EXPORT_PDF",
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             DefaultValue = "false",
                             Description = "Ability to export lists to PDF",
                             Name = "Export as PDF",
@@ -250,7 +251,8 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Word")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_master_vocabularies_word");
 
                     b.ToTable("master_vocabularies", (string)null);
                 });
@@ -363,23 +365,12 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(5)
-                        .HasColumnType("character varying(5)")
-                        .HasDefaultValue("VND");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("DurationDays")
+                    b.Property<int>("DisplayOrder")
                         .HasColumnType("integer");
-
-                    b.Property<string>("IntervalType")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -396,60 +387,12 @@ namespace LexiVocab.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal>("Price")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.ToTable("PlanDefinitions");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("11111111-1111-1111-1111-111111111111"),
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Currency = "VND",
-                            Description = "Perfect for beginners",
-                            DurationDays = 0,
-                            IntervalType = "Month",
-                            IsActive = true,
-                            IsRecommended = false,
-                            Name = "Free",
-                            NameKey = "free_plan",
-                            Price = 0m
-                        },
-                        new
-                        {
-                            Id = new Guid("22222222-2222-2222-2222-222222222222"),
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Currency = "VND",
-                            Description = "Unlock full potential",
-                            DurationDays = 30,
-                            IntervalType = "Month",
-                            IsActive = true,
-                            IsRecommended = true,
-                            Name = "Premium",
-                            NameKey = "premium_plan",
-                            Price = 199000m
-                        },
-                        new
-                        {
-                            Id = new Guid("33333333-3333-3333-3333-333333333333"),
-                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Currency = "VND",
-                            Description = "For advanced learners and teams",
-                            DurationDays = 365,
-                            IntervalType = "Month",
-                            IsActive = true,
-                            IsRecommended = false,
-                            Name = "Business",
-                            NameKey = "business_plan",
-                            Price = 999000m
-                        });
+                    b.ToTable("plan_definitions", (string)null);
                 });
 
             modelBuilder.Entity("LexiVocab.Domain.Entities.PlanFeature", b =>
@@ -468,7 +411,7 @@ namespace LexiVocab.Infrastructure.Migrations
 
                     b.HasIndex("FeatureDefinitionId");
 
-                    b.ToTable("PlanFeatures");
+                    b.ToTable("plan_features", (string)null);
 
                     b.HasData(
                         new
@@ -545,6 +488,58 @@ namespace LexiVocab.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("LexiVocab.Domain.Entities.PlanPricing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BillingCycle")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasDefaultValue("VND");
+
+                    b.Property<int?>("DurationDays")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LabelKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("PlanDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanDefinitionId");
+
+                    b.ToTable("plan_pricings", (string)null);
+                });
+
             modelBuilder.Entity("LexiVocab.Domain.Entities.ReviewLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -613,9 +608,6 @@ namespace LexiVocab.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("NOW()");
 
-                    b.Property<int?>("DurationMonths")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_date");
@@ -628,6 +620,10 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.Property<Guid>("PlanDefinitionId")
                         .HasColumnType("uuid")
                         .HasColumnName("plan_definition_id");
+
+                    b.Property<Guid?>("PlanPricingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("plan_pricing_id");
 
                     b.Property<string>("Provider")
                         .IsRequired()
@@ -660,6 +656,8 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PlanDefinitionId");
+
+                    b.HasIndex("PlanPricingId");
 
                     b.HasIndex("UserId");
 
@@ -1051,6 +1049,17 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.Navigation("Plan");
                 });
 
+            modelBuilder.Entity("LexiVocab.Domain.Entities.PlanPricing", b =>
+                {
+                    b.HasOne("LexiVocab.Domain.Entities.PlanDefinition", "Plan")
+                        .WithMany("Pricings")
+                        .HasForeignKey("PlanDefinitionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Plan");
+                });
+
             modelBuilder.Entity("LexiVocab.Domain.Entities.ReviewLog", b =>
                 {
                     b.HasOne("LexiVocab.Domain.Entities.User", "User")
@@ -1078,6 +1087,11 @@ namespace LexiVocab.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("LexiVocab.Domain.Entities.PlanPricing", "PlanPricing")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("PlanPricingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("LexiVocab.Domain.Entities.User", "User")
                         .WithMany("Subscriptions")
                         .HasForeignKey("UserId")
@@ -1085,6 +1099,8 @@ namespace LexiVocab.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("PlanDefinition");
+
+                    b.Navigation("PlanPricing");
 
                     b.Navigation("User");
                 });
@@ -1150,6 +1166,13 @@ namespace LexiVocab.Infrastructure.Migrations
                 {
                     b.Navigation("PlanFeatures");
 
+                    b.Navigation("Pricings");
+
+                    b.Navigation("Subscriptions");
+                });
+
+            modelBuilder.Entity("LexiVocab.Domain.Entities.PlanPricing", b =>
+                {
                     b.Navigation("Subscriptions");
                 });
 

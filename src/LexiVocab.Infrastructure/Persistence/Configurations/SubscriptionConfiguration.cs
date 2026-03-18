@@ -24,6 +24,12 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
             .WithMany(p => p.Subscriptions)
             .HasForeignKey(s => s.PlanDefinitionId);
 
+        builder.Property(s => s.PlanPricingId).HasColumnName("plan_pricing_id");
+        builder.HasOne(s => s.PlanPricing)
+            .WithMany(p => p.Subscriptions)
+            .HasForeignKey(s => s.PlanPricingId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.Property(s => s.Status)
             .HasColumnName("status")
             .HasMaxLength(50)

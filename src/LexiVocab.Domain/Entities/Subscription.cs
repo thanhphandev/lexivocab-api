@@ -24,8 +24,9 @@ public class Subscription : BaseEntity
     /// <summary>When this subscription period ends. Null = lifetime.</summary>
     public DateTime? EndDate { get; set; }
 
-    /// <summary>Number of months purchased (for flexible duration plans).</summary>
-    public int? DurationMonths { get; set; }
+    /// <summary>Foreign key to the specific pricing option chosen (e.g. Premium Monthly). Nullable for backward compatibility.</summary>
+    public Guid? PlanPricingId { get; set; }
+    public PlanPricing? PlanPricing { get; set; }
 
     // ─── Payment Provider Reference ──────────────────────────────
     /// <summary>Which provider processed the payment.</summary>

@@ -17,7 +17,6 @@ namespace LexiVocab.Infrastructure.Services;
 public class SepayService : IPaymentService
 {
     private readonly IUnitOfWork _uow;
-    private readonly IPricingCalculator _pricingCalculator;
     private readonly ILogger<SepayService> _logger;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
@@ -32,14 +31,12 @@ public class SepayService : IPaymentService
 
     public SepayService(
         IUnitOfWork uow,
-        IPricingCalculator pricingCalculator,
+        IConfiguration config,
         ILogger<SepayService> logger,
         IEmailQueueService emailQueue,
-        IEmailTemplateService templateService,
-        IConfiguration config)
+        IEmailTemplateService templateService)
     {
         _uow = uow;
-        _pricingCalculator = pricingCalculator;
         _logger = logger;
         _emailQueue = emailQueue;
         _templateService = templateService;
@@ -52,7 +49,7 @@ public class SepayService : IPaymentService
         _bankName = config["Sepay:BankName"] ?? "";
     }
 
-    public async Task<string> CreateOrderAsync(Guid userId, string planId, int durationMonths, CancellationToken ct)
+    public async Task<string> CreateOrderAsync(Guid userId, string pricingId, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(_bankAccount) || string.IsNullOrEmpty(_bankName))
         {
@@ -60,14 +57,12 @@ public class SepayService : IPaymentService
             throw new InvalidOperationException("Sepay payment is not properly configured. Please contact support.");
         }
 
-        if (!Guid.TryParse(planId, out var planGuid))
-            throw new ArgumentException("Invalid subscription plan ID.");
+        if (!Guid.TryParse(pricingId, out var pricingGuid))
+            throw new ArgumentException("Invalid subscription pricing ID.");
 
-        var plan = await _uow.PlanDefinitions.GetByIdAsync(planGuid, ct)
-                   ?? throw new ArgumentException("Subscription plan not found.");
-
-        // Calculate dynamic price with discount
-        var pricing = _pricingCalculator.CalculatePrice(plan.Price, durationMonths);
+        var pricing = await _uow.PlanPricings.GetByIdWithPlanAsync(pricingGuid, ct)
+                   ?? throw new ArgumentException("Subscription pricing not found.");
+        var plan = pricing.Plan;
 
         // Create a unique reference for the bank transfer description
         // Format: LV [UserId Short] [ShortGuid]
@@ -77,12 +72,12 @@ public class SepayService : IPaymentService
         {
             UserId = userId,
             PlanDefinitionId = plan.Id,
+            PlanPricingId = pricing.Id,
             Status = SubscriptionStatus.Pending,
             StartDate = DateTime.UtcNow,
-            EndDate = DateTime.UtcNow.AddMonths(durationMonths),
+            EndDate = pricing.DurationDays.HasValue ? DateTime.UtcNow.AddDays(pricing.DurationDays.Value) : null,
             Provider = PaymentProvider.Sepay,
-            ExternalSubscriptionId = reference,
-            DurationMonths = durationMonths
+            ExternalSubscriptionId = reference
         };
 
         var tx = new PaymentTransaction
@@ -91,8 +86,8 @@ public class SepayService : IPaymentService
             Subscription = sub,
             Provider = PaymentProvider.Sepay,
             ExternalOrderId = reference,
-            Amount = pricing.FinalPrice,
-            Currency = plan.Currency,
+            Amount = pricing.Price,
+            Currency = pricing.Currency,
             Status = PaymentStatus.Pending,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_pendingPaymentExpiresInMinutes)
         };
@@ -102,7 +97,7 @@ public class SepayService : IPaymentService
         await _uow.SaveChangesAsync(ct);
 
         // For Sepay, the "Approval URL" is actually a page showing the QR or a direct VietQR link
-        var qrUrl = string.Format(_qrTemplate, _bankAccount, _bankName, (int)pricing.FinalPrice, reference);
+        var qrUrl = string.Format(_qrTemplate, _bankAccount, _bankName, (int)pricing.Price, reference);
         
         return qrUrl;
     }

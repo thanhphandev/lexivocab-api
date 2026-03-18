@@ -35,8 +35,7 @@ public class GetUserDetailHandler : IRequestHandler<GetUserDetailQuery, Result<U
             s.StartDate,
             s.EndDate,
             s.Provider.ToString(),
-            s.ExternalSubscriptionId,
-            s.DurationMonths)).ToList();
+            s.ExternalSubscriptionId)).ToList();
 
         var dto = new UserDetailDto(
             user.Id,

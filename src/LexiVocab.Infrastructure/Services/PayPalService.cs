@@ -20,7 +20,6 @@ public class PayPalService : IPaymentService
 {
     private readonly HttpClient _httpClient;
     private readonly IUnitOfWork _uow;
-    private readonly IPricingCalculator _pricingCalculator;
     private readonly ILogger<PayPalService> _logger;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
@@ -39,7 +38,6 @@ public class PayPalService : IPaymentService
     public PayPalService(
         HttpClient httpClient,
         IUnitOfWork uow,
-        IPricingCalculator pricingCalculator,
         IConfiguration config,
         IHostEnvironment env,
         ILogger<PayPalService> logger,
@@ -48,7 +46,6 @@ public class PayPalService : IPaymentService
     {
         _httpClient = httpClient;
         _uow = uow;
-        _pricingCalculator = pricingCalculator;
         _logger = logger;
         _emailQueue = emailQueue;
         _templateService = templateService;
@@ -80,20 +77,19 @@ public class PayPalService : IPaymentService
         return doc.RootElement.GetProperty("access_token").GetString() ?? "";
     }
 
-    public async Task<string> CreateOrderAsync(Guid userId, string planId, int durationMonths, CancellationToken ct)
+    public async Task<string> CreateOrderAsync(Guid userId, string pricingId, CancellationToken ct)
     {
         var token = await GetAccessTokenAsync(ct);
 
-        if (!Guid.TryParse(planId, out var planGuid))
-            throw new ArgumentException("Invalid subscription plan ID.");
+        if (!Guid.TryParse(pricingId, out var pricingGuid))
+            throw new ArgumentException("Invalid subscription pricing ID.");
 
-        var plan = await _uow.PlanDefinitions.GetByIdAsync(planGuid, ct)
-                   ?? throw new ArgumentException("Subscription plan not found.");
+        var pricing = await _uow.PlanPricings.GetByIdWithPlanAsync(pricingGuid, ct)
+                   ?? throw new ArgumentException("Subscription pricing not found.");
+        var plan = pricing.Plan;
 
-        // Calculate dynamic price with discount
-        var pricing = _pricingCalculator.CalculatePrice(plan.Price, durationMonths);
-        var amount = pricing.FinalPrice.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
-        var description = $"LexiVocab {plan.Name} - {durationMonths} month(s) (Save {pricing.DiscountPercent:F0}%)";
+        var amount = pricing.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        var description = $"LexiVocab {plan.Name}{(pricing.DurationDays.HasValue ? $" - {pricing.DurationDays} days" : " - Lifetime")}";
 
         var payload = new
         {
@@ -148,11 +144,11 @@ public class PayPalService : IPaymentService
                 {
                     UserId = userId,
                     PlanDefinitionId = plan.Id,
+                    PlanPricingId = pricing.Id,
                     Status = SubscriptionStatus.Pending,
                     StartDate = DateTime.UtcNow,
-                    EndDate = DateTime.UtcNow.AddMonths(durationMonths),
-                    Provider = PaymentProvider.PayPal,
-                    DurationMonths = durationMonths // Store the duration
+                    EndDate = pricing.DurationDays.HasValue ? DateTime.UtcNow.AddDays(pricing.DurationDays.Value) : null,
+                    Provider = PaymentProvider.PayPal
                 };
 
                 var tx = new PaymentTransaction
@@ -161,7 +157,7 @@ public class PayPalService : IPaymentService
                     Subscription = sub,
                     Provider = PaymentProvider.PayPal,
                     ExternalOrderId = orderId,
-                    Amount = pricing.FinalPrice,
+                    Amount = pricing.Price,
                     Currency = CurrencyCode,
                     Status = PaymentStatus.Pending,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(_pendingPaymentExpiresInMinutes)

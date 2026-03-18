@@ -15,7 +15,7 @@ public interface IPaymentService
     /// Creates a checkout order/session.
     /// Returns the approval URL that the frontend should redirect the user to.
     /// </summary>
-    Task<string> CreateOrderAsync(Guid userId, string planId, int durationMonths, CancellationToken ct);
+    Task<string> CreateOrderAsync(Guid userId, string pricingId, CancellationToken ct);
 
     /// <summary>
     /// Captures the payment after the user approves it on the provider's checkout page.

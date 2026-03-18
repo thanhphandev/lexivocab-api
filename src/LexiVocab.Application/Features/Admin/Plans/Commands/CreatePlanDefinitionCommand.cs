@@ -15,9 +15,6 @@ namespace LexiVocab.Application.Features.Admin.Plans.Commands;
 /// </summary>
 public record CreatePlanDefinitionCommand(
     string Name,
-    decimal Price,
-    string Currency,
-    string IntervalType,
     bool IsActive,
     Dictionary<string, string> Features) : IRequest<Result<PlanDefinitionDto>>, IAuditedRequest
 {
@@ -32,12 +29,6 @@ public class CreatePlanDefinitionValidator : AbstractValidator<CreatePlanDefinit
     public CreatePlanDefinitionValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.Price).GreaterThanOrEqualTo(0);
-        RuleFor(x => x.Currency).NotEmpty().Length(3);
-        RuleFor(x => x.IntervalType)
-            .NotEmpty()
-            .Must(it => ValidIntervals.Contains(it))
-            .WithMessage($"IntervalType must be one of: {string.Join(", ", ValidIntervals)}");
         RuleFor(x => x.Features).NotNull();
     }
 }
@@ -56,15 +47,6 @@ public class CreatePlanDefinitionHandler : IRequestHandler<CreatePlanDefinitionC
         var existing = await _uow.PlanDefinitions.GetByNameAsync(request.Name, ct);
         if (existing != null)
             return Result<PlanDefinitionDto>.Conflict($"Plan with name '{request.Name}' already exists.");
-
-        // Calculate DurationDays from IntervalType
-        var durationDays = request.IntervalType switch
-        {
-            "Month" => 30,
-            "Year" => 365,
-            "Lifetime" => 0,
-            _ => 30
-        };
 
         // Convert Dictionary features to PlanFeature entities
         var planFeatures = new List<PlanFeature>();
@@ -85,11 +67,7 @@ public class CreatePlanDefinitionHandler : IRequestHandler<CreatePlanDefinitionC
         {
             Name = request.Name,
             NameKey = $"plan_{request.Name.ToLowerInvariant().Replace(" ", "_")}",
-            Price = request.Price,
-            Currency = request.Currency,
             Description = "", // Can be set later via update
-            IntervalType = request.IntervalType,
-            DurationDays = durationDays,
             IsActive = request.IsActive,
             IsRecommended = false,
             PlanFeatures = planFeatures
@@ -106,9 +84,6 @@ public class CreatePlanDefinitionHandler : IRequestHandler<CreatePlanDefinitionC
         return Result<PlanDefinitionDto>.Created(new PlanDefinitionDto(
             plan.Id,
             plan.Name,
-            plan.Price,
-            plan.Currency,
-            plan.IntervalType,
             plan.IsActive,
             responseFeatures,
             plan.CreatedAt,

@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<IPaymentTransactionRepository, PaymentTransactionRepository>();
         services.AddScoped<IPlanDefinitionRepository, PlanDefinitionRepository>();
+        services.AddScoped<IPlanPricingRepository, PlanPricingRepository>();
         services.AddScoped<IFeatureDefinitionRepository, FeatureDefinitionRepository>();
 
         // ─── Data Seeders ─────────────────────────────────────
@@ -94,7 +95,6 @@ public static class DependencyInjection
         
         // ─── Freemium & Payments ─────────────────────────────
         services.AddScoped<IFeatureGatingService, Services.FeatureGatingService>();
-        services.AddScoped<IPricingCalculator, Services.PricingCalculator>();
         services.AddScoped<IPaymentServiceFactory, Services.PaymentServiceFactory>();
         
         services.AddHttpClient<IPaymentService, Services.PayPalService>(client =>

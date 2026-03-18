@@ -21,6 +21,7 @@ public class UnitOfWork : IUnitOfWork
     public ISubscriptionRepository Subscriptions { get; }
     public IPaymentTransactionRepository PaymentTransactions { get; }
     public IPlanDefinitionRepository PlanDefinitions { get; }
+    public IPlanPricingRepository PlanPricings { get; }
     public IFeatureDefinitionRepository FeatureDefinitions { get; }
 
     public UnitOfWork(
@@ -33,6 +34,7 @@ public class UnitOfWork : IUnitOfWork
         ISubscriptionRepository subscriptions,
         IPaymentTransactionRepository paymentTransactions,
         IPlanDefinitionRepository planDefinitions,
+        IPlanPricingRepository planPricings,
         IFeatureDefinitionRepository featureDefinitions)
     {
         _context = context;
@@ -44,6 +46,7 @@ public class UnitOfWork : IUnitOfWork
         Subscriptions = subscriptions;
         PaymentTransactions = paymentTransactions;
         PlanDefinitions = planDefinitions;
+        PlanPricings = planPricings;
         FeatureDefinitions = featureDefinitions;
     }
 

@@ -14,6 +14,7 @@ public interface IUnitOfWork : IDisposable
     ISubscriptionRepository Subscriptions { get; }
     IPaymentTransactionRepository PaymentTransactions { get; }
     IPlanDefinitionRepository PlanDefinitions { get; }
+    IPlanPricingRepository PlanPricings { get; }
     IFeatureDefinitionRepository FeatureDefinitions { get; }
 
     /// <summary>

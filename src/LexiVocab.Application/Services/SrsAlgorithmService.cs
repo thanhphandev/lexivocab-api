@@ -77,10 +77,7 @@ public class SrsAlgorithmService : ISrsAlgorithm
                 {
                     var fuzzMin = newInterval * 0.95;
                     var fuzzMax = newInterval * 1.05;
-                    // Provide a deterministic fuzz via card hash to maintain pure functional aspect,
-                    // or use a Random instance. We'll use Random here isolated.
-                    var random = new Random();
-                    var fuzzed = random.NextDouble() * (fuzzMax - fuzzMin) + fuzzMin;
+                    var fuzzed = Random.Shared.NextDouble() * (fuzzMax - fuzzMin) + fuzzMin;
                     newInterval = (int)Math.Round(fuzzed);
                 }
             }

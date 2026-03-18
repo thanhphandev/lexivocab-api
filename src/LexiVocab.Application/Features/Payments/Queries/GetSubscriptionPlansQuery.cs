@@ -23,10 +23,9 @@ public class GetSubscriptionPlansHandler : IRequestHandler<GetSubscriptionPlansQ
         var dtos = plans.Select(p => new SubscriptionPlanDto(
             p.Id.ToString(),
             p.NameKey,
-            p.Price.ToString("F0", System.Globalization.CultureInfo.InvariantCulture),
-            p.DurationDays switch { 30 => "monthly", 365 => "yearly", 0 => "lifetime", _ => "one_time" },
             p.Description,
             p.IsRecommended,
+            p.DisplayOrder,
             p.PlanFeatures.Select(f =>
             {
                 var included = !f.Value.Equals("false", StringComparison.OrdinalIgnoreCase);
@@ -39,8 +38,16 @@ public class GetSubscriptionPlansHandler : IRequestHandler<GetSubscriptionPlansQ
                     featureParams = new Dictionary<string, object> { ["value"] = f.Value };
 
                 return new PlanFeatureDto(f.Feature.Code, included, featureParams);
-            }).ToList()
-        )).ToList();
+            }).ToList(),
+            p.Pricings.Where(pr => pr.IsActive).OrderBy(pr => pr.SortOrder).Select(pr => new PlanPricingDto(
+                pr.Id.ToString(),
+                pr.BillingCycle.ToString(),
+                pr.Price.ToString("F0", System.Globalization.CultureInfo.InvariantCulture),
+                pr.Currency,
+                pr.DurationDays,
+                pr.LabelKey
+            )).ToList()
+        )).OrderBy(p => p.DisplayOrder).ToList();
 
         return Result<List<SubscriptionPlanDto>>.Success(dtos);
     }

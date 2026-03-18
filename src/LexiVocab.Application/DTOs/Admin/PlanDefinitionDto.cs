@@ -7,9 +7,6 @@ namespace LexiVocab.Application.DTOs.Admin;
 public record PlanDefinitionDto(
     Guid Id,
     string Name,
-    decimal Price,
-    string Currency,
-    string IntervalType,   // Month, Year, Lifetime
     bool IsActive,
     Dictionary<string, string> Features,  // Key: FeatureCode, Value: FeatureValue
     DateTime CreatedAt,

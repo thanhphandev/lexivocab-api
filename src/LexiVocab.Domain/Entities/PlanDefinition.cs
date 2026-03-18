@@ -12,15 +12,13 @@ public class PlanDefinition : BaseEntity
 {
     public string Name { get; set; } = string.Empty; // e.g., "Free", "Premium", "Business"
     public string NameKey { get; set; } = string.Empty; // For localization, e.g., "free_plan"
-    public decimal Price { get; set; }
-    public string Currency { get; set; } = "VND";
     public string Description { get; set; } = string.Empty;
-    public string IntervalType { get; set; } = "Month"; // Month, Year, Lifetime
-    public int DurationDays { get; set; } // 0 for lifetime, calculated from IntervalType
+    public int DisplayOrder { get; set; }
     public bool IsActive { get; set; } = true; // Visible for new signups
     public bool IsRecommended { get; set; } // Show as recommended plan
 
     // Navigation properties
     public ICollection<PlanFeature> PlanFeatures { get; set; } = [];
+    public ICollection<PlanPricing> Pricings { get; set; } = [];
     public ICollection<Subscription> Subscriptions { get; set; } = [];
 }

@@ -7,8 +7,8 @@ public class CreatePaymentOrderCommandValidator : AbstractValidator<CreatePaymen
 {
     public CreatePaymentOrderCommandValidator()
     {
-        RuleFor(x => x.PlanId)
-            .NotEmpty().WithMessage("Plan ID is required.");
+        RuleFor(x => x.PricingId)
+            .NotEmpty().WithMessage("Pricing ID is required.");
 
         RuleFor(x => x.Provider)
             .IsInEnum().WithMessage("Invalid payment provider.");

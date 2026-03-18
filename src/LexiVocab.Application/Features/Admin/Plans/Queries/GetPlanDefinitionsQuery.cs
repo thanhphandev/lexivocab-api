@@ -23,9 +23,6 @@ public class GetPlanDefinitionsHandler : IRequestHandler<GetPlanDefinitionsQuery
         var dtos = plans.Select(plan => new PlanDefinitionDto(
             plan.Id,
             plan.Name,
-            plan.Price,
-            plan.Currency,
-            plan.IntervalType,
             plan.IsActive,
             plan.PlanFeatures.ToDictionary(pf => pf.Feature.Code, pf => pf.Value),
             plan.CreatedAt,
