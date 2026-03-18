@@ -13,6 +13,7 @@ using Microsoft.IdentityModel.Tokens;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.Extensions.Caching.Distributed;
+using StackExchange.Redis;
 
 namespace LexiVocab.Infrastructure;
 
@@ -184,6 +185,9 @@ public static class DependencyInjection
                 options.Configuration = redisConnection;
                 options.InstanceName = "LexiVocab:";
             });
+
+            services.AddSingleton<IConnectionMultiplexer>(_ =>
+                ConnectionMultiplexer.Connect(redisConnection));
         }
         else
         {

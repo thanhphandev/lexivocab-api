@@ -70,17 +70,7 @@ public class FeatureDefinitionSeeder : IDataSeeder
             },
             new FeatureDefinition
             {
-                Id = new Guid("f5555555-5555-5555-5555-555555555555"),
-                Code = "MAX_TAGS",
-                Name = "Maximum Tags",
-                Description = "Limit of vocabulary tags allowed",
-                ValueType = "integer",
-                DefaultValue = "5",
-                CreatedAt = seedDate
-            },
-            new FeatureDefinition
-            {
-                Id = new Guid("f6666666-6666-6666-6666-666666666666"),
+                Id = new Guid("f666666-6666-6666-6666-666666666666"),
                 Code = "BATCH_IMPORT",
                 Name = "Batch Import",
                 Description = "Ability to import multiple words at once",

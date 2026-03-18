@@ -1,26 +1,34 @@
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
-using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
+using StackExchange.Redis;
 
 namespace LexiVocab.Infrastructure.Services;
 
 public class FeatureGatingService : IFeatureGatingService
 {
     private readonly IUnitOfWork _uow;
-    private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache _cache;
+    private readonly IDistributedCache _cache;
+    private readonly IConnectionMultiplexer? _redis;
 
-    public FeatureGatingService(IUnitOfWork uow, Microsoft.Extensions.Caching.Distributed.IDistributedCache cache)
+    private const string RedisKeyPrefix = "LexiVocab:";
+    private const int QuotaCacheTtlDays = 2;
+
+    public FeatureGatingService(IUnitOfWork uow, IDistributedCache cache)
+        : this(uow, cache, null)
+    {
+    }
+
+    public FeatureGatingService(IUnitOfWork uow, IDistributedCache cache, IConnectionMultiplexer? redis)
     {
         _uow = uow;
         _cache = cache;
+        _redis = redis;
     }
 
     public async Task<UserPermissionsDto> GetPermissionsAsync(Guid userId, CancellationToken ct)
     {
-        var user = await _uow.Users.GetByIdAsync(userId, ct);
-
         var currentCount = await _uow.Vocabularies
             .CountByUserIdAsync(userId, ct);
 
@@ -57,20 +65,56 @@ public class FeatureGatingService : IFeatureGatingService
             return false; // No limit defined = no access for safety
         }
 
-        // 3. Check current usage in Cache
+        // 3. Consume quota atomically in Redis if available
         var dateKey = DateTime.UtcNow.ToString("yyyy-MM-dd");
         var cacheKey = $"quota:{userId}:{quotaLimitCode}:{dateKey}";
-        
-        var currentStr = await _cache.GetStringAsync(cacheKey, ct);
-        int current = string.IsNullOrEmpty(currentStr) ? 0 : int.Parse(currentStr);
 
+        if (_redis is not null)
+        {
+            var db = _redis.GetDatabase();
+            var redisKey = RedisKeyPrefix + cacheKey;
+            var ttlSeconds = QuotaCacheTtlDays * 24 * 60 * 60;
+
+            // Atomic check-and-increment to avoid quota overshoot under concurrency.
+            const string script = @"
+local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+local limit = tonumber(ARGV[1])
+local ttl = tonumber(ARGV[2])
+
+if current >= limit then
+    return -1
+end
+
+current = redis.call('INCR', KEYS[1])
+
+if current == 1 then
+    redis.call('EXPIRE', KEYS[1], ttl)
+end
+
+if current > limit then
+    redis.call('DECR', KEYS[1])
+    return -1
+end
+
+return current
+";
+
+            var result = (long)await db.ScriptEvaluateAsync(
+                script,
+                [redisKey],
+                [limit, ttlSeconds]);
+
+            return result != -1;
+        }
+
+        // 4. Fallback for non-Redis environments (development) using distributed cache APIs.
+        var currentStr = await _cache.GetStringAsync(cacheKey, ct);
+        var current = string.IsNullOrEmpty(currentStr) ? 0 : int.Parse(currentStr);
         if (current >= limit) return false;
 
-        // 4. Increment and update Cache (simple race condition possible here, but acceptable for this MVP)
-        // In a high-load scenario, we would use a Redis script (LUA) for atomic INCR and EXPIRE.
-        await _cache.SetStringAsync(cacheKey, (current + 1).ToString(), new Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions
+        await _cache.SetStringAsync(cacheKey, (current + 1).ToString(), new DistributedCacheEntryOptions
         {
-            AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(2) // Expire after 2 days to keep cache clean
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(QuotaCacheTtlDays)
         }, ct);
 
         return true;

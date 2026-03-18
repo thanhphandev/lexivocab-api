@@ -32,7 +32,6 @@ public class PlanDefinitionSeeder : IDataSeeder
         var aiAccessId = new Guid("f2222222-2222-2222-2222-222222222222");
         var supportLevelId = new Guid("f3333333-3333-3333-3333-333333333333");
         var exportPdfId = new Guid("f4444444-4444-4444-4444-444444444444");
-        var maxTagsId = new Guid("f5555555-5555-5555-5555-555555555555");
         var batchImportId = new Guid("f6666666-6666-6666-6666-666666666666");
         var aiDailyLimitId = new Guid("f7777777-7777-7777-7777-777777777777");
         var maxQuizPerDayId = new Guid("f8888888-8888-8888-8888-888888888888");
@@ -59,7 +58,6 @@ public class PlanDefinitionSeeder : IDataSeeder
                 new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "Community" },
                 new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "false" },
-                new PlanFeature { FeatureDefinitionId = maxTagsId, Value = "3" },
                 new PlanFeature { FeatureDefinitionId = batchImportId, Value = "false" },
                 new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "10" },
                 new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "5" },
@@ -88,7 +86,6 @@ public class PlanDefinitionSeeder : IDataSeeder
                 new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "Email" },
                 new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "true" },
-                new PlanFeature { FeatureDefinitionId = maxTagsId, Value = "50" },
                 new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "50" },
                 new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "20" },
@@ -117,7 +114,6 @@ public class PlanDefinitionSeeder : IDataSeeder
                 new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "24/7 Priority" },
                 new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "true" },
-                new PlanFeature { FeatureDefinitionId = maxTagsId, Value = "Unlimited" },
                 new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "Unlimited" },
                 new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "Unlimited" },

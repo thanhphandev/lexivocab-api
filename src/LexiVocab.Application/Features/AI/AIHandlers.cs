@@ -38,10 +38,10 @@ public class AIHandlers :
         if (!userId.HasValue) 
             return Result<IAsyncEnumerable<string>>.Failure("Authentication required.", 401);
         
-        // if (!await _featureGating.ConsumeQuotaAsync(userId.Value, "ADVANCED_AI", "AI_DAILY_LIMIT", ct))
-        // {
-        //     return Result<IAsyncEnumerable<string>>.Failure("Daily AI request limit reached. Upgrade to Pro for higher limits.", 403);
-        // }
+        if (!await _featureGating.ConsumeQuotaAsync(userId.Value, "ADVANCED_AI", "AI_DAILY_LIMIT", ct))
+        {
+            return Result<IAsyncEnumerable<string>>.Failure("Daily AI request limit reached. Upgrade to Pro for higher limits.", 403);
+        }
         
         var stream = _aiService.StreamExplainUsageAsync(request.Word, request.Context, request.AsJson, ct);
         return Result<IAsyncEnumerable<string>>.Success(stream);
