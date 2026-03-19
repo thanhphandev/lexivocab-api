@@ -145,48 +145,6 @@ namespace LexiVocab.Infrastructure.Migrations
                         .HasDatabaseName("ix_feature_definitions_code");
 
                     b.ToTable("feature_definitions", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("f1111111-1111-1111-1111-111111111111"),
-                            Code = "MAX_WORDS",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DefaultValue = "false",
-                            Description = "Limit of vocabulary words saved",
-                            Name = "Maximum Words",
-                            ValueType = "boolean"
-                        },
-                        new
-                        {
-                            Id = new Guid("f2222222-2222-2222-2222-222222222222"),
-                            Code = "AI_ACCESS",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DefaultValue = "false",
-                            Description = "Access to AI analysis and generation",
-                            Name = "AI Features",
-                            ValueType = "boolean"
-                        },
-                        new
-                        {
-                            Id = new Guid("f3333333-3333-3333-3333-333333333333"),
-                            Code = "SUPPORT_LEVEL",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DefaultValue = "false",
-                            Description = "Customer support priority",
-                            Name = "Support Level",
-                            ValueType = "boolean"
-                        },
-                        new
-                        {
-                            Id = new Guid("f4444444-4444-4444-4444-444444444444"),
-                            Code = "EXPORT_PDF",
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            DefaultValue = "false",
-                            Description = "Ability to export lists to PDF",
-                            Name = "Export as PDF",
-                            ValueType = "boolean"
-                        });
                 });
 
             modelBuilder.Entity("LexiVocab.Domain.Entities.MasterVocabulary", b =>
@@ -412,80 +370,6 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.HasIndex("FeatureDefinitionId");
 
                     b.ToTable("plan_features", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            PlanDefinitionId = new Guid("11111111-1111-1111-1111-111111111111"),
-                            FeatureDefinitionId = new Guid("f1111111-1111-1111-1111-111111111111"),
-                            Value = "50"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("11111111-1111-1111-1111-111111111111"),
-                            FeatureDefinitionId = new Guid("f2222222-2222-2222-2222-222222222222"),
-                            Value = "false"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("11111111-1111-1111-1111-111111111111"),
-                            FeatureDefinitionId = new Guid("f3333333-3333-3333-3333-333333333333"),
-                            Value = "Community"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("11111111-1111-1111-1111-111111111111"),
-                            FeatureDefinitionId = new Guid("f4444444-4444-4444-4444-444444444444"),
-                            Value = "false"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("22222222-2222-2222-2222-222222222222"),
-                            FeatureDefinitionId = new Guid("f1111111-1111-1111-1111-111111111111"),
-                            Value = "1000"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("22222222-2222-2222-2222-222222222222"),
-                            FeatureDefinitionId = new Guid("f2222222-2222-2222-2222-222222222222"),
-                            Value = "true"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("22222222-2222-2222-2222-222222222222"),
-                            FeatureDefinitionId = new Guid("f3333333-3333-3333-3333-333333333333"),
-                            Value = "Email"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("22222222-2222-2222-2222-222222222222"),
-                            FeatureDefinitionId = new Guid("f4444444-4444-4444-4444-444444444444"),
-                            Value = "true"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("33333333-3333-3333-3333-333333333333"),
-                            FeatureDefinitionId = new Guid("f1111111-1111-1111-1111-111111111111"),
-                            Value = "Unlimited"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("33333333-3333-3333-3333-333333333333"),
-                            FeatureDefinitionId = new Guid("f2222222-2222-2222-2222-222222222222"),
-                            Value = "true"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("33333333-3333-3333-3333-333333333333"),
-                            FeatureDefinitionId = new Guid("f3333333-3333-3333-3333-333333333333"),
-                            Value = "24/7 Priority"
-                        },
-                        new
-                        {
-                            PlanDefinitionId = new Guid("33333333-3333-3333-3333-333333333333"),
-                            FeatureDefinitionId = new Guid("f4444444-4444-4444-4444-444444444444"),
-                            Value = "true"
-                        });
                 });
 
             modelBuilder.Entity("LexiVocab.Domain.Entities.PlanPricing", b =>

@@ -16,7 +16,8 @@ namespace LexiVocab.Application.Features.Admin.Plans.Commands;
 public record CreatePlanDefinitionCommand(
     string Name,
     bool IsActive,
-    Dictionary<string, string> Features) : IRequest<Result<PlanDefinitionDto>>, IAuditedRequest
+    Dictionary<string, string> Features,
+    List<PlanPricingDto> Pricings) : IRequest<Result<PlanDefinitionDto>>, IAuditedRequest
 {
     public AuditAction AuditAction => AuditAction.SystemSettingUpdated;
     public string EntityType => nameof(PlanDefinition);
@@ -63,6 +64,24 @@ public class CreatePlanDefinitionHandler : IRequestHandler<CreatePlanDefinitionC
             }
         }
 
+        var pricings = new List<PlanPricing>();
+        if (request.Pricings != null)
+        {
+            foreach (var p in request.Pricings)
+            {
+                pricings.Add(new PlanPricing
+                {
+                    BillingCycle = Enum.Parse<BillingCycle>(p.BillingCycle, true),
+                    Price = p.Price,
+                    Currency = p.Currency,
+                    DurationDays = p.DurationDays,
+                    LabelKey = p.LabelKey,
+                    SortOrder = 0,
+                    IsActive = true
+                });
+            }
+        }
+
         var plan = new PlanDefinition
         {
             Name = request.Name,
@@ -70,7 +89,8 @@ public class CreatePlanDefinitionHandler : IRequestHandler<CreatePlanDefinitionC
             Description = "", // Can be set later via update
             IsActive = request.IsActive,
             IsRecommended = false,
-            PlanFeatures = planFeatures
+            PlanFeatures = planFeatures,
+            Pricings = pricings
         };
 
         _uow.PlanDefinitions.Add(plan);
@@ -86,6 +106,13 @@ public class CreatePlanDefinitionHandler : IRequestHandler<CreatePlanDefinitionC
             plan.Name,
             plan.IsActive,
             responseFeatures,
+            plan.Pricings.Select(pr => new LexiVocab.Application.DTOs.Payment.PlanPricingDto(
+                pr.Id,
+                pr.BillingCycle.ToString(),
+                pr.Price,
+                pr.Currency,
+                pr.DurationDays,
+                pr.LabelKey)).ToList(),
             plan.CreatedAt,
             plan.UpdatedAt));
     }

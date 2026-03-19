@@ -53,7 +53,7 @@ public class PlanDefinitionSeeder : IDataSeeder
             Pricings =
             [
                 new PlanPricing {
-                    Id = new Guid("p1111111-1111-1111-1111-111111111111"),
+                    Id = new Guid("e1111111-1111-1111-1111-111111111111"),
                     BillingCycle = BillingCycle.Free,
                     Price = 0m,
                     Currency = "VND",
@@ -92,7 +92,7 @@ public class PlanDefinitionSeeder : IDataSeeder
             Pricings =
             [
                 new PlanPricing {
-                    Id = new Guid("p2222222-2222-2222-2222-111111111111"),
+                    Id = new Guid("e2222222-2222-2222-2222-111111111111"),
                     BillingCycle = BillingCycle.Monthly,
                     Price = 50000m, 
                     Currency = "VND",
@@ -103,7 +103,7 @@ public class PlanDefinitionSeeder : IDataSeeder
                     CreatedAt = seedDate
                 },
                 new PlanPricing {
-                    Id = new Guid("p2222222-2222-2222-2222-222222222222"),
+                    Id = new Guid("e2222222-2222-2222-2222-222222222222"),
                     BillingCycle = BillingCycle.Quarterly,
                     Price = 142500m, // 5% off (base 50k)
                     Currency = "VND",
@@ -114,7 +114,7 @@ public class PlanDefinitionSeeder : IDataSeeder
                     CreatedAt = seedDate
                 },
                 new PlanPricing {
-                    Id = new Guid("p2222222-2222-2222-2222-333333333333"),
+                    Id = new Guid("e2222222-2222-2222-2222-333333333333"),
                     BillingCycle = BillingCycle.SemiAnnual,
                     Price = 270000m, // 10% off (base 50k)
                     Currency = "VND",
@@ -125,13 +125,58 @@ public class PlanDefinitionSeeder : IDataSeeder
                     CreatedAt = seedDate
                 },
                 new PlanPricing {
-                    Id = new Guid("p2222222-2222-2222-2222-444444444444"),
+                    Id = new Guid("e2222222-2222-2222-2222-444444444444"),
                     BillingCycle = BillingCycle.Annual,
                     Price = 480000m, // 20% off (base 50k)
                     Currency = "VND",
                     DurationDays = 365,
                     LabelKey = "duration_12m",
                     SortOrder = 4,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                // USD TRADES
+                new PlanPricing {
+                    Id = new Guid("c2222222-2222-2222-2222-111111111111"),
+                    BillingCycle = BillingCycle.Monthly,
+                    Price = 9.99m, 
+                    Currency = "USD",
+                    DurationDays = 30,
+                    LabelKey = "duration_1m",
+                    SortOrder = 5,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("c2222222-2222-2222-2222-222222222222"),
+                    BillingCycle = BillingCycle.Quarterly,
+                    Price = 27.99m,
+                    Currency = "USD",
+                    DurationDays = 90,
+                    LabelKey = "duration_3m",
+                    SortOrder = 6,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("c2222222-2222-2222-2222-333333333333"),
+                    BillingCycle = BillingCycle.SemiAnnual,
+                    Price = 49.99m,
+                    Currency = "USD",
+                    DurationDays = 180,
+                    LabelKey = "duration_6m",
+                    SortOrder = 7,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("c2222222-2222-2222-2222-444444444444"),
+                    BillingCycle = BillingCycle.Annual,
+                    Price = 89.99m,
+                    Currency = "USD",
+                    DurationDays = 365,
+                    LabelKey = "duration_12m",
+                    SortOrder = 8,
                     IsActive = true,
                     CreatedAt = seedDate
                 }
@@ -164,13 +209,24 @@ public class PlanDefinitionSeeder : IDataSeeder
             Pricings =
             [
                 new PlanPricing {
-                    Id = new Guid("p4444444-4444-4444-4444-111111111111"),
+                    Id = new Guid("e4444444-4444-4444-4444-111111111111"),
                     BillingCycle = BillingCycle.Lifetime,
                     Price = 4990000m,
                     Currency = "VND",
                     DurationDays = null,
                     LabelKey = "duration_lifetime",
                     SortOrder = 1,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("c4444444-4444-4444-4444-111111111111"),
+                    BillingCycle = BillingCycle.Lifetime,
+                    Price = 199.99m,
+                    Currency = "USD",
+                    DurationDays = null,
+                    LabelKey = "duration_lifetime",
+                    SortOrder = 2,
                     IsActive = true,
                     CreatedAt = seedDate
                 }

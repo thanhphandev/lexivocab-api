@@ -17,7 +17,8 @@ public record UpdatePlanDefinitionCommand(
     Guid Id,
     string Name,
     bool IsActive,
-    Dictionary<string, string> Features) : IRequest<Result<PlanDefinitionDto>>, IAuditedRequest
+    Dictionary<string, string> Features,
+    List<LexiVocab.Application.DTOs.Payment.PlanPricingDto> Pricings) : IRequest<Result<PlanDefinitionDto>>, IAuditedRequest
 {
     public AuditAction AuditAction => AuditAction.SystemSettingUpdated;
     public string EntityType => nameof(PlanDefinition);
@@ -78,6 +79,26 @@ public class UpdatePlanDefinitionHandler : IRequestHandler<UpdatePlanDefinitionC
             }
         }
 
+        // Rebuild plan pricings
+        plan.Pricings.Clear();
+        if (request.Pricings != null)
+        {
+            foreach (var p in request.Pricings)
+            {
+                plan.Pricings.Add(new PlanPricing
+                {
+                    PlanDefinitionId = plan.Id,
+                    BillingCycle = Enum.Parse<BillingCycle>(p.BillingCycle, true),
+                    Price = p.Price,
+                    Currency = p.Currency,
+                    DurationDays = p.DurationDays,
+                    LabelKey = p.LabelKey,
+                    SortOrder = 0,
+                    IsActive = true
+                });
+            }
+        }
+
         _uow.PlanDefinitions.Update(plan);
         await _uow.SaveChangesAsync(ct);
 
@@ -91,6 +112,13 @@ public class UpdatePlanDefinitionHandler : IRequestHandler<UpdatePlanDefinitionC
             plan.Name,
             plan.IsActive,
             responseFeatures,
+            plan.Pricings.Select(pr => new LexiVocab.Application.DTOs.Payment.PlanPricingDto(
+                pr.Id,
+                pr.BillingCycle.ToString(),
+                pr.Price,
+                pr.Currency,
+                pr.DurationDays,
+                pr.LabelKey)).ToList(),
             plan.CreatedAt,
             plan.UpdatedAt));
     }

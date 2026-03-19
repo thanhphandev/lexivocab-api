@@ -284,7 +284,7 @@ try
 
     app.MapControllers();
 
-    // ─── Auto-Migrate Database in Development ─────────────────
+    // ─── Auto-Migrate & Seed Database in Development ──────────────
     if (app.Environment.IsDevelopment())
     {
         using var scope = app.Services.CreateScope();
@@ -298,6 +298,11 @@ try
             });
         }
         Log.Information("✅ Database migration applied.");
+
+        // Call the data seeder to populate default features and plans
+        var seeder = scope.ServiceProvider.GetRequiredService<LexiVocab.Infrastructure.Persistence.Seeding.DbContextSeeder>();
+        await seeder.SeedAllAsync();
+        Log.Information("✅ Database seeding completed.");
     }
 
     // ─── Health Check Endpoint ────────────────────────────────

@@ -70,7 +70,7 @@ public class FeatureDefinitionSeeder : IDataSeeder
             },
             new FeatureDefinition
             {
-                Id = new Guid("f666666-6666-6666-6666-666666666666"),
+                Id = new Guid("f6666666-6666-6666-6666-666666666666"),
                 Code = "BATCH_IMPORT",
                 Name = "Batch Import",
                 Description = "Ability to import multiple words at once",

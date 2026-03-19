@@ -25,6 +25,13 @@ public class GetPlanDefinitionsHandler : IRequestHandler<GetPlanDefinitionsQuery
             plan.Name,
             plan.IsActive,
             plan.PlanFeatures.ToDictionary(pf => pf.Feature.Code, pf => pf.Value),
+            plan.Pricings.Select(pr => new LexiVocab.Application.DTOs.Payment.PlanPricingDto(
+                pr.Id,
+                pr.BillingCycle.ToString(),
+                pr.Price,
+                pr.Currency,
+                pr.DurationDays,
+                pr.LabelKey)).ToList(),
             plan.CreatedAt,
             plan.UpdatedAt)).ToList();
 
