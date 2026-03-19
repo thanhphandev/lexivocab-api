@@ -1,5 +1,6 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.DTOs.Admin;
+using LexiVocab.Application.DTOs.Payment;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
 
@@ -25,10 +26,10 @@ public class GetPlanDefinitionsHandler : IRequestHandler<GetPlanDefinitionsQuery
             plan.Name,
             plan.IsActive,
             plan.PlanFeatures.ToDictionary(pf => pf.Feature.Code, pf => pf.Value),
-            plan.Pricings.Select(pr => new LexiVocab.Application.DTOs.Payment.PlanPricingDto(
-                pr.Id,
+            plan.Pricings.Select(pr => new PlanPricingDto(
+                pr.Id.ToString(),
                 pr.BillingCycle.ToString(),
-                pr.Price,
+                pr.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
                 pr.Currency,
                 pr.DurationDays,
                 pr.LabelKey)).ToList(),

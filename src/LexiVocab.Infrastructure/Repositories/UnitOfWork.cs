@@ -23,6 +23,7 @@ public class UnitOfWork : IUnitOfWork
     public IPlanDefinitionRepository PlanDefinitions { get; }
     public IPlanPricingRepository PlanPricings { get; }
     public IFeatureDefinitionRepository FeatureDefinitions { get; }
+    public ICouponRepository Coupons { get; }
 
     public UnitOfWork(
         AppDbContext context,
@@ -35,7 +36,8 @@ public class UnitOfWork : IUnitOfWork
         IPaymentTransactionRepository paymentTransactions,
         IPlanDefinitionRepository planDefinitions,
         IPlanPricingRepository planPricings,
-        IFeatureDefinitionRepository featureDefinitions)
+        IFeatureDefinitionRepository featureDefinitions,
+        ICouponRepository coupons)
     {
         _context = context;
         Users = users;
@@ -48,6 +50,7 @@ public class UnitOfWork : IUnitOfWork
         PlanDefinitions = planDefinitions;
         PlanPricings = planPricings;
         FeatureDefinitions = featureDefinitions;
+        Coupons = coupons;
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)

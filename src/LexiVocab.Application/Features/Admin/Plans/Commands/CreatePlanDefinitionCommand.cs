@@ -1,6 +1,7 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Admin;
+using LexiVocab.Application.DTOs.Payment;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -72,7 +73,7 @@ public class CreatePlanDefinitionHandler : IRequestHandler<CreatePlanDefinitionC
                 pricings.Add(new PlanPricing
                 {
                     BillingCycle = Enum.Parse<BillingCycle>(p.BillingCycle, true),
-                    Price = p.Price,
+                    Price = decimal.Parse(p.Price, System.Globalization.CultureInfo.InvariantCulture),
                     Currency = p.Currency,
                     DurationDays = p.DurationDays,
                     LabelKey = p.LabelKey,
@@ -107,9 +108,9 @@ public class CreatePlanDefinitionHandler : IRequestHandler<CreatePlanDefinitionC
             plan.IsActive,
             responseFeatures,
             plan.Pricings.Select(pr => new LexiVocab.Application.DTOs.Payment.PlanPricingDto(
-                pr.Id,
+                pr.Id.ToString(),
                 pr.BillingCycle.ToString(),
-                pr.Price,
+                pr.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
                 pr.Currency,
                 pr.DurationDays,
                 pr.LabelKey)).ToList(),

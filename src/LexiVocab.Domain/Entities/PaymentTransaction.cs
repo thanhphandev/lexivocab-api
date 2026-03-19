@@ -13,6 +13,11 @@ public class PaymentTransaction : BaseEntity
     // ─── Foreign Keys ────────────────────────────────────────────
     public Guid SubscriptionId { get; set; }
     public Guid UserId { get; set; }
+    
+    /// <summary>
+    /// Optional assigned coupon for this payment.
+    /// </summary>
+    public Guid? CouponId { get; set; }
 
     // ─── Payment Details ─────────────────────────────────────────
     /// <summary>Which payment gateway processed this transaction.</summary>
@@ -65,4 +70,5 @@ public class PaymentTransaction : BaseEntity
     // ─── Navigation ──────────────────────────────────────────────
     public Subscription Subscription { get; set; } = null!;
     public User User { get; set; } = null!;
+    public Coupon? Coupon { get; set; }
 }

@@ -22,6 +22,7 @@ public class AppDbContext : DbContext
     public DbSet<FeatureDefinition> FeatureDefinitions => Set<FeatureDefinition>();
     public DbSet<PlanFeature> PlanFeatures => Set<PlanFeature>();
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+    public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

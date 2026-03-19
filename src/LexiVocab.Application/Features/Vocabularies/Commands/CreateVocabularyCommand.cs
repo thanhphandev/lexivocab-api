@@ -54,17 +54,16 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         if (await _uow.Vocabularies.WordExistsForUserAsync(userId, request.WordText, ct))
             return Result<VocabularyDto>.Conflict($"Word '{request.WordText}' already saved.");
 
-        var masterVocab = await _uow.MasterVocabularies.GetByWordAsync(request.WordText.ToLowerInvariant().Trim(), ct);
+        // var masterVocab = await _uow.MasterVocabularies.GetByWordAsync(request.WordText.ToLowerInvariant().Trim(), ct);
 
-        // If master word does not exist, create it and link it.
-        if (masterVocab == null)
-        {
-            masterVocab = new MasterVocabulary
-            {
-                Word = request.WordText.ToLowerInvariant().Trim(),
-            };
-            await _uow.MasterVocabularies.AddAsync(masterVocab, ct);
-        }
+        // if (masterVocab == null)
+        // {
+        //     masterVocab = new MasterVocabulary
+        //     {
+        //         Word = request.WordText.ToLowerInvariant().Trim(),
+        //     };
+        //     await _uow.MasterVocabularies.AddAsync(masterVocab, ct);
+        // }
 
         Guid? assignedTagId = request.TagId;
         if (assignedTagId == null && !string.IsNullOrWhiteSpace(request.SourceUrl))
@@ -97,7 +96,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
             SourceUrl = request.SourceUrl?.Trim(),
             NextReviewDate = DateTime.UtcNow,
             // Link to the master word directly, whether it existed previously or was just created
-            MasterVocabulary = masterVocab 
+            MasterVocabulary = null // TODO: masterVocab is commented out, setting to null for now
         };
 
         await _uow.Vocabularies.AddAsync(entity, ct);
@@ -110,7 +109,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
 
         await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
 
-        return Result<VocabularyDto>.Created(MapToDto(entity, masterVocab));
+        return Result<VocabularyDto>.Created(MapToDto(entity, null));
     }
 
     private static VocabularyDto MapToDto(UserVocabulary v, MasterVocabulary? m) => new(

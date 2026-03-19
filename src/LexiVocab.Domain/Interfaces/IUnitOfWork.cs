@@ -16,6 +16,7 @@ public interface IUnitOfWork : IDisposable
     IPlanDefinitionRepository PlanDefinitions { get; }
     IPlanPricingRepository PlanPricings { get; }
     IFeatureDefinitionRepository FeatureDefinitions { get; }
+    ICouponRepository Coupons { get; }
 
     /// <summary>
     /// Persist all changes made through repositories as a single atomic transaction.

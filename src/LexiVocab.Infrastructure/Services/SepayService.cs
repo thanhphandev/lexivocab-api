@@ -49,7 +49,7 @@ public class SepayService : IPaymentService
         _bankName = config["Sepay:BankName"] ?? "";
     }
 
-    public async Task<string> CreateOrderAsync(Guid userId, string pricingId, CancellationToken ct)
+    public async Task<string> CreateOrderAsync(Guid userId, string pricingId, string? couponCode = null, CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(_bankAccount) || string.IsNullOrEmpty(_bankName))
         {
@@ -63,6 +63,28 @@ public class SepayService : IPaymentService
         var pricing = await _uow.PlanPricings.GetByIdWithPlanAsync(pricingGuid, ct)
                    ?? throw new ArgumentException("Subscription pricing not found.");
         var plan = pricing.Plan;
+
+        Coupon? coupon = null;
+        if (!string.IsNullOrWhiteSpace(couponCode))
+        {
+            var code = couponCode.Trim().ToUpperInvariant();
+            coupon = await _uow.Coupons.GetByCodeAsync(code, ct);
+            if (coupon == null || !coupon.IsActive) throw new InvalidOperationException("Invalid or inactive coupon code.");
+            if (coupon.ValidFrom.HasValue && coupon.ValidFrom > DateTime.UtcNow) throw new InvalidOperationException("Coupon is not yet valid.");
+            if (coupon.ValidUntil.HasValue && coupon.ValidUntil < DateTime.UtcNow) throw new InvalidOperationException("Coupon has expired.");
+            if (coupon.MaxUses.HasValue && coupon.CurrentUses >= coupon.MaxUses) throw new InvalidOperationException("Coupon usage limit reached.");
+        }
+
+        var finalPrice = pricing.Price;
+        if (coupon != null)
+        {
+            if (coupon.DiscountType == DiscountType.Percentage)
+                finalPrice -= finalPrice * (coupon.DiscountValue / 100m);
+            else
+                finalPrice -= coupon.DiscountValue;
+            
+            if (finalPrice < 0) finalPrice = 0;
+        }
 
         // Create a unique reference for the bank transfer description
         // Format: LV [UserId Short] [ShortGuid]
@@ -86,9 +108,10 @@ public class SepayService : IPaymentService
             Subscription = sub,
             Provider = PaymentProvider.Sepay,
             ExternalOrderId = reference,
-            Amount = pricing.Price,
+            Amount = finalPrice,
             Currency = pricing.Currency,
             Status = PaymentStatus.Pending,
+            CouponId = coupon?.Id,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_pendingPaymentExpiresInMinutes)
         };
 
@@ -97,7 +120,7 @@ public class SepayService : IPaymentService
         await _uow.SaveChangesAsync(ct);
 
         // For Sepay, the "Approval URL" is actually a page showing the QR or a direct VietQR link
-        var qrUrl = string.Format(_qrTemplate, _bankAccount, _bankName, (int)pricing.Price, reference);
+        var qrUrl = string.Format(_qrTemplate, _bankAccount, _bankName, (int)finalPrice, reference);
         
         return qrUrl;
     }
@@ -278,5 +301,12 @@ public class SepayService : IPaymentService
             return null;
 
         return string.Format(_qrTemplate, _bankAccount, _bankName, (int)amount, reference);
+    }
+
+    public Task<LexiVocab.Application.Common.Result<bool>> RefundPaymentAsync(string externalTransactionId, string? reason = null, CancellationToken ct = default)
+    {
+        // Sepay (Bank Transfer) doesn't typically support API-based refunds.
+        // It requires manual bank transfer. We just mark it in our system.
+        return Task.FromResult(LexiVocab.Application.Common.Result<bool>.Success(true));
     }
 }

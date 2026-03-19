@@ -10,6 +10,10 @@ public interface IPaymentTransactionRepository : IRepository<PaymentTransaction>
     Task<(IReadOnlyList<PaymentTransaction> Items, int TotalCount)> GetPaginatedByUserAsync(
         Guid userId, int page, int pageSize, CancellationToken ct = default);
 
+    Task<(IReadOnlyList<PaymentTransaction> Items, int TotalCount)> GetPagedForAdminAsync(
+        DateTime? fromDate = null, DateTime? toDate = null, string? status = null, string? provider = null, string? search = null,
+        int page = 1, int pageSize = 20, CancellationToken ct = default);
+
     Task<int> CountByUserAsync(Guid userId, CancellationToken ct = default);
 
     Task<PaymentTransaction?> GetByExternalOrderIdAsync(string externalOrderId, CancellationToken ct = default);

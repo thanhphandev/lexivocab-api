@@ -227,7 +227,8 @@ public class AdminController : ControllerBase
             id,
             request.Name,
             request.IsActive,
-            request.Features);
+            request.Features,
+            request.Pricings);
 
         var result = await _mediator.Send(command, ct);
         return ToActionResult(result);

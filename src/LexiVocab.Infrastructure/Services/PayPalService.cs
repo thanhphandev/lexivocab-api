@@ -77,7 +77,7 @@ public class PayPalService : IPaymentService
         return doc.RootElement.GetProperty("access_token").GetString() ?? "";
     }
 
-    public async Task<string> CreateOrderAsync(Guid userId, string pricingId, CancellationToken ct)
+    public async Task<string> CreateOrderAsync(Guid userId, string pricingId, string? couponCode = null, CancellationToken ct = default)
     {
         var token = await GetAccessTokenAsync(ct);
 
@@ -88,8 +88,31 @@ public class PayPalService : IPaymentService
                    ?? throw new ArgumentException("Subscription pricing not found.");
         var plan = pricing.Plan;
 
-        var amount = pricing.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        Coupon? coupon = null;
+        if (!string.IsNullOrWhiteSpace(couponCode))
+        {
+            var code = couponCode.Trim().ToUpperInvariant();
+            coupon = await _uow.Coupons.GetByCodeAsync(code, ct);
+            if (coupon == null || !coupon.IsActive) throw new InvalidOperationException("Invalid or inactive coupon code.");
+            if (coupon.ValidFrom.HasValue && coupon.ValidFrom > DateTime.UtcNow) throw new InvalidOperationException("Coupon is not yet valid.");
+            if (coupon.ValidUntil.HasValue && coupon.ValidUntil < DateTime.UtcNow) throw new InvalidOperationException("Coupon has expired.");
+            if (coupon.MaxUses.HasValue && coupon.CurrentUses >= coupon.MaxUses) throw new InvalidOperationException("Coupon usage limit reached.");
+        }
+
+        var finalPrice = pricing.Price;
+        if (coupon != null)
+        {
+            if (coupon.DiscountType == DiscountType.Percentage)
+                finalPrice -= finalPrice * (coupon.DiscountValue / 100m);
+            else
+                finalPrice -= coupon.DiscountValue;
+            
+            if (finalPrice < 0) finalPrice = 0;
+        }
+
+        var amount = finalPrice.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
         var description = $"LexiVocab {plan.Name}{(pricing.DurationDays.HasValue ? $" - {pricing.DurationDays} days" : " - Lifetime")}";
+        if (coupon != null) description += $" (Coupon: {coupon.Code})";
 
         var payload = new
         {
@@ -157,9 +180,10 @@ public class PayPalService : IPaymentService
                     Subscription = sub,
                     Provider = PaymentProvider.PayPal,
                     ExternalOrderId = orderId,
-                    Amount = pricing.Price,
-                    Currency = CurrencyCode,
+                    Amount = finalPrice,
+                    Currency = pricing.Currency,
                     Status = PaymentStatus.Pending,
+                    CouponId = coupon?.Id,
                     ExpiresAt = DateTime.UtcNow.AddMinutes(_pendingPaymentExpiresInMinutes)
                 };
 
@@ -545,5 +569,11 @@ public class PayPalService : IPaymentService
     public string? GetApprovalUrl(string reference, decimal amount)
     {
         return null; // PayPal URLs are short-lived and dynamic
+    }
+
+    public Task<LexiVocab.Application.Common.Result<bool>> RefundPaymentAsync(string externalTransactionId, string? reason = null, CancellationToken ct = default)
+    {
+        // Placeholder for PayPal Refund API (e.g., POST /v2/payments/captures/{externalTransactionId}/refund)
+        return Task.FromResult(LexiVocab.Application.Common.Result<bool>.Success(true));
     }
 }

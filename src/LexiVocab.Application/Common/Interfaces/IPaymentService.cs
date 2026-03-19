@@ -15,7 +15,7 @@ public interface IPaymentService
     /// Creates a checkout order/session.
     /// Returns the approval URL that the frontend should redirect the user to.
     /// </summary>
-    Task<string> CreateOrderAsync(Guid userId, string pricingId, CancellationToken ct);
+    Task<string> CreateOrderAsync(Guid userId, string pricingId, string? couponCode = null, CancellationToken ct = default);
 
     /// <summary>
     /// Captures the payment after the user approves it on the provider's checkout page.
@@ -39,4 +39,10 @@ public interface IPaymentService
     /// Returns null if the provider doesn't support easy resumption (like PayPal).
     /// </summary>
     string? GetApprovalUrl(string reference, decimal amount);
+
+    /// <summary>
+    /// Issues a refund for a specific transaction.
+    /// Returns true if successful.
+    /// </summary>
+    Task<Common.Result<bool>> RefundPaymentAsync(string externalTransactionId, string? reason = null, CancellationToken ct = default);
 }

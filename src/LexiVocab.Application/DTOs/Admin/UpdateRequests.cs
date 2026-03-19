@@ -1,3 +1,5 @@
+using LexiVocab.Application.DTOs.Payment;
+
 namespace LexiVocab.Application.DTOs.Admin;
 
 /// <summary>
@@ -17,5 +19,6 @@ public record UpdateFeatureDefinitionRequest(
 public record UpdatePlanDefinitionRequest(
     string Name,
     bool IsActive,
-    Dictionary<string, string> Features
+    Dictionary<string, string> Features,
+    List<PlanPricingDto> Pricings
 );

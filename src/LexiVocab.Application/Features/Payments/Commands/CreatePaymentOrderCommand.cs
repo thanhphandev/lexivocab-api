@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Application.Features.Payments.Commands;
 
-public record CreatePaymentOrderCommand(string PricingId, PaymentProvider Provider) : IRequest<Result<string>>;
+public record CreatePaymentOrderCommand(string PricingId, PaymentProvider Provider, string? CouponCode = null) : IRequest<Result<string>>;
 
 public class CreatePaymentOrderHandler : IRequestHandler<CreatePaymentOrderCommand, Result<string>>
 {
@@ -27,7 +27,7 @@ public class CreatePaymentOrderHandler : IRequestHandler<CreatePaymentOrderComma
         try
         {
             var paymentService = _paymentFactory.GetService(request.Provider);
-            var approvalUrl = await paymentService.CreateOrderAsync(userId, request.PricingId, ct);
+            var approvalUrl = await paymentService.CreateOrderAsync(userId, request.PricingId, request.CouponCode, ct);
             return Result<string>.Success(approvalUrl);
         }
         catch (Exception ex)

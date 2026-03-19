@@ -89,7 +89,7 @@ public class UpdatePlanDefinitionHandler : IRequestHandler<UpdatePlanDefinitionC
                 {
                     PlanDefinitionId = plan.Id,
                     BillingCycle = Enum.Parse<BillingCycle>(p.BillingCycle, true),
-                    Price = p.Price,
+                    Price = decimal.Parse(p.Price, System.Globalization.CultureInfo.InvariantCulture),
                     Currency = p.Currency,
                     DurationDays = p.DurationDays,
                     LabelKey = p.LabelKey,
@@ -113,9 +113,9 @@ public class UpdatePlanDefinitionHandler : IRequestHandler<UpdatePlanDefinitionC
             plan.IsActive,
             responseFeatures,
             plan.Pricings.Select(pr => new LexiVocab.Application.DTOs.Payment.PlanPricingDto(
-                pr.Id,
+                pr.Id.ToString(),
                 pr.BillingCycle.ToString(),
-                pr.Price,
+                pr.Price.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
                 pr.Currency,
                 pr.DurationDays,
                 pr.LabelKey)).ToList(),
