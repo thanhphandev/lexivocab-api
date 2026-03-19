@@ -55,4 +55,10 @@ public class SubscriptionRepository : GenericRepository<Subscription>, ISubscrip
                         s.EndDate.Value > now &&
                         s.EndDate.Value <= threshold)
             .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Subscription>> GetActiveWithPricingAsync(CancellationToken ct = default)
+        => await _dbSet.Include(s => s.PlanPricing).Where(s => s.Status == SubscriptionStatus.Active).ToListAsync(ct);
+
+    public async Task<int> CountSubscriptionsInPeriodAsync(DateTime since, SubscriptionStatus[] statuses, CancellationToken ct = default)
+        => await _dbSet.CountAsync(s => statuses.Contains(s.Status) && (s.Status == SubscriptionStatus.Active || s.EndDate >= since), ct);
 }

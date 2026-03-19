@@ -107,4 +107,15 @@ public class PaymentTransactionRepository : GenericRepository<PaymentTransaction
                 t.ExpiresAt.Value <= now)
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<(string Date, decimal Revenue)>> GetRevenueByDateAsync(DateTime since, CancellationToken ct = default)
+    {
+        var data = await _dbSet
+            .Where(pt => pt.Status == PaymentStatus.Completed && pt.PaidAt >= since)
+            .GroupBy(pt => new { pt.PaidAt!.Value.Year, pt.PaidAt.Value.Month, pt.PaidAt.Value.Day })
+            .Select(g => new { Year = g.Key.Year, Month = g.Key.Month, Day = g.Key.Day, Revenue = g.Sum(x => x.Amount) })
+            .ToListAsync(ct);
+
+        return data.Select(x => (new DateOnly(x.Year, x.Month, x.Day).ToString("yyyy-MM-dd"), x.Revenue)).OrderBy(x => x.Item1).ToList();
+    }
 }

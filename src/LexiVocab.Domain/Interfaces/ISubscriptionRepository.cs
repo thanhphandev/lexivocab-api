@@ -14,4 +14,6 @@ public interface ISubscriptionRepository : IRepository<Subscription>
     Task<int> CountActiveAsync(CancellationToken ct = default);
     Task<IReadOnlyList<Subscription>> GetExpiredWithUserAsync(DateTime now, CancellationToken ct = default);
     Task<IReadOnlyList<Subscription>> GetExpiringSoonWithUserAsync(DateTime now, DateTime threshold, CancellationToken ct = default);
+    Task<IReadOnlyList<Subscription>> GetActiveWithPricingAsync(CancellationToken ct = default);
+    Task<int> CountSubscriptionsInPeriodAsync(DateTime since, SubscriptionStatus[] statuses, CancellationToken ct = default);
 }

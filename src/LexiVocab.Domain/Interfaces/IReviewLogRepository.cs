@@ -53,4 +53,8 @@ public interface IReviewLogRepository : IRepository<ReviewLog>
     Task<int> GetLongestStreakAsync(Guid userId, CancellationToken ct = default);
 
     Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct = default);
+
+    Task<int> CountReviewsSinceAsync(DateTime since, CancellationToken ct = default);
+    Task<double> GetAverageTimeSpentSinceAsync(DateTime since, CancellationToken ct = default);
+    Task<IReadOnlyList<(string Date, int Count)>> GetReviewCountByDateAsync(DateTime since, CancellationToken ct = default);
 }

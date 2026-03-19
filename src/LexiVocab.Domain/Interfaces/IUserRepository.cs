@@ -12,4 +12,6 @@ public interface IUserRepository : IRepository<User>
     Task<bool> EmailExistsAsync(string email, CancellationToken ct = default);
     Task<(IReadOnlyList<User> Items, int TotalCount)> GetPaginatedAsync(int page, int pageSize, string? search, CancellationToken ct = default);
     Task<int> CountPremiumUsersAsync(CancellationToken ct = default);
+    Task<int> CountActiveSinceAsync(DateTime since, CancellationToken ct = default);
+    Task<IReadOnlyList<(string Date, int Count)>> GetNewUsersCountByDateAsync(DateTime since, CancellationToken ct = default);
 }

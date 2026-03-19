@@ -56,7 +56,7 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Change a user's role: User, Premium, or Admin.</summary>
+    /// <summary>Change a user's role: User or Admin.</summary>
     [HttpPut("users/{id}/role")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateUserRole(Guid id, [FromBody] UpdateUserRoleRequest request, CancellationToken ct)
@@ -98,6 +98,15 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> GetSystemMetrics(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetSystemStatsQuery(), ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Get advanced system metrics including DAU, MAU, MRR, Churn and Engagement.</summary>
+    [HttpGet("metrics/advanced")]
+    [ProducesResponseType(typeof(AdvancedSystemStatsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAdvancedSystemMetrics(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetAdvancedSystemStatsQuery(), ct);
         return ToActionResult(result);
     }
 
@@ -269,6 +278,24 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> CreateMasterVocabulary([FromBody] CreateMasterVocabularyCommand command, CancellationToken ct)
     {
         var result = await _mediator.Send(command, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Batch import master vocabulary words.</summary>
+    [HttpPost("vocabularies/master/batch")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateMasterVocabularyBatch([FromBody] LexiVocab.Application.Features.Admin.Vocabularies.Commands.CreateMasterVocabularyBatchCommand command, CancellationToken ct)
+    {
+        var result = await _mediator.Send(command, ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Look up a word from an external dictionary.</summary>
+    [HttpGet("vocabularies/master/lookup")]
+    [ProducesResponseType(typeof(MasterVocabularyDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> LookupMasterVocabularyFromDictionary([FromQuery] string word, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new LexiVocab.Application.Features.Admin.Vocabularies.Queries.SuggestMasterVocabFromDictionaryQuery(word), ct);
         return ToActionResult(result);
     }
 

@@ -164,5 +164,27 @@ public class ReviewLogRepository : GenericRepository<ReviewLog>, IReviewLogRepos
 
     public async Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct)
         => await _dbSet.CountAsync(r => r.UserId == userId, ct);
+
+    public async Task<int> CountReviewsSinceAsync(DateTime since, CancellationToken ct = default)
+        => await _dbSet.CountAsync(r => r.ReviewedAt >= since, ct);
+
+    public async Task<double> GetAverageTimeSpentSinceAsync(DateTime since, CancellationToken ct = default)
+    {
+        var times = await _dbSet.Where(r => r.ReviewedAt >= since && r.TimeSpentMs.HasValue)
+                                .Select(r => r.TimeSpentMs!.Value)
+                                .ToListAsync(ct);
+        return times.Any() ? times.Average() : 0;
+    }
+
+    public async Task<IReadOnlyList<(string Date, int Count)>> GetReviewCountByDateAsync(DateTime since, CancellationToken ct = default)
+    {
+        var data = await _dbSet
+            .Where(r => r.ReviewedAt >= since)
+            .GroupBy(r => new { r.ReviewedAt.Year, r.ReviewedAt.Month, r.ReviewedAt.Day })
+            .Select(g => new { Year = g.Key.Year, Month = g.Key.Month, Day = g.Key.Day, Count = g.Count() })
+            .ToListAsync(ct);
+
+        return data.Select(x => (new DateOnly(x.Year, x.Month, x.Day).ToString("yyyy-MM-dd"), x.Count)).OrderBy(x => x.Item1).ToList();
+    }
 }
 

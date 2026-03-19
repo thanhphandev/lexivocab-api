@@ -25,4 +25,6 @@ public interface IPaymentTransactionRepository : IRepository<PaymentTransaction>
     /// </summary>
     Task<IReadOnlyList<PaymentTransaction>> GetExpiredPendingByUserAsync(
         Guid userId, DateTime now, CancellationToken ct = default);
+        
+    Task<IReadOnlyList<(string Date, decimal Revenue)>> GetRevenueByDateAsync(DateTime since, CancellationToken ct = default);
 }

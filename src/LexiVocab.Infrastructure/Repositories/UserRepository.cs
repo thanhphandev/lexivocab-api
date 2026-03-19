@@ -52,4 +52,18 @@ public class UserRepository : GenericRepository<User>, IUserRepository
             .Select(s => s.UserId)
             .Distinct()
             .CountAsync(ct);
+
+    public async Task<int> CountActiveSinceAsync(DateTime since, CancellationToken ct = default)
+        => await _dbSet.CountAsync(u => u.LastLogin >= since, ct);
+
+    public async Task<IReadOnlyList<(string Date, int Count)>> GetNewUsersCountByDateAsync(DateTime since, CancellationToken ct = default)
+    {
+        var data = await _dbSet
+            .Where(u => u.CreatedAt >= since)
+            .GroupBy(u => new { u.CreatedAt.Year, u.CreatedAt.Month, u.CreatedAt.Day })
+            .Select(g => new { Year = g.Key.Year, Month = g.Key.Month, Day = g.Key.Day, Count = g.Count() })
+            .ToListAsync(ct);
+
+        return data.Select(x => (new DateOnly(x.Year, x.Month, x.Day).ToString("yyyy-MM-dd"), x.Count)).OrderBy(x => x.Item1).ToList();
+    }
 }
