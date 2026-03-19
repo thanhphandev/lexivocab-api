@@ -40,6 +40,22 @@ public class VocabulariesController : ControllerBase
         return ToActionResult(result);
     }
 
+    /// <summary>Explore approved master vocabularies.</summary>
+    [HttpGet("explore")]
+    [ProducesResponseType(typeof(PagedResult<LexiVocab.Application.DTOs.MasterVocabulary.MasterVocabularyDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Explore(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        pageSize = Math.Clamp(pageSize, 1, 100);
+        page = Math.Max(1, page);
+
+        var result = await _mediator.Send(new ExploreVocabulariesQuery(page, pageSize, search), ct);
+        return ToActionResult(result);
+    }
+
     /// <summary>Get a single vocabulary card by ID.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(VocabularyDto), StatusCodes.Status200OK)]
@@ -105,6 +121,18 @@ public class VocabulariesController : ControllerBase
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var result = await _mediator.Send(new DeleteVocabularyCommand(id), ct);
+        if (result.IsSuccess)
+            return Ok(new { success = true });
+        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+    }
+
+    /// <summary>Contribute a vocabulary word to the public Master Vocabulary list.</summary>
+    [HttpPost("{id:guid}/contribute")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ContributeToMaster(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ContributeToMasterCommand(id), ct);
         if (result.IsSuccess)
             return Ok(new { success = true });
         return StatusCode(result.StatusCode, new { success = false, error = result.Error });

@@ -54,16 +54,9 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         if (await _uow.Vocabularies.WordExistsForUserAsync(userId, request.WordText, ct))
             return Result<VocabularyDto>.Conflict($"Word '{request.WordText}' already saved.");
 
+        // We no longer auto-create MasterVocabulary to prevent spam.
+        // Users will use a separate 'Contribute' endpoint.
         // var masterVocab = await _uow.MasterVocabularies.GetByWordAsync(request.WordText.ToLowerInvariant().Trim(), ct);
-
-        // if (masterVocab == null)
-        // {
-        //     masterVocab = new MasterVocabulary
-        //     {
-        //         Word = request.WordText.ToLowerInvariant().Trim(),
-        //     };
-        //     await _uow.MasterVocabularies.AddAsync(masterVocab, ct);
-        // }
 
         Guid? assignedTagId = request.TagId;
         if (assignedTagId == null && !string.IsNullOrWhiteSpace(request.SourceUrl))
@@ -95,8 +88,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
             ContextSentence = request.ContextSentence?.Trim(),
             SourceUrl = request.SourceUrl?.Trim(),
             NextReviewDate = DateTime.UtcNow,
-            // Link to the master word directly, whether it existed previously or was just created
-            MasterVocabulary = null // TODO: masterVocab is commented out, setting to null for now
+            MasterVocabulary = null
         };
 
         await _uow.Vocabularies.AddAsync(entity, ct);
@@ -116,5 +108,5 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
         v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
         v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
-        m?.PhoneticUk, m?.PhoneticUs, m?.AudioUrl, m?.PartOfSpeech);
+        m?.PhoneticUk, m?.PhoneticUs, m?.AudioUrl, m?.PartOfSpeech, m?.IsApproved);
 }

@@ -36,6 +36,12 @@ public class MasterVocabulary : BaseEntity
     /// <summary>Flag to indicate that the external dictionary API failed to find this word, preventing infinite retries.</summary>
     public bool IsFetchFailed { get; set; }
 
+    /// <summary>Indicates if this master word is approved to be shown in the public community explore tab.</summary>
+    public bool IsApproved { get; set; } = true;
+
+    /// <summary>The ID of the user who contributed this word, if applicable.</summary>
+    public Guid? CreatedByUserId { get; set; }
+
     // Navigation
     public ICollection<UserVocabulary> UserVocabularies { get; set; } = [];
 }

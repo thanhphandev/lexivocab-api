@@ -23,13 +23,18 @@ public class MasterVocabularyRepository : GenericRepository<MasterVocabulary>, I
             .ToListAsync(ct);
 
     public async Task<(IReadOnlyList<MasterVocabulary> Items, int TotalCount)> GetPagedAsync(
-        int page, int pageSize, string? searchQuery = null, CancellationToken ct = default)
+        int page, int pageSize, string? searchQuery = null, bool? isApproved = null, CancellationToken ct = default)
     {
         var query = _dbSet.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
             query = query.Where(m => EF.Functions.ILike(m.Word, $"%{searchQuery}%"));
+        }
+
+        if (isApproved.HasValue)
+        {
+            query = query.Where(m => m.IsApproved == isApproved.Value);
         }
 
         var totalCount = await query.CountAsync(ct);

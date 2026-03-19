@@ -9,7 +9,7 @@ public interface IMasterVocabularyRepository : IRepository<MasterVocabulary>
 {
     Task<MasterVocabulary?> GetByWordAsync(string word, CancellationToken ct = default);
     Task<IReadOnlyList<MasterVocabulary>> SearchAsync(string query, int limit = 10, CancellationToken ct = default);
-    Task<(IReadOnlyList<MasterVocabulary> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? searchQuery = null, CancellationToken ct = default);
+    Task<(IReadOnlyList<MasterVocabulary> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, string? searchQuery = null, bool? isApproved = null, CancellationToken ct = default);
 
     /// <summary>
     /// Batch lookup: returns master vocabulary entries for multiple words in a single query.

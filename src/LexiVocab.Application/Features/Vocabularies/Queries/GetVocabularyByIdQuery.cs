@@ -45,8 +45,10 @@ public class GetVocabularyByIdHandler : IRequestHandler<GetVocabularyByIdQuery, 
             entity.Id, entity.TagId, entity.WordText, entity.CustomMeaning, entity.ContextSentence, entity.SourceUrl,
             entity.RepetitionCount, entity.EasinessFactor, entity.IntervalDays,
             entity.NextReviewDate, entity.LastReviewedAt, entity.IsArchived, entity.CreatedAt,
-            entity.MasterVocabulary?.PhoneticUk, entity.MasterVocabulary?.PhoneticUs,
-            entity.MasterVocabulary?.AudioUrl, entity.MasterVocabulary?.PartOfSpeech);
+            entity.MasterVocabulary?.PhoneticUk, entity.MasterVocabulary?.PhoneticUs, 
+            entity.MasterVocabulary?.AudioUrl, entity.MasterVocabulary?.PartOfSpeech,
+            entity.MasterVocabulary?.IsApproved
+        );
 
         var options = new DistributedCacheEntryOptions { SlidingExpiration = TimeSpan.FromHours(1) };
         await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(dto), options, ct);

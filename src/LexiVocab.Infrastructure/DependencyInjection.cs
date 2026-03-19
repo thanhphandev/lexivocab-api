@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IPlanDefinitionRepository, PlanDefinitionRepository>();
         services.AddScoped<IPlanPricingRepository, PlanPricingRepository>();
         services.AddScoped<IFeatureDefinitionRepository, FeatureDefinitionRepository>();
+        services.AddScoped<ICouponRepository, CouponRepository>();
 
         // ─── Data Seeders ─────────────────────────────────────
         services.AddScoped<IDataSeeder, FeatureDefinitionSeeder>();

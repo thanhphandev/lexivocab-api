@@ -37,8 +37,9 @@ public class GetTagVocabulariesHandler : IRequestHandler<GetTagVocabulariesQuery
             v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
             v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
             v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
-            v.MasterVocabulary?.PhoneticUk, v.MasterVocabulary?.PhoneticUs,
-            v.MasterVocabulary?.AudioUrl, v.MasterVocabulary?.PartOfSpeech
+            v.MasterVocabulary?.PhoneticUk, v.MasterVocabulary?.PhoneticUs, 
+            v.MasterVocabulary?.AudioUrl, v.MasterVocabulary?.PartOfSpeech,
+            v.MasterVocabulary?.IsApproved ?? false
         )).ToList();
 
         var result = new PagedResult<VocabularyDto>

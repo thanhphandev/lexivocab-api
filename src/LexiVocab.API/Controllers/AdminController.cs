@@ -311,6 +311,18 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
+    /// <summary>Approve a community-contributed master vocabulary word.</summary>
+    [HttpPatch("vocabularies/master/{id}/approve")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ApproveMasterVocabulary(Guid id, [FromBody] LexiVocab.Application.Features.Admin.Vocabularies.Commands.ApproveMasterVocabularyCommand command, CancellationToken ct)
+    {
+        if (id != command.Id)
+            return BadRequest(new { success = false, error = "Path ID and Body ID mismatch." });
+
+        var result = await _mediator.Send(command, ct);
+        return ToActionResult(result);
+    }
+
     /// <summary>Delete a master vocabulary word.</summary>
     [HttpDelete("vocabularies/master/{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -336,9 +348,10 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
+        [FromQuery] bool? isApproved = null,
         CancellationToken ct = default)
     {
-        var result = await _mediator.Send(new GetMasterVocabulariesQuery(page, pageSize, search), ct);
+        var result = await _mediator.Send(new GetMasterVocabulariesQuery(page, pageSize, search, isApproved), ct);
         return ToActionResult(result);
     }
 

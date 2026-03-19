@@ -18,7 +18,8 @@ public record VocabularyDto(
     string? PhoneticUk,
     string? PhoneticUs,
     string? AudioUrl,
-    string? PartOfSpeech);
+    string? PartOfSpeech,
+    bool? IsMasterApproved);
 
 public record CreateVocabularyRequest(
     string WordText,

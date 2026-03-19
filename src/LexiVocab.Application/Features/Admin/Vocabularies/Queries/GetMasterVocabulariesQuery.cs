@@ -5,7 +5,7 @@ using MediatR;
 
 namespace LexiVocab.Application.Features.Admin.Vocabularies.Queries;
 
-public record GetMasterVocabulariesQuery(int Page, int PageSize, string? SearchQuery) : IRequest<Result<PagedResult<MasterVocabularyDto>>>;
+public record GetMasterVocabulariesQuery(int Page, int PageSize, string? SearchQuery, bool? IsApproved = null) : IRequest<Result<PagedResult<MasterVocabularyDto>>>;
 
 public class GetMasterVocabulariesHandler : IRequestHandler<GetMasterVocabulariesQuery, Result<PagedResult<MasterVocabularyDto>>>
 {
@@ -19,7 +19,7 @@ public class GetMasterVocabulariesHandler : IRequestHandler<GetMasterVocabularie
     public async Task<Result<PagedResult<MasterVocabularyDto>>> Handle(GetMasterVocabulariesQuery request, CancellationToken ct)
     {
         var (items, totalItems) = await _uow.MasterVocabularies.GetPagedAsync(
-            request.Page, request.PageSize, request.SearchQuery, ct);
+            request.Page, request.PageSize, request.SearchQuery, request.IsApproved, ct);
 
         var dtos = items.Select(v => new MasterVocabularyDto(
             v.Id,
