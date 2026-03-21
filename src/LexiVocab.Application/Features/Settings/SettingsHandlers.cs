@@ -208,6 +208,7 @@ public class TestBotSettingsHandler : IRequestHandler<TestBotSettingsCommand, Re
         if (request.IsTelegramReminderEnabled)
         {
             telegramSuccess = await _telegramService.SendMessageAsync(request.TelegramBotToken ?? "", request.TelegramChatId ?? "", message, ct);
+            if (telegramSuccess) await _telegramService.SendStickerAsync(request.TelegramBotToken ?? "", request.TelegramChatId ?? "", "CAACAgIAAxkBAAPUab4o3K5cBSYEEpkbXT_dGcOnqXQAAtgPAAJI8mBLFfvE2nh0a5g6BA", ct);
         }
         
         if (request.IsZaloReminderEnabled)

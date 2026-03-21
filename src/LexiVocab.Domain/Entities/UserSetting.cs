@@ -36,10 +36,10 @@ public class UserSetting : BaseEntity
     public string DefaultTranslator { get; set; } = "google";
 
     /// <summary>Target language for LLM translation and prompts (Language the user is learning).</summary>
-    public string TargetLanguage { get; set; } = "English";
+    public string TargetLanguage { get; set; } = "vi";
 
     /// <summary>Native language used for interface, explanations, and main translations.</summary>
-    public string NativeLanguage { get; set; } = "Vietnamese";
+    public string NativeLanguage { get; set; } = "en";
 
     /// <summary>JSON array storing custom LLM providers (e.g., OpenRouter, LM Studio).</summary>
     public string CustomLlmsJson { get; set; } = "[]";
