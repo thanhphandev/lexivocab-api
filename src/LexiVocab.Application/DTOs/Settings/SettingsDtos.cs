@@ -11,7 +11,14 @@ public record UserSettingsDto(
     string TargetLanguage,
     string NativeLanguage,
     string CustomLlmsJson,
-    string DefaultTranslator);
+    string DefaultTranslator,
+    bool IsEmailReminderEnabled,
+    bool IsTelegramReminderEnabled,
+    string? TelegramBotToken,
+    string? TelegramChatId,
+    bool IsZaloReminderEnabled,
+    string? ZaloBotToken,
+    string? ZaloUserId);
 
 public record UpdateSettingsRequest(
     bool? IsHighlightEnabled,
@@ -24,4 +31,11 @@ public record UpdateSettingsRequest(
     string? TargetLanguage,
     string? NativeLanguage,
     string? CustomLlmsJson,
-    string? DefaultTranslator);
+    string? DefaultTranslator,
+    bool? IsEmailReminderEnabled,
+    bool? IsTelegramReminderEnabled,
+    string? TelegramBotToken,
+    string? TelegramChatId,
+    bool? IsZaloReminderEnabled,
+    string? ZaloBotToken,
+    string? ZaloUserId);

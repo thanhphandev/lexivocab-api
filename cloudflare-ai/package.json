@@ -14,6 +14,7 @@
     "wrangler": "^4.75.0"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20260313.1"
+    "@cloudflare/workers-types": "^4.20260313.1",
+    "node-zalo-bot": "^0.1.6"
   }
 }

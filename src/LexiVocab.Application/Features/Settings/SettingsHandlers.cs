@@ -42,7 +42,14 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, Result<UserS
                 TargetLanguage: "English",
                 NativeLanguage: "Vietnamese",
                 CustomLlmsJson: "[]",
-                DefaultTranslator: "cloudflare"));
+                DefaultTranslator: "cloudflare",
+                IsEmailReminderEnabled: true,
+                IsTelegramReminderEnabled: false,
+                TelegramBotToken: null,
+                TelegramChatId: null,
+                IsZaloReminderEnabled: false,
+                ZaloBotToken: null,
+                ZaloUserId: null));
         }
 
         return Result<UserSettingsDto>.Success(new UserSettingsDto(
@@ -56,7 +63,14 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, Result<UserS
             settings.TargetLanguage,
             settings.NativeLanguage,
             settings.CustomLlmsJson,
-            settings.DefaultTranslator));
+            settings.DefaultTranslator,
+            settings.IsEmailReminderEnabled,
+            settings.IsTelegramReminderEnabled,
+            settings.TelegramBotToken,
+            settings.TelegramChatId,
+            settings.IsZaloReminderEnabled,
+            settings.ZaloBotToken,
+            settings.ZaloUserId));
     }
 }
 
@@ -72,7 +86,14 @@ public record UpdateSettingsCommand(
     string? TargetLanguage,
     string? NativeLanguage,
     string? CustomLlmsJson,
-    string? DefaultTranslator
+    string? DefaultTranslator,
+    bool? IsEmailReminderEnabled,
+    bool? IsTelegramReminderEnabled,
+    string? TelegramBotToken,
+    string? TelegramChatId,
+    bool? IsZaloReminderEnabled,
+    string? ZaloBotToken,
+    string? ZaloUserId
 ) : IRequest<Result<UserSettingsDto>>;
 
 public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Result<UserSettingsDto>>
@@ -112,6 +133,15 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
         if (request.NativeLanguage is not null) settings.NativeLanguage = request.NativeLanguage;
         if (request.CustomLlmsJson is not null) settings.CustomLlmsJson = request.CustomLlmsJson;
         if (request.DefaultTranslator is not null) settings.DefaultTranslator = request.DefaultTranslator;
+        
+        if (request.IsEmailReminderEnabled.HasValue) settings.IsEmailReminderEnabled = request.IsEmailReminderEnabled.Value;
+        if (request.IsTelegramReminderEnabled.HasValue) settings.IsTelegramReminderEnabled = request.IsTelegramReminderEnabled.Value;
+        if (request.TelegramBotToken is not null) settings.TelegramBotToken = request.TelegramBotToken;
+        if (request.TelegramChatId is not null) settings.TelegramChatId = request.TelegramChatId;
+        if (request.IsZaloReminderEnabled.HasValue) settings.IsZaloReminderEnabled = request.IsZaloReminderEnabled.Value;
+        if (request.ZaloBotToken is not null) settings.ZaloBotToken = request.ZaloBotToken;
+        if (request.ZaloUserId is not null) settings.ZaloUserId = request.ZaloUserId;
+        
         settings.UpdatedAt = DateTime.UtcNow;
 
         await _uow.SaveChangesAsync(ct);
@@ -127,6 +157,68 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
             settings.TargetLanguage,
             settings.NativeLanguage,
             settings.CustomLlmsJson,
-            settings.DefaultTranslator));
+            settings.DefaultTranslator,
+            settings.IsEmailReminderEnabled,
+            settings.IsTelegramReminderEnabled,
+            settings.TelegramBotToken,
+            settings.TelegramChatId,
+            settings.IsZaloReminderEnabled,
+            settings.ZaloBotToken,
+            settings.ZaloUserId));
+    }
+}
+
+// ─── Test Bot Settings ───────────────────────────────────────────
+public record TestBotSettingsCommand(
+    string NativeLanguage,
+    bool IsTelegramReminderEnabled,
+    string TelegramBotToken,
+    string TelegramChatId,
+    bool IsZaloReminderEnabled,
+    string ZaloBotToken,
+    string ZaloUserId
+) : IRequest<Result<bool>>;
+
+public class TestBotSettingsHandler : IRequestHandler<TestBotSettingsCommand, Result<bool>>
+{
+    private readonly ITelegramNotificationService _telegramService;
+    private readonly IZaloNotificationService _zaloService;
+
+    public TestBotSettingsHandler(ITelegramNotificationService telegramService, IZaloNotificationService zaloService)
+    {
+        _telegramService = telegramService;
+        _zaloService = zaloService;
+    }
+
+    public async Task<Result<bool>> Handle(TestBotSettingsCommand request, CancellationToken ct)
+    {
+        var lang = (request.NativeLanguage ?? "vi").ToLowerInvariant();
+        var message = "✅ LexiVocab Bot Test: Test message confirming successful bot connection. Ready for automatic vocabulary reminders!";
+        
+        if (lang.StartsWith("vi"))
+            message = "✅ LexiVocab Bot Test: Tin nhắn thử nghiệm xác nhận kết nối tự động thành công, sẵn sàng nhắc nhở từ vựng tới bạn!";
+        else if (lang.StartsWith("ja"))
+            message = "✅ LexiVocab Bot Test: ボットとの接続が正常に確認されました。語彙の学習リマインダーを確実に送信する準備ができました！";
+        else if (lang.StartsWith("zh"))
+            message = "✅ LexiVocab Bot Test: 机器人连接确认成功！词汇复习自动提醒功能已准备就绪。";
+        
+        bool telegramSuccess = true;
+        bool zaloSuccess = true;
+        
+        if (request.IsTelegramReminderEnabled)
+        {
+            telegramSuccess = await _telegramService.SendMessageAsync(request.TelegramBotToken ?? "", request.TelegramChatId ?? "", message, ct);
+        }
+        
+        if (request.IsZaloReminderEnabled)
+        {
+            zaloSuccess = await _zaloService.SendMessageAsync(request.ZaloBotToken ?? "", request.ZaloUserId ?? "", message, ct);
+            if (zaloSuccess) await _zaloService.SendStickerAsync(request.ZaloBotToken ?? "", request.ZaloUserId ?? "", "f67c2c2c1069f937a078", ct);
+        }
+        
+        if (!telegramSuccess || !zaloSuccess) 
+            return Result<bool>.Failure("Failed to send test. Check token & ID validity.");
+
+        return Result<bool>.Success(true);
     }
 }

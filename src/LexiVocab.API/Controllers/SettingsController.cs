@@ -46,7 +46,23 @@ public class SettingsController : ControllerBase
                 request.TargetLanguage,
                 request.NativeLanguage,
                 request.CustomLlmsJson,
-                request.DefaultTranslator), ct);
+                request.DefaultTranslator,
+                request.IsEmailReminderEnabled,
+                request.IsTelegramReminderEnabled,
+                request.TelegramBotToken,
+                request.TelegramChatId,
+                request.IsZaloReminderEnabled,
+                request.ZaloBotToken,
+                request.ZaloUserId), ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>Tests Telegram and Zalo bot notification configurations.</summary>
+    [HttpPost("test-bot-notifications")]
+    [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+    public async Task<IActionResult> TestBotNotifications([FromBody] TestBotSettingsCommand payload, CancellationToken ct)
+    {
+        var result = await _mediator.Send(payload, ct);
         return ToActionResult(result);
     }
 

@@ -43,7 +43,7 @@ public class ReviewQueriesTests
             }
         };
 
-        _mockUow.Setup(x => x.Vocabularies.GetDueForReviewAsync(_userId, 10, It.IsAny<CancellationToken>()))
+        _mockUow.Setup(x => x.Vocabularies.GetDueForReviewAsync(_userId, 10, It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(dueVocabs);
 
         _mockUow.Setup(x => x.Vocabularies.GetStatsAsync(_userId, It.IsAny<CancellationToken>()))

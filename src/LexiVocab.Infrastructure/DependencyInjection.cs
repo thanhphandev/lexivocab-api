@@ -71,6 +71,19 @@ public static class DependencyInjection
         services.AddScoped<IEmailQueueService, Services.HangfireEmailQueueService>();
         services.AddSingleton<IEmailTemplateService, Services.EmailTemplateService>();
 
+        // ─── External Notification Services ──────────────────
+        services.AddHttpClient<ITelegramNotificationService, Services.Notifications.TelegramNotificationService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .AddStandardResilienceHandler();
+
+        services.AddHttpClient<IZaloNotificationService, Services.Notifications.ZaloNotificationService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        })
+        .AddStandardResilienceHandler();
+
         // ─── Hangfire Integration (PostgreSQL backed) ───────────
         services.AddHangfire(config => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)

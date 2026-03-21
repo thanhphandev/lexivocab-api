@@ -6,6 +6,7 @@ using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Enums;
+using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
 using System.Security.Cryptography;
 using MediatR;

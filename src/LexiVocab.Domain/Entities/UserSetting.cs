@@ -44,6 +44,15 @@ public class UserSetting : BaseEntity
     /// <summary>JSON array storing custom LLM providers (e.g., OpenRouter, LM Studio).</summary>
     public string CustomLlmsJson { get; set; } = "[]";
 
+    // Notification Preferences
+    public bool IsEmailReminderEnabled { get; set; } = true;
+    public bool IsTelegramReminderEnabled { get; set; } = false;
+    public string? TelegramBotToken { get; set; }
+    public string? TelegramChatId { get; set; }
+    public bool IsZaloReminderEnabled { get; set; } = false;
+    public string? ZaloBotToken { get; set; }
+    public string? ZaloUserId { get; set; }
+
     // Navigation
     public User User { get; set; } = null!;
 }
