@@ -37,13 +37,8 @@ public class TranslationStreamService : ITranslationStreamService
 
         if (selectedProvider == null)
         {
-            _logger.LogWarning("Provider '{Provider}' not found or unsupported natively. Trying OpenAI-compatible fallback.", providerType);
-            selectedProvider = _providers.FirstOrDefault(p => p.GetType().Name == "OpenAiCompatibleTranslationProvider");
-            
-            if (selectedProvider == null)
-            {
-                selectedProvider = _providers.FirstOrDefault(p => p.CanHandle("cloudflare"));
-            }
+            _logger.LogWarning("Provider '{Provider}' not found or unsupported natively. Trying fallback based on priority.", providerType);
+            selectedProvider = _providers.OrderByDescending(p => p.Priority).FirstOrDefault();
         }
 
         if (selectedProvider != null)
@@ -72,15 +67,8 @@ public class TranslationStreamService : ITranslationStreamService
 
         if (selectedProvider == null)
         {
-            _logger.LogWarning("Provider '{Provider}' not found or unsupported natively. Trying OpenAI-compatible fallback.", providerType);
-            // Default to OpenAI Compatible Provider which can handle unknown providers via configuration
-            selectedProvider = _providers.FirstOrDefault(p => p.GetType().Name == "OpenAiCompatibleTranslationProvider");
-            
-            if (selectedProvider == null)
-            {
-                // Absolute fallback
-                selectedProvider = _providers.FirstOrDefault(p => p.CanHandle("cloudflare"));
-            }
+            _logger.LogWarning("Provider '{Provider}' not found or unsupported natively. Trying fallback based on priority.", providerType);
+            selectedProvider = _providers.OrderByDescending(p => p.Priority).FirstOrDefault();
         }
 
         if (selectedProvider != null)

@@ -32,4 +32,10 @@
     <EmbeddedResource Include="EmailTemplates\*.html" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Services\AI\Prompts\*.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

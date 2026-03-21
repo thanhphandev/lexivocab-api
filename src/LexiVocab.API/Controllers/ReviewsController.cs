@@ -15,16 +15,22 @@ namespace LexiVocab.API.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 [Produces("application/json")]
-public class ReviewsController : ControllerBase
+public class ReviewsController : BaseApiController
 {
     private readonly IMediator _mediator;
 
     public ReviewsController(IMediator mediator) => _mediator = mediator;
 
     /// <summary>
-    /// Get today's review session — flashcards where NextReviewDate ≤ NOW().
-    /// This is the most critical query and uses the composite index for sub-ms performance.
+    /// Get today's review session.
     /// </summary>
+    /// <remarks>
+    /// Fetches flashcards that are due for review (NextReviewDate ≤ NOW).
+    /// Uses SRS (Spaced Repetition System) logic.
+    /// </remarks>
+    /// <param name="limit">Max cards to fetch (default: 50, max: 200).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns list of cards for review.</response>
     [HttpGet("session")]
     [ProducesResponseType(typeof(ReviewSessionDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSession([FromQuery] int limit = 50, CancellationToken ct = default)
@@ -36,8 +42,15 @@ public class ReviewsController : ControllerBase
     }
 
     /// <summary>
-    /// Submit review result for a flashcard. Triggers SM-2 recalculation.
+    /// Submit review result.
     /// </summary>
+    /// <remarks>
+    /// Updates the word's SRS metadata (EaseFactor, Interval, Step) based on user performance.
+    /// </remarks>
+    /// <param name="request">Review details (Score 0-5, Time spent).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the updated SRS status.</response>
+    /// <response code="404">Word not found.</response>
     [HttpPost]
     [ProducesResponseType(typeof(ReviewResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -48,7 +61,13 @@ public class ReviewsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get review history with pagination.</summary>
+    /// <summary>
+    /// Get review history.
+    /// </summary>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns paginated review logs.</response>
     [HttpGet("history")]
     [ProducesResponseType(typeof(PagedResult<ReviewHistoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHistory(
@@ -60,10 +79,4 @@ public class ReviewsController : ControllerBase
         return ToActionResult(result);
     }
 
-    private IActionResult ToActionResult<T>(Result<T> result)
-    {
-        if (result.IsSuccess)
-            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
 }

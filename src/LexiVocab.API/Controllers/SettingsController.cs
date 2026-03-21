@@ -14,13 +14,20 @@ namespace LexiVocab.API.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 [Produces("application/json")]
-public class SettingsController : ControllerBase
+public class SettingsController : BaseApiController
 {
     private readonly IMediator _mediator;
 
     public SettingsController(IMediator mediator) => _mediator = mediator;
 
-    /// <summary>Get current user's extension settings.</summary>
+    /// <summary>
+    /// Get user settings.
+    /// </summary>
+    /// <remarks>
+    /// Returns the extension settings, including UI preferences and notification configs.
+    /// </remarks>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns settings.</response>
     [HttpGet]
     [ProducesResponseType(typeof(UserSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(CancellationToken ct)
@@ -29,7 +36,15 @@ public class SettingsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Update extension settings. Supports partial updates.</summary>
+    /// <summary>
+    /// Update user settings.
+    /// </summary>
+    /// <remarks>
+    /// Supports partial updates for any setting field.
+    /// </remarks>
+    /// <param name="request">New settings data.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns updated settings.</response>
     [HttpPut]
     [ProducesResponseType(typeof(UserSettingsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Update([FromBody] UpdateSettingsRequest request, CancellationToken ct)
@@ -57,7 +72,15 @@ public class SettingsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Tests Telegram and Zalo bot notification configurations.</summary>
+    /// <summary>
+    /// Test notification settings.
+    /// </summary>
+    /// <remarks>
+    /// Sends a test message to the configured Telegram or Zalo bot.
+    /// </remarks>
+    /// <param name="payload">Bot configuration to test.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns true if test message was sent successfully.</response>
     [HttpPost("test-bot-notifications")]
     [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
     public async Task<IActionResult> TestBotNotifications([FromBody] TestBotSettingsCommand payload, CancellationToken ct)
@@ -66,10 +89,4 @@ public class SettingsController : ControllerBase
         return ToActionResult(result);
     }
 
-    private IActionResult ToActionResult<T>(Result<T> result)
-    {
-        if (result.IsSuccess)
-            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
 }

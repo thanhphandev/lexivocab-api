@@ -128,31 +128,28 @@ public static class DependencyInjection
         })
         .AddStandardResilienceHandler();
 
-        // ─── AI Services (Cloudflare Workers AI & LLMs) ─────────────
-        services.AddHttpClient<IAIService, Services.CloudflareAIService>(client =>
+        // ─── Unified AI System (LLMs & Orchestration) ─────────────
+        services.AddSingleton<IPromptTemplateService, Services.AI.PromptTemplateService>();
+        services.AddScoped<IAIOrchestratorService, Services.AI.AIOrchestratorService>();
+
+        Action<Microsoft.Extensions.Http.Resilience.HttpStandardResilienceOptions> aiResilienceOptions = options =>
         {
-            client.Timeout = TimeSpan.FromSeconds(60);
-        })
-        .AddStandardResilienceHandler(options =>
-        {
-            // AI inference calls can take 10-30s; default 10s attempt timeout is too aggressive
             options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(30);
             options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(90);
             options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
-        });
+        };
+
+        services.AddHttpClient<ILLMProvider, Services.AI.Providers.OpenAiCompatibleLLMProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        }).AddStandardResilienceHandler(aiResilienceOptions);
+
+
 
         // ─── Translation Streaming Strategies ─────────────
         services.AddScoped<ITranslationStreamService, Services.Translation.TranslationStreamService>();
 
-        services.AddHttpClient<Services.Translation.Providers.ITranslationProvider, Services.Translation.Providers.CloudflareTranslationProvider>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(60);
-        }).AddStandardResilienceHandler();
-
-        services.AddHttpClient<Services.Translation.Providers.ITranslationProvider, Services.Translation.Providers.OpenAiCompatibleTranslationProvider>(client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(60);
-        }).AddStandardResilienceHandler();
+        services.AddScoped<Services.Translation.Providers.ITranslationProvider, Services.Translation.Providers.LlmTranslationProvider>();
 
         services.AddHttpClient<Services.Translation.Providers.ITranslationProvider, Services.Translation.Providers.GoogleTranslationProvider>(client =>
         {

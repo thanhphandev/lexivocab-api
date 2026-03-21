@@ -10,7 +10,7 @@ namespace LexiVocab.API.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/coupons")]
 [Produces("application/json")]
-public class CouponsController : ControllerBase
+public class CouponsController : BaseApiController
 {
     private readonly IMediator _mediator;
 
@@ -30,13 +30,6 @@ public class CouponsController : ControllerBase
             return BadRequest(new { success = false, error = "Coupon code is required." });
 
         var result = await _mediator.Send(new ValidateCouponQuery(code), ct);
-        
-        if (result.IsSuccess)
-            return Ok(new { success = true, data = result.Data });
-            
-        if (result.StatusCode == StatusCodes.Status404NotFound)
-            return NotFound(new { success = false, error = result.Error });
-
-        return BadRequest(new { success = false, error = result.Error });
+        return ToActionResult(result);
     }
 }

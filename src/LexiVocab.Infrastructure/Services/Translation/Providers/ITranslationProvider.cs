@@ -9,6 +9,12 @@ public interface ITranslationProvider
 {
     bool CanHandle(string provider);
     
+    /// <summary>
+    /// Higher priority providers are checked first.
+    /// Use negative values for fallbacks.
+    /// </summary>
+    int Priority => 0;
+
     Task<string> TranslateAsync(
         string word, 
         string? context, 

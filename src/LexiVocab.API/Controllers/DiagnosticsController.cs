@@ -14,7 +14,7 @@ namespace LexiVocab.API.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize(Roles = "Admin")]
 [Produces("application/json")]
-public class DiagnosticsController : ControllerBase
+public class DiagnosticsController : BaseApiController
 {
     private readonly AppDbContext _dbContext;
 
@@ -24,10 +24,15 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
-    /// Deep system diagnostics — intended for Admin usage only.
-    /// Provides info about the environment, database, and process.
+    /// System health and environment diagnostics.
     /// </summary>
+    /// <remarks>
+    /// Provides deep system information including OS, process memory, and database connectivity.
+    /// **Admin only.**
+    /// </remarks>
+    /// <response code="200">Returns system health data.</response>
     [HttpGet("system-info")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSystemInfo()
     {
         var process = Process.GetCurrentProcess();

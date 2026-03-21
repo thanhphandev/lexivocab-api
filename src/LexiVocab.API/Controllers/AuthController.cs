@@ -15,7 +15,7 @@ namespace LexiVocab.API.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
 [Produces("application/json")]
-public class AuthController : ControllerBase
+public class AuthController : BaseApiController
 {
     private readonly IMediator _mediator;
     private readonly IConfiguration _configuration;
@@ -29,7 +29,19 @@ public class AuthController : ControllerBase
         _configuration = configuration;
     }
 
-    /// <summary>Register a new account with email and password.</summary>
+    /// <summary>
+    /// Register a new user account.
+    /// </summary>
+    /// <remarks>
+    /// Creates a new user with email and password. Sends a verification email automatically.
+    /// Rate limited to prevent automated registrations.
+    /// </remarks>
+    /// <param name="request">Registration details (email, password, full name).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="201">Returns the new user details and JWT tokens.</response>
+    /// <response code="400">Bad Request: Validation failed.</response>
+    /// <response code="409">Conflict: Email already exists.</response>
+    /// <response code="429">Too Many Requests: Rate limit exceeded.</response>
     [HttpPost("register")]
     [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status201Created)]
@@ -42,7 +54,16 @@ public class AuthController : ControllerBase
         return ToAuthResult(result);
     }
 
-    /// <summary>Login with email and password. Returns JWT tokens.</summary>
+    /// <summary>
+    /// Authenticate with email and password.
+    /// </summary>
+    /// <remarks>
+    /// Returns access token (JWT) in body and refresh token in a secure HttpOnly cookie.
+    /// </remarks>
+    /// <param name="request">Login credentials.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns JWT access token and user info.</response>
+    /// <response code="401">Unauthorized: Invalid email or password.</response>
     [HttpPost("login")]
     [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
@@ -53,7 +74,15 @@ public class AuthController : ControllerBase
         return ToAuthResult(result);
     }
 
-    /// <summary>Initiate password reset flow by sending a 6-digit code to the email.</summary>
+    /// <summary>
+    /// Initiate password reset.
+    /// </summary>
+    /// <remarks>
+    /// Sends a 6-digit reset code to the provided email if it exists in our system.
+    /// </remarks>
+    /// <param name="request">The email address of the account.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Success message (always returned for security).</response>
     [HttpPost("forgot-password")]
     [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -63,7 +92,13 @@ public class AuthController : ControllerBase
         return Ok(new { success = true, message = "If the email is registered, a reset code has been sent." });
     }
 
-    /// <summary>Reset password using the 6-digit code received via email.</summary>
+    /// <summary>
+    /// Reset password using verification code.
+    /// </summary>
+    /// <param name="request">Code from email and the new password.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Password reset successful.</response>
+    /// <response code="400">Bad Request: Invalid or expired code.</response>
     [HttpPost("reset-password")]
     [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -74,7 +109,14 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Verify user's email address using the 6-digit code.</summary>
+    /// <summary>
+    /// Verify email address.
+    /// </summary>
+    /// <param name="request">Verification code.</param>
+    /// <param name="email">Email address to verify.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Email verified successfully.</response>
+    /// <response code="400">Invalid code.</response>
     [HttpPost("verify-email")]
     [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -85,7 +127,17 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Login or register with a Google ID token. Auto-links existing email accounts.</summary>
+    /// <summary>
+    /// Authenticate via Google OAuth.
+    /// </summary>
+    /// <remarks>
+    /// Exchanges a Google ID Token for local JWT tokens. 
+    /// Automatically creates an account or links to an existing email.
+    /// </remarks>
+    /// <param name="request">Google ID Token.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Authentication successful.</response>
+    /// <response code="401">Invalid Google token.</response>
     [HttpPost("google")]
     [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
@@ -96,7 +148,16 @@ public class AuthController : ControllerBase
         return ToAuthResult(result);
     }
 
-    /// <summary>Refresh an expired access token using a valid refresh token from cookies.</summary>
+    /// <summary>
+    /// Refresh access token.
+    /// </summary>
+    /// <remarks>
+    /// Uses the refresh token from HttpOnly cookie to issue a new short-lived access token.
+    /// </remarks>
+    /// <param name="request">The expired access token.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">New tokens issued.</response>
+    /// <response code="401">Unauthorized: Session expired.</response>
     [HttpPost("refresh")]
     [EnableRateLimiting("RefreshLimit")]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
@@ -111,7 +172,13 @@ public class AuthController : ControllerBase
         return ToAuthResult(result);
     }
 
-    /// <summary>Logout the user by clearing the refresh token from Redis and deleting the cookie.</summary>
+    /// <summary>
+    /// Logout current session.
+    /// </summary>
+    /// <remarks>
+    /// Invalidates the refresh token and clears the secure cookie.
+    /// </remarks>
+    /// <response code="200">Logged out.</response>
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Logout()
@@ -131,7 +198,11 @@ public class AuthController : ControllerBase
         return Ok(new { success = true, message = "Logged out successfully." });
     }
 
-    /// <summary>Get the currently authenticated user's profile.</summary>
+    /// <summary>
+    /// Get current user profile.
+    /// </summary>
+    /// <response code="200">Returns profile data.</response>
+    /// <response code="401">Unauthorized.</response>
     [HttpGet("me")]
     [Authorize]
     [EnableRateLimiting("UserReadLimit")]
@@ -143,7 +214,13 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get the current user's feature permissions and quotas.</summary>
+    /// <summary>
+    /// Get user permissions and quotas.
+    /// </summary>
+    /// <remarks>
+    /// Returns dynamic feature flags and current usage limits (e.g., AI quota remaining).
+    /// </remarks>
+    /// <response code="200">Returns permission set.</response>
     [HttpGet("permissions")]
     [Authorize]
     [EnableRateLimiting("UserReadLimit")]
@@ -157,7 +234,12 @@ public class AuthController : ControllerBase
 
 // ─── Account Management ───────────────────────────────────────
 
-    /// <summary>Update the current user's profile information.</summary>
+    /// <summary>
+    /// Update profile details.
+    /// </summary>
+    /// <param name="request">New profile data (name, avatar).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Updated profile.</response>
     [HttpPut("me")]
     [Authorize]
     [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
@@ -169,7 +251,16 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Change the current user's password (for Email/Password accounts only).</summary>
+    /// <summary>
+    /// Change password.
+    /// </summary>
+    /// <remarks>
+    /// For email/password accounts only. Invalidates all other sessions.
+    /// </remarks>
+    /// <param name="request">Current and new password.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Password updated.</response>
+    /// <response code="409">Conflict: Invalid current password.</response>
     [HttpPut("me/password")]
     [Authorize]
     [EnableRateLimiting("SensitiveWriteLimit")]
@@ -195,7 +286,13 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Permanently delete the user's account and wipe all associated data.</summary>
+    /// <summary>
+    /// Delete user account.
+    /// </summary>
+    /// <remarks>
+    /// Irreversible operation. Deletes all vocabulary, settings, and review history.
+    /// </remarks>
+    /// <response code="200">Account deleted.</response>
     [HttpDelete("me")]
     [Authorize]
     [EnableRateLimiting("SensitiveWriteLimit")]
@@ -217,7 +314,13 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Revoke all active sessions for the current user across all devices.</summary>
+    /// <summary>
+    /// Revoke all active sessions.
+    /// </summary>
+    /// <remarks>
+    /// Signs out the user from all devices (Chrome extensions, web, etc.)
+    /// </remarks>
+    /// <response code="200">All sessions revoked.</response>
     [HttpPost("revoke-all-sessions")]
     [Authorize]
     [EnableRateLimiting("SensitiveWriteLimit")]
@@ -240,7 +343,12 @@ public class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Resend verification email for an unverified account.</summary>
+    /// <summary>
+    /// Resend verification email.
+    /// </summary>
+    /// <param name="request">Email address.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Verification email sent.</response>
     [HttpPost("resend-verification-email")]
     [EnableRateLimiting("AuthStrictLimit")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -279,27 +387,4 @@ public class AuthController : ControllerBase
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
     }
 
-    private IActionResult ToActionResult(Result result)
-    {
-        if (result.IsSuccess) return Ok();
-
-        var errorObj = new { error = result.Error };
-        return result.StatusCode switch
-        {
-            400 => BadRequest(errorObj),
-            401 => Unauthorized(errorObj),
-            403 => StatusCode(403, errorObj),
-            404 => NotFound(errorObj),
-            409 => Conflict(errorObj),
-            _ => StatusCode(500, errorObj)
-        };
-    }
-
-    private IActionResult ToActionResult<T>(Result<T> result)
-    {
-        if (result.IsSuccess)
-            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
-
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
 }

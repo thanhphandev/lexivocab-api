@@ -6,7 +6,11 @@ using System.Text.Json;
 
 namespace LexiVocab.Application.Features.Vocabularies.Queries;
 
-public record ExportVocabulariesQuery(string Format = "json") : IRequest<Result<ExportDataDto>>;
+public record ExportVocabulariesQuery(string Format = "json") : IRequest<Result<ExportDataDto>>, IFeatureGatedRequest
+{
+    public string FeatureCode => "EXPORT_ANKI";
+    public string? QuotaLimitCode => null;
+}
 
 public record ExportDataDto(byte[] Bytes, string ContentType, string FileName);
 
@@ -27,12 +31,6 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
     {
         var userId = _currentUser.UserId!.Value;
         
-        var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
-        if (!permissions.HasFeature("EXPORT_ANKI"))
-        {
-            return Result<ExportDataDto>.Failure("ERR_PREMIUM_REQUIRED", 403);
-        }
-
         var result = await _uow.Vocabularies.GetByUserIdAsync(userId, 1, int.MaxValue, null, null, null, ct);
         var vocabularies = result.Items;
 

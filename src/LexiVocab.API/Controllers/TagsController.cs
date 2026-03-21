@@ -16,13 +16,20 @@ namespace LexiVocab.API.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 [Produces("application/json")]
-public class TagsController : ControllerBase
+public class TagsController : BaseApiController
 {
     private readonly IMediator _mediator;
 
     public TagsController(IMediator mediator) => _mediator = mediator;
 
-    /// <summary>Get list of all user tags with their word counts.</summary>
+    /// <summary>
+    /// Get all user tags.
+    /// </summary>
+    /// <remarks>
+    /// Returns a list of all tags created by the user, including the word count for each tag.
+    /// </remarks>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns list of tags.</response>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<TagDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetList(CancellationToken ct)
@@ -31,7 +38,14 @@ public class TagsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get paginated vocabularies belonging to a specific tag.</summary>
+    /// <summary>
+    /// Get vocabularies by tag.
+    /// </summary>
+    /// <param name="id">Tag ID.</param>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns paginated vocabularies.</response>
     [HttpGet("{id:guid}/vocabularies")]
     [ProducesResponseType(typeof(PagedResult<VocabularyDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -41,7 +55,12 @@ public class TagsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Create a new custom tag.</summary>
+    /// <summary>
+    /// Create a new tag.
+    /// </summary>
+    /// <param name="request">Tag data (Name, Color, Icon).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="201">Returns the created tag.</response>
     [HttpPost]
     [ProducesResponseType(typeof(TagDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] CreateTagRequest request, CancellationToken ct)
@@ -50,7 +69,13 @@ public class TagsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Update an existing tag details.</summary>
+    /// <summary>
+    /// Update tag details.
+    /// </summary>
+    /// <param name="id">Tag ID.</param>
+    /// <param name="request">Updated tag data.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the updated tag.</response>
     [HttpPut("{id:guid}")]
     [ProducesResponseType(typeof(TagDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -60,34 +85,37 @@ public class TagsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Delete a tag (vocabularies will remain as Uncategorized).</summary>
+    /// <summary>
+    /// Delete a tag.
+    /// </summary>
+    /// <remarks>
+    /// Vocabularies associated with this tag will remain but will be marked as 'Uncategorized'.
+    /// </remarks>
+    /// <param name="id">Tag ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Tag deleted.</response>
     [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         var result = await _mediator.Send(new DeleteTagCommand(id), ct);
-        if (result.IsSuccess)
-            return Ok(new { success = true });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+        return ToActionResult(result);
     }
 
-    /// <summary>Assign a vocabulary to this tag.</summary>
+    /// <summary>
+    /// Assign vocabulary to tag.
+    /// </summary>
+    /// <param name="id">Tag ID.</param>
+    /// <param name="vocabularyId">Vocabulary ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Word assigned to tag.</response>
     [HttpPatch("{id:guid}/assign")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AssignWord(Guid id, [FromBody] Guid vocabularyId, CancellationToken ct)
     {
         var result = await _mediator.Send(new AssignVocabToTagCommand(id, vocabularyId), ct);
-        if (result.IsSuccess)
-            return Ok(new { success = true });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
-
-    private IActionResult ToActionResult<T>(Result<T> result)
-    {
-        if (result.IsSuccess)
-            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+        return ToActionResult(result);
     }
 }

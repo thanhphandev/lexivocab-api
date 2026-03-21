@@ -23,7 +23,7 @@ namespace LexiVocab.API.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize(Roles = "Admin")]
 [Produces("application/json")]
-public class AdminController : ControllerBase
+public class AdminController : BaseApiController
 {
     private readonly IMediator _mediator;
     private readonly IAuditLogRepository _auditLogRepository;
@@ -34,7 +34,14 @@ public class AdminController : ControllerBase
         _auditLogRepository = auditLogRepository;
     }
 
-    /// <summary>Get paginated list of all users, with optional email/name search.</summary>
+    /// <summary>
+    /// Get all users.
+    /// </summary>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <param name="search">Search by email or name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns paginated user list.</response>
     [HttpGet("users")]
     [ProducesResponseType(typeof(PagedResult<UserOverviewDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUsers(
@@ -47,7 +54,12 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get deep details of a single user: vocab stats, review logs, and subscriptions.</summary>
+    /// <summary>
+    /// Get user details.
+    /// </summary>
+    /// <param name="id">User ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns full user profile and stats.</response>
     [HttpGet("users/{id}")]
     [ProducesResponseType(typeof(UserDetailDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserDetail(Guid id, CancellationToken ct)
@@ -56,7 +68,13 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Change a user's role: User or Admin.</summary>
+    /// <summary>
+    /// Update user role.
+    /// </summary>
+    /// <param name="id">User ID.</param>
+    /// <param name="request">New role (User/Admin).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Role updated.</response>
     [HttpPut("users/{id}/role")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateUserRole(Guid id, [FromBody] UpdateUserRoleRequest request, CancellationToken ct)
@@ -65,7 +83,13 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Activate or deactivate a user account (soft ban).</summary>
+    /// <summary>
+    /// Update user active status.
+    /// </summary>
+    /// <param name="id">User ID.</param>
+    /// <param name="request">Active status.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Status updated.</response>
     [HttpPut("users/{id}/status")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateUserStatus(Guid id, [FromBody] UpdateUserStatusRequest request, CancellationToken ct)
@@ -74,7 +98,13 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Manually add or gift a subscription to a user. Invalidates existing active ones.</summary>
+    /// <summary>
+    /// Manually add subscription.
+    /// </summary>
+    /// <param name="id">User ID.</param>
+    /// <param name="request">Plan and duration.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Subscription added.</response>
     [HttpPost("users/{id}/subscriptions")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<IActionResult> AddSubscription(Guid id, [FromBody] AddSubscriptionRequest request, CancellationToken ct)
@@ -83,7 +113,12 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Force cancel a user's currently active subscription and revert Premium privileges.</summary>
+    /// <summary>
+    /// Force cancel user subscription.
+    /// </summary>
+    /// <param name="id">User ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Subscription cancelled.</response>
     [HttpDelete("users/{id}/subscriptions")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     public async Task<IActionResult> CancelSubscription(Guid id, CancellationToken ct)
@@ -92,7 +127,10 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get high-level system metrics to render the Admin Dashboard Overview.</summary>
+    /// <summary>
+    /// Get basic system metrics.
+    /// </summary>
+    /// <response code="200">Returns counts for users, vocab, and revenue.</response>
     [HttpGet("metrics")]
     [ProducesResponseType(typeof(SystemStatsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSystemMetrics(CancellationToken ct)
@@ -101,7 +139,10 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get advanced system metrics including DAU, MAU, MRR, Churn and Engagement.</summary>
+    /// <summary>
+    /// Get advanced analytics.
+    /// </summary>
+    /// <response code="200">Returns DAU, Churn, and Engagement metrics.</response>
     [HttpGet("metrics/advanced")]
     [ProducesResponseType(typeof(AdvancedSystemStatsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAdvancedSystemMetrics(CancellationToken ct)
@@ -110,7 +151,19 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Query audit logs with filtering by user, action, entity type, and date range.</summary>
+    /// <summary>
+    /// Query system audit logs.
+    /// </summary>
+    /// <param name="userId">Filter by User ID.</param>
+    /// <param name="action">Filter by Action type.</param>
+    /// <param name="entityType">Filter by Entity type.</param>
+    /// <param name="fromDate">Start date.</param>
+    /// <param name="toDate">End date.</param>
+    /// <param name="search">Search text.</param>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns paginated audit logs.</response>
     [HttpGet("audit-logs")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAuditLogs(
@@ -355,10 +408,4 @@ public class AdminController : ControllerBase
         return ToActionResult(result);
     }
 
-    private IActionResult ToActionResult<T>(Result<T> result)
-    {
-        if (result.IsSuccess)
-            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
 }

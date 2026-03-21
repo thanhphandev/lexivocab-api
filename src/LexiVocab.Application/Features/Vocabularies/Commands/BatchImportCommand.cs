@@ -8,10 +8,12 @@ using Microsoft.Extensions.Caching.Distributed;
 
 namespace LexiVocab.Application.Features.Vocabularies.Commands;
 
-public record BatchImportCommand(List<CreateVocabularyCommand> Words) : IRequest<Result<int>>, IAuditedRequest
+public record BatchImportCommand(List<CreateVocabularyCommand> Words) : IRequest<Result<int>>, IAuditedRequest, IFeatureGatedRequest
 {
     public AuditAction AuditAction => AuditAction.VocabularyBulkImported;
     public string? EntityType => "UserVocabulary";
+    public string FeatureCode => "BATCH_IMPORT";
+    public string? QuotaLimitCode => null;
 }
 
 public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int>>
@@ -37,12 +39,6 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
     {
         var userId = _currentUser.UserId!.Value;
         
-        var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
-        if (!permissions.HasFeature("BATCH_IMPORT"))
-        {
-            return Result<int>.Failure("ERR_PREMIUM_REQUIRED", 403);
-        }
-
         var allWordTexts = request.Words.Select(w => w.WordText.ToLowerInvariant().Trim()).ToList();
         var existingWords = await _uow.Vocabularies.GetExistingWordsAsync(userId, allWordTexts, ct);
 

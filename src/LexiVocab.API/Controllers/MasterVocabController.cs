@@ -11,16 +11,22 @@ namespace LexiVocab.API.Controllers;
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/master-vocab")]
 [Produces("application/json")]
-public class MasterVocabController : ControllerBase
+public class MasterVocabController : BaseApiController
 {
     private readonly IMediator _mediator;
 
     public MasterVocabController(IMediator mediator) => _mediator = mediator;
 
     /// <summary>
-    /// Lookup a word in the master dictionary. Returns phonetics, audio URL, etc.
-    /// Public endpoint — no auth required (used by Extension for quick lookups).
+    /// Lookup word in master dictionary.
     /// </summary>
+    /// <remarks>
+    /// Public endpoint (no auth required). Returns phonetics, audio URL, and standard meanings.
+    /// Used by the Chrome Extension for instant tooltips.
+    /// </remarks>
+    /// <param name="word">Word to lookup.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns dictionary data.</response>
     [HttpGet("lookup")]
     public async Task<IActionResult> Lookup([FromQuery] string word, CancellationToken ct)
     {
@@ -28,7 +34,16 @@ public class MasterVocabController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Search master dictionary with prefix matching (for autocomplete).</summary>
+    /// <summary>
+    /// Search master dictionary.
+    /// </summary>
+    /// <remarks>
+    /// Prefix matching for autocomplete functionality.
+    /// </remarks>
+    /// <param name="q">Search query.</param>
+    /// <param name="limit">Max results (default: 10).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns matching words.</response>
     [HttpGet("search")]
     public async Task<IActionResult> Search(
         [FromQuery] string q,
@@ -39,10 +54,4 @@ public class MasterVocabController : ControllerBase
         return ToActionResult(result);
     }
 
-    private IActionResult ToActionResult<T>(Result<T> result)
-    {
-        if (result.IsSuccess)
-            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
 }

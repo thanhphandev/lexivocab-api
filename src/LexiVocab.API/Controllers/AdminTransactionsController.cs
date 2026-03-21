@@ -14,7 +14,7 @@ namespace LexiVocab.API.Controllers;
 [Route("api/v{version:apiVersion}/admin/transactions")]
 [Authorize(Roles = "Admin")]
 [Produces("application/json")]
-public class AdminTransactionsController : ControllerBase
+public class AdminTransactionsController : BaseApiController
 {
     private readonly IMediator _mediator;
 
@@ -23,7 +23,18 @@ public class AdminTransactionsController : ControllerBase
         _mediator = mediator;
     }
 
-    /// <summary>Get paginated list of transactions for admin.</summary>
+    /// <summary>
+    /// Get all transactions.
+    /// </summary>
+    /// <param name="fromDate">Filter from date.</param>
+    /// <param name="toDate">Filter to date.</param>
+    /// <param name="status">Filter by status.</param>
+    /// <param name="provider">Filter by provider.</param>
+    /// <param name="search">Search by user or reference.</param>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns paginated transactions.</response>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<AdminTransactionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTransactions(
@@ -38,13 +49,16 @@ public class AdminTransactionsController : ControllerBase
     {
         var query = new GetAdminTransactionsQuery(fromDate, toDate, status, provider, search, page, pageSize);
         var result = await _mediator.Send(query, ct);
-        
-        if (result.IsSuccess)
-            return Ok(new { success = true, data = result.Data });
-        return BadRequest(new { success = false, error = result.Error });
+        return ToActionResult(result);
     }
 
-    /// <summary>Issue a refund for a transaction.</summary>
+    /// <summary>
+    /// Refund transaction.
+    /// </summary>
+    /// <param name="id">Transaction ID.</param>
+    /// <param name="request">Refund reason.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Refund processed.</response>
     [HttpPost("{id}/refund")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -52,9 +66,6 @@ public class AdminTransactionsController : ControllerBase
     {
         var command = new LexiVocab.Application.Features.Admin.Transactions.Commands.ProcessRefundCommand(id, request.Reason);
         var result = await _mediator.Send(command, ct);
-        
-        if (result.IsSuccess)
-            return Ok(new { success = true, message = "Refund processed successfully." });
-        return BadRequest(new { success = false, error = result.Error });
+        return ToActionResult(result);
     }
 }

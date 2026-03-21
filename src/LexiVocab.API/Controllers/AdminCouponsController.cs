@@ -15,7 +15,7 @@ namespace LexiVocab.API.Controllers;
 [Route("api/v{version:apiVersion}/admin/coupons")]
 [Authorize(Roles = "Admin")]
 [Produces("application/json")]
-public class AdminCouponsController : ControllerBase
+public class AdminCouponsController : BaseApiController
 {
     private readonly IMediator _mediator;
 
@@ -24,7 +24,12 @@ public class AdminCouponsController : ControllerBase
         _mediator = mediator;
     }
 
-    /// <summary>Create a new discount coupon.</summary>
+    /// <summary>
+    /// Create new coupon.
+    /// </summary>
+    /// <param name="request">Coupon configuration.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="201">Returns the created coupon.</response>
     [HttpPost]
     [ProducesResponseType(typeof(AdminCouponDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateCoupon([FromBody] CreateCouponRequest request, CancellationToken ct)
@@ -44,7 +49,13 @@ public class AdminCouponsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Update an existing coupon.</summary>
+    /// <summary>
+    /// Update existing coupon.
+    /// </summary>
+    /// <param name="id">Coupon ID.</param>
+    /// <param name="request">New coupon data.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns updated coupon.</response>
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(AdminCouponDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateCoupon(Guid id, [FromBody] UpdateCouponRequest request, CancellationToken ct)
@@ -65,7 +76,12 @@ public class AdminCouponsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Delete a coupon.</summary>
+    /// <summary>
+    /// Delete coupon.
+    /// </summary>
+    /// <param name="id">Coupon ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Coupon deleted.</response>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteCoupon(Guid id, CancellationToken ct)
@@ -74,7 +90,12 @@ public class AdminCouponsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get a coupon by ID.</summary>
+    /// <summary>
+    /// Get coupon by ID.
+    /// </summary>
+    /// <param name="id">Coupon ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns coupon details.</response>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(AdminCouponDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCoupon(Guid id, CancellationToken ct)
@@ -83,7 +104,14 @@ public class AdminCouponsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get paginated list of coupons.</summary>
+    /// <summary>
+    /// Get all coupons.
+    /// </summary>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <param name="search">Search by code or description.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns paginated coupons.</response>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<AdminCouponDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCoupons(
@@ -96,10 +124,4 @@ public class AdminCouponsController : ControllerBase
         return ToActionResult(result);
     }
 
-    private IActionResult ToActionResult<T>(Result<T> result)
-    {
-        if (result.IsSuccess)
-            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
 }

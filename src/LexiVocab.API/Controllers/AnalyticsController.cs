@@ -14,16 +14,21 @@ namespace LexiVocab.API.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 [Produces("application/json")]
-public class AnalyticsController : ControllerBase
+public class AnalyticsController : BaseApiController
 {
     private readonly IMediator _mediator;
 
     public AnalyticsController(IMediator mediator) => _mediator = mediator;
 
     /// <summary>
-    /// Comprehensive dashboard overview: vocabulary stats, review stats, streak, total study days.
-    /// Suitable for caching with Redis (data changes at most once per minute during active use).
+    /// Get dashboard overview.
     /// </summary>
+    /// <remarks>
+    /// Returns a comprehensive set of statistics including vocabulary counts, review history summary, 
+    /// current streak, and total study days.
+    /// </remarks>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns dashboard data.</response>
     [HttpGet("dashboard")]
     [ProducesResponseType(typeof(DashboardDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDashboard(CancellationToken ct)
@@ -33,8 +38,14 @@ public class AnalyticsController : ControllerBase
     }
 
     /// <summary>
-    /// GitHub-style contribution heatmap — review counts per day for an entire year.
+    /// Get learning heatmap.
     /// </summary>
+    /// <remarks>
+    /// Returns GitHub-style contribution data (review counts per day) for the specified year.
+    /// </remarks>
+    /// <param name="year">Year to fetch data for (defaults to current year).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns heatmap data.</response>
     [HttpGet("heatmap")]
     [ProducesResponseType(typeof(HeatmapDataDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetHeatmap([FromQuery] int? year, CancellationToken ct)
@@ -43,7 +54,11 @@ public class AnalyticsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get current learning streak information.</summary>
+    /// <summary>
+    /// Get current learning streak.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns streak info.</response>
     [HttpGet("streak")]
     [ProducesResponseType(typeof(StreakDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStreak(CancellationToken ct)
@@ -52,10 +67,4 @@ public class AnalyticsController : ControllerBase
         return ToActionResult(result);
     }
 
-    private IActionResult ToActionResult<T>(Result<T> result)
-    {
-        if (result.IsSuccess)
-            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
 }

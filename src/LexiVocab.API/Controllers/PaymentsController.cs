@@ -17,7 +17,7 @@ namespace LexiVocab.API.Controllers;
 [Route("api/v{version:apiVersion}/[controller]")]
 [Authorize]
 [Produces("application/json")]
-public class PaymentsController : ControllerBase
+public class PaymentsController : BaseApiController
 {
     private readonly IMediator _mediator;
     private readonly ILogger<PaymentsController> _logger;
@@ -28,7 +28,15 @@ public class PaymentsController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>Cancel the current user's active subscription immediately.</summary>
+    /// <summary>
+    /// Cancel active subscription.
+    /// </summary>
+    /// <remarks>
+    /// Cancels the current user's active subscription immediately. 
+    /// Access to Premium features will be revoked at the end of the current billing cycle.
+    /// </remarks>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Subscription cancelled.</response>
     [HttpPost("cancel-subscription")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -40,7 +48,12 @@ public class PaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Download a CSV invoice for a specific payment transaction.</summary>
+    /// <summary>
+    /// Get invoice for a transaction.
+    /// </summary>
+    /// <param name="id">Transaction ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns the invoice file (CSV/PDF).</response>
     [HttpGet("invoice/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -52,7 +65,14 @@ public class PaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get billing overview: subscription status, plan info, transaction count.</summary>
+    /// <summary>
+    /// Get billing overview.
+    /// </summary>
+    /// <remarks>
+    /// Returns current subscription status, plan information, and transaction summary.
+    /// </remarks>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns billing overview.</response>
     [HttpGet("billing")]
     [ProducesResponseType(typeof(BillingOverviewDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBillingOverview(CancellationToken ct)
@@ -61,7 +81,13 @@ public class PaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get paginated payment transaction history.</summary>
+    /// <summary>
+    /// Get payment history.
+    /// </summary>
+    /// <param name="page">Page number.</param>
+    /// <param name="pageSize">Page size.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns paginated transaction history.</response>
     [HttpGet("history")]
     [ProducesResponseType(typeof(PagedResult<PaymentHistoryDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPaymentHistory(
@@ -76,7 +102,14 @@ public class PaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Get available subscription plans dynamically.</summary>
+    /// <summary>
+    /// Get available subscription plans.
+    /// </summary>
+    /// <remarks>
+    /// Public endpoint to fetch active pricing plans and their features.
+    /// </remarks>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns list of plans.</response>
     [HttpGet("plans")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(List<SubscriptionPlanDto>), StatusCodes.Status200OK)]
@@ -86,7 +119,15 @@ public class PaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Create a PayPal payment order and return the approval URL.</summary>
+    /// <summary>
+    /// Create a payment order.
+    /// </summary>
+    /// <remarks>
+    /// Initiates a payment process with the selected provider (PayPal, Sepay).
+    /// Returns an approval URL or payment instructions.
+    /// </remarks>
+    /// <param name="request">Order details (Pricing ID, Provider, Coupon).</param>
+    /// <response code="200">Returns the approval URL or payment data.</response>
     [HttpPost("create-order")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -96,6 +137,11 @@ public class PaymentsController : ControllerBase
         return result.IsSuccess ? Ok(new { approvalUrl = result.Data }) : ToActionResult(result); // Changed to use controller's ToActionResult
     }
 
+    /// <summary>
+    /// Get payment status by reference.
+    /// </summary>
+    /// <param name="reference">Order/Transaction reference.</param>
+    /// <response code="200">Returns current status.</response>
     [HttpGet("status/{reference}")]
     public async Task<IActionResult> GetStatus(string reference)
     {
@@ -103,7 +149,12 @@ public class PaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Cancel a pending payment transaction (user-initiated).</summary>
+    /// <summary>
+    /// Cancel a pending payment.
+    /// </summary>
+    /// <param name="reference">Order reference.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Payment cancelled.</response>
     [HttpPost("cancel/{reference}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -114,7 +165,12 @@ public class PaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>Capture a PayPal order after user approval.</summary>
+    /// <summary>
+    /// Capture approved PayPal order.
+    /// </summary>
+    /// <param name="request">PayPal Order ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Order captured and subscription activated.</response>
     [HttpPost("capture-order")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -124,7 +180,12 @@ public class PaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
-    /// <summary>PayPal webhook endpoint for async payment notifications.</summary>
+    /// <summary>
+    /// PayPal Webhook.
+    /// </summary>
+    /// <remarks>
+    /// Async notification endpoint for PayPal events.
+    /// </remarks>
     [HttpPost("webhook")]
     [AllowAnonymous]
     [Consumes("application/json")]
@@ -140,7 +201,9 @@ public class PaymentsController : ControllerBase
         return result.IsSuccess ? Ok() : ToActionResult(result);
     }
 
-    // ─── Sepay Webhook ──────────────────────────────────────────
+    /// <summary>
+    /// Sepay Webhook (Vietnamese Banks).
+    /// </summary>
     [HttpPost("webhook/sepay")]
     [AllowAnonymous]
     [Consumes("application/json")]
@@ -156,16 +219,4 @@ public class PaymentsController : ControllerBase
         return result.IsSuccess ? Ok() : ToActionResult(result);
     }
 
-    private IActionResult ToActionResult<T>(Result<T> result)
-    {
-        if (result.IsSuccess)
-            return StatusCode(result.StatusCode, new { success = true, data = result.Data });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
-
-    private IActionResult ToActionResult(Result result)
-    {
-        if (result.IsSuccess) return Ok(new { success = true });
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
-    }
 }
