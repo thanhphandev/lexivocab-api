@@ -7,3 +7,6 @@ binding = "AI"
 
 [vars]
 API_KEY = "161004" # User should change this in Cloudflare dashboard
+SILICONFLOW_API_KEY = "sk-REPLACE_ME"
+QWEN_API_KEY = "sk-REPLACE_ME"
+MINMAX_API_KEY = "REPLACE_ME"

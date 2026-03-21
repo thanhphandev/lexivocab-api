@@ -119,6 +119,9 @@ namespace LexiVocab.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Currency")
+                        .HasColumnType("text");
+
                     b.Property<int>("CurrentUses")
                         .HasColumnType("integer");
 
@@ -710,6 +713,13 @@ namespace LexiVocab.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("NOW()");
 
+                    b.Property<string>("CustomLlmsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("custom_llms_json")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
                     b.Property<int>("DailyGoal")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -721,6 +731,10 @@ namespace LexiVocab.Infrastructure.Migrations
 
                     b.Property<int>("DailyReviewLimit")
                         .HasColumnType("integer");
+
+                    b.Property<string>("DefaultTranslator")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.PrimitiveCollection<string>("ExcludedDomains")
                         .IsRequired()
@@ -743,12 +757,24 @@ namespace LexiVocab.Infrastructure.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_highlight_enabled");
 
+                    b.Property<string>("NativeLanguage")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("PreferencesJson")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("jsonb")
                         .HasColumnName("preferences_json")
                         .HasDefaultValueSql("'{}'::jsonb");
+
+                    b.Property<string>("TargetLanguage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("English")
+                        .HasColumnName("target_language");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")

@@ -45,18 +45,14 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         var userId = _currentUser.UserId!.Value;
 
         var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
-        var maxWords = permissions.GetLimit("MAX_WORDS"); // Returns int, maybe Int32.MaxValue for unlimited?
-        if (maxWords > 0 && permissions.CurrentCount >= maxWords)
+        var maxWords = permissions.GetLimit("MAX_WORDS");
+        if (permissions.IsOverQuota("MAX_WORDS", permissions.CurrentCount))
         {
             return Result<VocabularyDto>.Failure($"ERR_QUOTA_EXCEEDED: You have reached the limit of {maxWords} vocabulary words.", 403);
         }
 
         if (await _uow.Vocabularies.WordExistsForUserAsync(userId, request.WordText, ct))
             return Result<VocabularyDto>.Conflict($"Word '{request.WordText}' already saved.");
-
-        // We no longer auto-create MasterVocabulary to prevent spam.
-        // Users will use a separate 'Contribute' endpoint.
-        // var masterVocab = await _uow.MasterVocabularies.GetByWordAsync(request.WordText.ToLowerInvariant().Trim(), ct);
 
         Guid? assignedTagId = request.TagId;
         if (assignedTagId == null && !string.IsNullOrWhiteSpace(request.SourceUrl))

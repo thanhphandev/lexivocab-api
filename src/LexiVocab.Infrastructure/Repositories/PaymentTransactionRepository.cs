@@ -17,6 +17,7 @@ public class PaymentTransactionRepository : GenericRepository<PaymentTransaction
         if (pageSize < 1) pageSize = 20;
 
         var query = _dbSet
+            .Include(t => t.Coupon)
             .AsNoTracking()
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.CreatedAt);
@@ -79,6 +80,7 @@ public class PaymentTransactionRepository : GenericRepository<PaymentTransaction
         return await _dbSet
             .Include(t => t.Subscription)
             .ThenInclude(s => s!.User)
+            .Include(t => t.Coupon)
             .FirstOrDefaultAsync(t => t.ExternalOrderId == externalOrderId, ct);
     }
 
@@ -89,6 +91,7 @@ public class PaymentTransactionRepository : GenericRepository<PaymentTransaction
         return await _dbSet
             .Include(t => t.Subscription)
                 .ThenInclude(s => s!.User)
+            .Include(t => t.Coupon)
             .FirstOrDefaultAsync(t => t.ExternalOrderId == orderId, ct);
     }
 

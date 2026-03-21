@@ -5,11 +5,23 @@ public record UserSettingsDto(
     string HighlightColor,
     List<string> ExcludedDomains,
     int DailyGoal,
-    string PreferencesJson);
+    int DailyNewCardLimit,
+    int DailyReviewLimit,
+    string PreferencesJson,
+    string TargetLanguage,
+    string NativeLanguage,
+    string CustomLlmsJson,
+    string DefaultTranslator);
 
 public record UpdateSettingsRequest(
     bool? IsHighlightEnabled,
     string? HighlightColor,
     List<string>? ExcludedDomains,
     int? DailyGoal,
-    string? PreferencesJson);
+    int? DailyNewCardLimit,
+    int? DailyReviewLimit,
+    string? PreferencesJson,
+    string? TargetLanguage,
+    string? NativeLanguage,
+    string? CustomLlmsJson,
+    string? DefaultTranslator);

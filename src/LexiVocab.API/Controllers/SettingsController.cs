@@ -40,7 +40,13 @@ public class SettingsController : ControllerBase
                 request.HighlightColor,
                 request.ExcludedDomains,
                 request.DailyGoal,
-                request.PreferencesJson), ct);
+                request.DailyNewCardLimit,
+                request.DailyReviewLimit,
+                request.PreferencesJson,
+                request.TargetLanguage,
+                request.NativeLanguage,
+                request.CustomLlmsJson,
+                request.DefaultTranslator), ct);
         return ToActionResult(result);
     }
 

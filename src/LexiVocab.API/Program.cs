@@ -225,11 +225,6 @@ try
             job => job.ExecuteAsync(CancellationToken.None),
             Cron.Daily(1)); // Run daily at 1 AM UTC
 
-        recurringJobManager.AddOrUpdate<IMasterVocabularyUpdateJob>(
-            "MasterVocabularyEnrichmentJob",
-            job => job.ExecuteAsync(CancellationToken.None),
-            Cron.Hourly()); // Run hourly
-
         recurringJobManager.AddOrUpdate<IPendingPaymentCleanupJob>(
             "PendingPaymentCleanupJob",
             job => job.ExecuteAsync(CancellationToken.None),

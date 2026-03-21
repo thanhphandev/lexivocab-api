@@ -52,7 +52,11 @@ public class GetPaymentHistoryHandler : IRequestHandler<GetPaymentHistoryQuery, 
                 t.PaidAt,
                 t.ExpiresAt,
                 t.CancelledAt,
-                approvalUrl);
+                approvalUrl,
+                t.Coupon != null ? t.Amount + (t.Coupon.DiscountType == DiscountType.FixedAmount ? t.Coupon.DiscountValue : Math.Round(t.Amount / (1 - t.Coupon.DiscountValue / 100m) - t.Amount, 2)) : null,
+                t.Coupon != null ? (t.Coupon.DiscountType == DiscountType.FixedAmount ? t.Coupon.DiscountValue : Math.Round(t.Amount / (1 - t.Coupon.DiscountValue / 100m) - t.Amount, 2)) : null,
+                t.Coupon?.Code,
+                t.Subscription?.PlanDefinition?.Name);
         }).ToList();
 
         return Result<PagedResult<PaymentHistoryDto>>.Success(new PagedResult<PaymentHistoryDto>

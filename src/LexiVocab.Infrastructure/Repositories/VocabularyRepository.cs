@@ -66,18 +66,36 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
     }
 
     public async Task<IReadOnlyList<UserVocabulary>> GetDueForReviewAsync(
-        Guid userId, int limit, CancellationToken ct)
+        Guid userId, int reviewLimit, int newCardLimit, CancellationToken ct)
     {
-        // THE critical query — hits the composite index (UserId, NextReviewDate, IsArchived)
-        return await _dbSet
+        // New cards (RepetitionCount == 0)
+        var newCards = await _dbSet
             .Include(v => v.MasterVocabulary)
             .Where(v => v.UserId == userId
                 && v.NextReviewDate <= DateTime.UtcNow
-                && !v.IsArchived)
-            .OrderBy(v => v.NextReviewDate) // Oldest due first
-            .Take(limit)
+                && !v.IsArchived
+                && v.RepetitionCount == 0)
+            .OrderBy(v => v.NextReviewDate)
+            .Take(newCardLimit)
             .AsNoTracking()
             .ToListAsync(ct);
+
+        // Review cards (RepetitionCount > 0)
+        var reviewCards = await _dbSet
+            .Include(v => v.MasterVocabulary)
+            .Where(v => v.UserId == userId
+                && v.NextReviewDate <= DateTime.UtcNow
+                && !v.IsArchived
+                && v.RepetitionCount > 0)
+            .OrderBy(v => v.NextReviewDate)
+            .Take(reviewLimit)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        var combined = new List<UserVocabulary>(newCards.Count + reviewCards.Count);
+        combined.AddRange(newCards);
+        combined.AddRange(reviewCards);
+        return combined;
     }
 
     public async Task<bool> WordExistsForUserAsync(Guid userId, string wordText, CancellationToken ct)

@@ -22,7 +22,11 @@ public record PaymentHistoryDto(
     DateTime? PaidAt,
     DateTime? ExpiresAt = null,
     DateTime? CancelledAt = null,
-    string? ApprovalUrl = null);
+    string? ApprovalUrl = null,
+    decimal? OriginalAmount = null,
+    decimal? DiscountAmount = null,
+    string? CouponCode = null,
+    string? PlanName = null);
 
 /// <summary>DTO for billing overview page.</summary>
 public record BillingOverviewDto(
@@ -59,5 +63,5 @@ public record SubscriptionPlanDto(
     List<PlanPricingDto> Pricings);
 
 // ─── Requests ────────────────────────────────────────────────
-public record CreateOrderRequest(string PricingId, LexiVocab.Domain.Enums.PaymentProvider Provider = LexiVocab.Domain.Enums.PaymentProvider.PayPal);
+public record CreateOrderRequest(string PricingId, LexiVocab.Domain.Enums.PaymentProvider Provider = LexiVocab.Domain.Enums.PaymentProvider.PayPal, string? CouponCode = null);
 public record CaptureOrderRequest(string OrderId);

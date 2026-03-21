@@ -28,7 +28,7 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
         var userId = _currentUser.UserId!.Value;
         
         var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
-        if (!permissions.HasFeature("EXPORT_PDF"))
+        if (!permissions.HasFeature("EXPORT_ANKI"))
         {
             return Result<ExportDataDto>.Failure("ERR_PREMIUM_REQUIRED", 403);
         }
@@ -36,29 +36,70 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
         var result = await _uow.Vocabularies.GetByUserIdAsync(userId, 1, int.MaxValue, null, null, null, ct);
         var vocabularies = result.Items;
 
-        // Map to a cleaner format for export
         var exportList = vocabularies.Select(v => new
         {
             v.WordText,
             v.CustomMeaning,
             v.ContextSentence,
             AddedOn = v.CreatedAt.ToString("yyyy-MM-dd"),
-            IsMastered = v.IsArchived
+            IsMastered = v.IsArchived,
+            PhoneticUs = v.MasterVocabulary?.PhoneticUs,
+            PhoneticUk = v.MasterVocabulary?.PhoneticUk,
+            PartOfSpeech = v.MasterVocabulary?.PartOfSpeech,
+            AudioUrl = v.MasterVocabulary?.AudioUrl,
+            v.SourceUrl
         });
 
-        if (request.Format.ToLower() == "csv")
+        var formatLower = request.Format.ToLowerInvariant();
+        var utf8Bom = new byte[] { 0xEF, 0xBB, 0xBF };
+
+        if (formatLower == "csv")
         {
-            var csv = "Word,Meaning,Context,AddedOn,IsMastered\n" +
+            var headers = "Word,Meaning,Context,AddedOn,IsMastered,PhoneticUs,PhoneticUk,PartOfSpeech,AudioUrl,SourceUrl";
+            var csv = headers + "\n" +
                       string.Join("\n", exportList.Select(x => 
-                          $"\"{x.WordText}\",\"{x.CustomMeaning}\",\"{x.ContextSentence}\",\"{x.AddedOn}\",\"{x.IsMastered}\""));
+                      {
+                          var word = (x.WordText ?? "").Replace("\"", "\"\"");
+                          var meaning = (x.CustomMeaning ?? "").Replace("\"", "\"\"");
+                          var context = (x.ContextSentence ?? "").Replace("\"", "\"\"");
+                          var phoUs = (x.PhoneticUs ?? "").Replace("\"", "\"\"");
+                          var phoUk = (x.PhoneticUk ?? "").Replace("\"", "\"\"");
+                          var pos = (x.PartOfSpeech ?? "").Replace("\"", "\"\"");
+                          var audio = (x.AudioUrl ?? "").Replace("\"", "\"\"");
+                          var src = (x.SourceUrl ?? "").Replace("\"", "\"\"");
+                          return $"\"{word}\",\"{meaning}\",\"{context}\",\"{x.AddedOn}\",\"{x.IsMastered}\",\"{phoUs}\",\"{phoUk}\",\"{pos}\",\"{audio}\",\"{src}\"";
+                      }));
                           
-            var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+            var bytes = utf8Bom.Concat(System.Text.Encoding.UTF8.GetBytes(csv)).ToArray();
             return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "text/csv", $"lexivocab_export_{DateTime.UtcNow:yyyyMMdd}.csv"));
+        }
+        else if (formatLower == "quizlet")
+        {
+            var quizlet = string.Join("\n", exportList.Select(x => 
+            {
+                var word = (x.WordText ?? "").Replace("\n", " ").Replace("\r", "").Replace("\t", " ");
+                var meaning = (x.CustomMeaning ?? "").Replace("\n", " ").Replace("\r", "").Replace("\t", " ");
+                return word + "\t" + meaning;
+            }));
+            var bytes = utf8Bom.Concat(System.Text.Encoding.UTF8.GetBytes(quizlet)).ToArray();
+            return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "text/plain", $"lexivocab_quizlet_{DateTime.UtcNow:yyyyMMdd}.txt"));
+        }
+        else if (formatLower == "txt")
+        {
+            var txt = string.Join("\n", exportList.Select((x, i) => 
+            {
+                var word = (x.WordText ?? "").Replace("\n", " ").Replace("\r", "");
+                var meaning = (x.CustomMeaning ?? "").Replace("\n", " ").Replace("\r", "");
+                var meaningPart = string.IsNullOrEmpty(meaning) ? "" : " - " + meaning;
+                return (i + 1).ToString() + ". " + word + meaningPart;
+            }));
+            var bytes = utf8Bom.Concat(System.Text.Encoding.UTF8.GetBytes(txt)).ToArray();
+            return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "text/plain", $"lexivocab_export_{DateTime.UtcNow:yyyyMMdd}.txt"));
         }
         else // default to json
         {
             var json = JsonSerializer.Serialize(exportList, new JsonSerializerOptions { WriteIndented = true });
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(json); // JSON doesn't strictly need BOM
             return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "application/json", $"lexivocab_export_{DateTime.UtcNow:yyyyMMdd}.json"));
         }
     }

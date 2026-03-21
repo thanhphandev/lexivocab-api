@@ -21,24 +21,13 @@ public class AIController : ControllerBase
     public AIController(IMediator mediator) => _mediator = mediator;
 
     /// <summary>
-    /// Explain the usage and nuances of a word, optionally in context.
-    /// Requires PRO plan.
-    /// </summary>
-    [HttpPost("explain")]
-    public async Task<IActionResult> Explain([FromBody] GetWordExplanationQuery query, CancellationToken ct)
-    {
-        var result = await _mediator.Send(query, ct);
-        return ToActionResult(result);
-    }
-
-    /// <summary>
     /// Suggest synonyms, antonyms, and collocations for a word.
     /// Requires PRO plan.
     /// </summary>
     [HttpGet("related/{word}")]
-    public async Task<IActionResult> GetRelated(string word, CancellationToken ct)
+    public async Task<IActionResult> GetRelated(string word, [FromQuery] string? targetLanguage, [FromQuery] string? userLanguage, CancellationToken ct)
     {
-        var result = await _mediator.Send(new GetRelatedWordsQuery(word), ct);
+        var result = await _mediator.Send(new GetRelatedWordsQuery(word, targetLanguage, userLanguage), ct);
         return ToActionResult(result);
     }
 
@@ -47,9 +36,9 @@ public class AIController : ControllerBase
     /// Requires PRO plan.
     /// </summary>
     [HttpGet("quiz/{word}")]
-    public async Task<IActionResult> GetQuiz(string word, CancellationToken ct)
+    public async Task<IActionResult> GetQuiz(string word, [FromQuery] string? targetLanguage, [FromQuery] string? userLanguage, CancellationToken ct)
     {
-        var result = await _mediator.Send(new GetWordQuizQuery(word), ct);
+        var result = await _mediator.Send(new GetWordQuizQuery(word, targetLanguage, userLanguage), ct);
         return ToActionResult(result);
     }
 
@@ -59,9 +48,9 @@ public class AIController : ControllerBase
     /// </summary>
     [HttpGet("explain-stream")]
     [Produces("text/event-stream")]
-    public async Task GetExplainStream([FromQuery] string word, [FromQuery] string? context, CancellationToken ct, [FromQuery] bool asJson = false)
+    public async Task GetExplainStream([FromQuery] string word, [FromQuery] string? context, [FromQuery] string? targetLanguage, [FromQuery] string? userLanguage, CancellationToken ct, [FromQuery] bool asJson = false)
     {
-        var result = await _mediator.Send(new StreamWordExplanationQuery(word, context, asJson), ct);
+        var result = await _mediator.Send(new StreamWordExplanationQuery(word, context, asJson, targetLanguage, userLanguage), ct);
 
         if (!result.IsSuccess)
         {
@@ -104,6 +93,95 @@ public class AIController : ControllerBase
         {
             // Client disconnected
         }
+        catch (Exception ex)
+        {
+            var errorJson = JsonSerializer.Serialize(new { type = "error", message = ex.Message });
+            await Response.WriteAsync($"data: {errorJson}\n\n", ct);
+            await Response.Body.FlushAsync(ct);
+        }
+    }
+
+    /// <summary>
+    /// Translates a word instantly (non-streaming).
+    /// </summary>
+    [HttpGet("translate")]
+    [Produces("application/json")]
+    public async Task<IActionResult> GetTranslate([FromQuery] string word, [FromQuery] string? context, [FromQuery] string? provider, [FromQuery] string? modelId, [FromQuery] string? from, [FromQuery] string? to, [FromQuery] string? customBaseUrl, [FromQuery] string? customApiKey, [FromQuery] string? customModel, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new TranslateQuery(word, context, provider, modelId, from, to, customBaseUrl, customApiKey, customModel), ct);
+
+        if (!result.IsSuccess)
+        {
+            return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+        }
+        
+        if (result.Data != null && result.Data.TrimStart().StartsWith("{\"error\""))
+        {
+            return StatusCode(502, result.Data); // 502 Bad Gateway mapping for upstream errors
+        }
+        
+        return Content(result.Data!, "application/json");
+    }
+
+    /// <summary>
+    /// Streams translation using the specified LLM Model.
+    /// </summary>
+    [HttpGet("translate-stream")]
+    [Produces("text/event-stream")]
+    public async Task GetTranslateStream([FromQuery] string word, [FromQuery] string? context, [FromQuery] string? provider, [FromQuery] string? modelId, [FromQuery] string? from, [FromQuery] string? to, [FromQuery] string? customBaseUrl, [FromQuery] string? customApiKey, [FromQuery] string? customModel, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new StreamTranslateQuery(word, context, provider, modelId, from, to, customBaseUrl, customApiKey, customModel), ct);
+
+        if (!result.IsSuccess)
+        {
+            Response.StatusCode = result.StatusCode;
+            Response.ContentType = "application/json";
+            await Response.WriteAsync(JsonSerializer.Serialize(new { success = false, error = result.Error }), ct);
+            return;
+        }
+
+        Response.ContentType = "text/event-stream";
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers.Connection = "keep-alive";
+        Response.Headers["X-Accel-Buffering"] = "no";
+        
+        await Response.Body.FlushAsync(ct);
+
+        var stream = result.Data!;
+
+        try
+        {
+            var startMetadata = JsonSerializer.Serialize(new { type = "start", word, timestamp = DateTime.UtcNow });
+            await Response.WriteAsync($"data: {startMetadata}\n\n", ct);
+            await Response.Body.FlushAsync(ct);
+
+            await foreach (var chunk in stream.WithCancellation(ct))
+            {
+                if (chunk.TrimStart().StartsWith("{\"error\""))
+                {
+                    try {
+                        using var doc = JsonDocument.Parse(chunk);
+                        if (doc.RootElement.TryGetProperty("error", out var errorProp))
+                        {
+                            var errMsg = errorProp.GetString() ?? chunk;
+                            var errRespJson = JsonSerializer.Serialize(new { type = "error", message = errMsg });
+                            await Response.WriteAsync($"data: {errRespJson}\n\n", ct);
+                            await Response.Body.FlushAsync(ct);
+                            continue;
+                        }
+                    } catch { } // Not a valid json error, fallback to content
+                }
+
+                var contentJson = JsonSerializer.Serialize(new { type = "content", delta = chunk });
+                await Response.WriteAsync($"data: {contentJson}\n\n", ct);
+                await Response.Body.FlushAsync(ct);
+            }
+            
+            var doneJson = JsonSerializer.Serialize(new { type = "done" });
+            await Response.WriteAsync($"data: {doneJson}\n\n", ct);
+            await Response.Body.FlushAsync(ct);
+        }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             var errorJson = JsonSerializer.Serialize(new { type = "error", message = ex.Message });

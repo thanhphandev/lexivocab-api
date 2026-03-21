@@ -19,11 +19,6 @@ public class FeatureDefinitionSeeder : IDataSeeder
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
-        if (await _dbContext.FeatureDefinitions.AnyAsync(cancellationToken))
-        {
-            return; // Already seeded
-        }
-
         var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var features = new[]
@@ -35,7 +30,7 @@ public class FeatureDefinitionSeeder : IDataSeeder
                 Name = "Maximum Words",
                 Description = "Limit of vocabulary words saved",
                 ValueType = "integer",
-                DefaultValue = "0",
+                DefaultValue = "30",
                 CreatedAt = seedDate
             },
             new FeatureDefinition
@@ -61,9 +56,9 @@ public class FeatureDefinitionSeeder : IDataSeeder
             new FeatureDefinition
             {
                 Id = new Guid("f4444444-4444-4444-4444-444444444444"),
-                Code = "EXPORT_PDF",
-                Name = "Export to PDF",
-                Description = "Ability to export vocabulary lists to PDF",
+                Code = "EXPORT_ANKI",
+                Name = "Export Anki/PDF",
+                Description = "Ability to export vocabulary lists to Anki and PDF",
                 ValueType = "boolean",
                 DefaultValue = "false",
                 CreatedAt = seedDate
@@ -117,10 +112,48 @@ public class FeatureDefinitionSeeder : IDataSeeder
                 ValueType = "boolean",
                 DefaultValue = "false",
                 CreatedAt = seedDate
+            },
+            new FeatureDefinition
+            {
+                Id = new Guid("fbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+                Code = "LLM_TRANSLATION_LIMIT",
+                Name = "LLM Translation Limit",
+                Description = "Maximum LLM translation requests per day",
+                ValueType = "integer",
+                DefaultValue = "20",
+                CreatedAt = seedDate
+            },
+            new FeatureDefinition
+            {
+                Id = new Guid("fccccccc-cccc-cccc-cccc-cccccccccccc"),
+                Code = "AVAILABLE_LLM_MODELS",
+                Name = "Available LLM Models",
+                Description = "JSON array of allowed models",
+                ValueType = "json",
+                DefaultValue = "[{\"id\":\"cloudflare/@cf/meta/llama-3.1-70b-instruct\", \"name\":\"Llama 3.1 70B\", \"provider\":\"cloudflare\", \"group\":\"Free Models\"}, {\"id\":\"siliconflow/deepseek-r1\", \"name\":\"SiliconFlow DeepSeek\", \"provider\":\"siliconflow\", \"group\":\"Free Models\"}, {\"id\":\"zhipu/glm-4-flash\", \"name\":\"GLM-4 Flash\", \"provider\":\"zhipu\", \"group\":\"Free Models\", \"isWarning\":true}, {\"id\":\"anthropic/claude-4.5-haiku\", \"name\":\"Claude 4.5 Haiku\", \"provider\":\"anthropic\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"google/gemini-3-flash\", \"name\":\"Gemini 3 Flash\", \"provider\":\"google\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"openai/gpt-5.4\", \"name\":\"GPT 5.4\", \"provider\":\"openai\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"openai/gpt-5-mini\", \"name\":\"GPT 5 mini\", \"provider\":\"openai\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"qwen/qwen-3.5-plus\", \"name\":\"Qwen 3.5 Plus\", \"provider\":\"qwen\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"minmax/minmax-abab6.5s\", \"name\":\"MinMax 6.5s\", \"provider\":\"minmax\", \"group\":\"Advanced Models\", \"isPro\":true}]",
+                CreatedAt = seedDate
             }
         };
 
-        await _dbContext.FeatureDefinitions.AddRangeAsync(features, cancellationToken);
+        var existingFeatures = await _dbContext.FeatureDefinitions
+            .ToListAsync(cancellationToken);
+        var existingCodes = existingFeatures.Select(f => f.Code).ToList();
+
+        var newFeatures = features.Where(f => !existingCodes.Contains(f.Code)).ToList();
+        
+        if (newFeatures.Any())
+        {
+            await _dbContext.FeatureDefinitions.AddRangeAsync(newFeatures, cancellationToken);
+        }
+
+        // Patch existing AVAILABLE_LLM_MODELS just in case it exists but with old values
+        var availableFeature = existingFeatures.FirstOrDefault(f => f.Code == "AVAILABLE_LLM_MODELS");
+        var featureToPatch = features.First(f => f.Code == "AVAILABLE_LLM_MODELS");
+        if (availableFeature != null && availableFeature.DefaultValue != featureToPatch.DefaultValue)
+        {
+            availableFeature.DefaultValue = featureToPatch.DefaultValue;
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

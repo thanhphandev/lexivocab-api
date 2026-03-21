@@ -36,6 +36,7 @@ public class AdminCouponsController : ControllerBase
             request.MaxUses,
             request.ValidFrom,
             request.ValidUntil,
+            request.Currency,
             request.IsActive,
             request.Description);
 
@@ -56,6 +57,7 @@ public class AdminCouponsController : ControllerBase
             request.MaxUses,
             request.ValidFrom,
             request.ValidUntil,
+            request.Currency,
             request.IsActive,
             request.Description);
 

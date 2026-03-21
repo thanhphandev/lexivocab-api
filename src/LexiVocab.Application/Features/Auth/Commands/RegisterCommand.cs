@@ -79,7 +79,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         await _uow.Users.AddAsync(user, ct);
 
         // Auto-create default settings for new user
-        user.UserSetting = new Domain.Entities.UserSetting { UserId = user.Id };
+        user.UserSetting = new UserSetting { UserId = user.Id };
 
         await _uow.SaveChangesAsync(ct);
 

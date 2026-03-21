@@ -37,7 +37,12 @@ public class ExploreVocabulariesHandler : IRequestHandler<ExploreVocabulariesQue
             m.CefrLevel
         )).ToList();
 
-        return Result<PagedResult<MasterVocabularyDto>>.Success(
-            new PagedResult<MasterVocabularyDto>(dtos, result.TotalCount, result.Page, result.PageSize));
+        return Result<PagedResult<MasterVocabularyDto>>.Success(new PagedResult<MasterVocabularyDto>
+        {
+            Items = dtos,
+            TotalCount = result.TotalCount,
+            Page = request.Page,
+            PageSize = request.PageSize
+        });
     }
 }

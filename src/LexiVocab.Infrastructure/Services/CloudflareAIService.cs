@@ -12,6 +12,7 @@ public class CloudflareAIService : IAIService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<CloudflareAIService> _logger;
+    private readonly IConfiguration _configuration;
     private readonly string _apiKey;
     private readonly string _workerUrl;
 
@@ -22,67 +23,38 @@ public class CloudflareAIService : IAIService
     {
         _httpClient = httpClient;
         _logger = logger;
-        _apiKey = configuration["CloudflareAI:ApiKey"] ?? throw new ArgumentNullException("CloudflareAI:ApiKey");
-        _workerUrl = configuration["CloudflareAI:WorkerUrl"] ?? throw new ArgumentNullException("CloudflareAI:WorkerUrl");
+        _configuration = configuration;
+        _apiKey = configuration["AIProviders:cloudflare:ApiKey"] ?? throw new ArgumentNullException("AIProviders:cloudflare:ApiKey");
+        _workerUrl = configuration["AIProviders:cloudflare:BaseUrl"] ?? throw new ArgumentNullException("AIProviders:cloudflare:BaseUrl");
     }
 
-    public async Task<MasterVocabulary?> EnrichWordAsync(string word, CancellationToken ct = default)
+    public async Task<string?> GetRelatedWordsAsync(string word, string? targetLanguage = null, string? userLanguage = null, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(word)) return null;
-
-        try
-        {
-            var json = await CallWorkerAsync("enrich-word", new { word }, ct);
-            if (string.IsNullOrEmpty(json)) return null;
-
-            var aiResult = JsonSerializer.Deserialize<CloudflareAIResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (aiResult == null) return null;
-
-            return new MasterVocabulary
-            {
-                Word = word.ToLower().Trim(),
-                PartOfSpeech = aiResult.PartOfSpeech,
-                PhoneticUk = aiResult.PhoneticUk,
-                PhoneticUs = aiResult.PhoneticUs,
-                Meaning = aiResult.Definition,
-                CefrLevel = aiResult.CefrLevel,
-                IsFetchFailed = false
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "❌ AI enrichment failed for '{Word}'", word);
-            return null;
-        }
+        var mappedTargetLanguage = LexiVocab.Infrastructure.Services.Translation.Providers.LanguageMapper.GetName(targetLanguage, false);
+        var mappedUserLanguage = LexiVocab.Infrastructure.Services.Translation.Providers.LanguageMapper.GetName(userLanguage, false);
+        return await CallWorkerAsync("suggest-related", new { word, targetLanguage = mappedTargetLanguage, userLanguage = mappedUserLanguage }, ct);
     }
 
-    public async Task<string?> ExplainUsageAsync(string word, string? context = null, CancellationToken ct = default)
+    public async Task<string?> GenerateQuizAsync(string word, string? targetLanguage = null, string? userLanguage = null, CancellationToken ct = default)
     {
-        return await CallWorkerAsync("explain-usage", new { word, context }, ct);
+        var mappedTargetLanguage = LexiVocab.Infrastructure.Services.Translation.Providers.LanguageMapper.GetName(targetLanguage, false);
+        var mappedUserLanguage = LexiVocab.Infrastructure.Services.Translation.Providers.LanguageMapper.GetName(userLanguage, false);
+        return await CallWorkerAsync("generate-quiz", new { word, targetLanguage = mappedTargetLanguage, userLanguage = mappedUserLanguage }, ct);
     }
 
-    public async Task<string?> GetRelatedWordsAsync(string word, CancellationToken ct = default)
-    {
-        return await CallWorkerAsync("suggest-related", new { word }, ct);
-    }
 
-    public async Task<string?> GenerateQuizAsync(string word, CancellationToken ct = default)
+    public async IAsyncEnumerable<string> StreamExplainUsageAsync(string word, string? context = null, bool asJson = false, string? targetLanguage = null, string? userLanguage = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {
-        return await CallWorkerAsync("generate-quiz", new { word }, ct);
-    }
+        var mappedTargetLanguage = LexiVocab.Infrastructure.Services.Translation.Providers.LanguageMapper.GetName(targetLanguage, false);
+        var mappedUserLanguage = LexiVocab.Infrastructure.Services.Translation.Providers.LanguageMapper.GetName(userLanguage, false);
 
-    public async Task<string?> GenerateMnemonicAsync(string word, string meaning, CancellationToken ct = default)
-    {
-        return await CallWorkerAsync("generate-mnemonic", new { word, meaning }, ct);
-    }
-
-    public async IAsyncEnumerable<string> StreamExplainUsageAsync(string word, string? context = null, bool asJson = false, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
-    {
         var payload = new 
         { 
             word, 
             context, 
-            format = asJson ? "json" : null 
+            format = asJson ? "json" : null,
+            targetLanguage = mappedTargetLanguage,
+            userLanguage = mappedUserLanguage
         };
 
         var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"{_workerUrl}/explain-usage-stream")
@@ -115,6 +87,14 @@ public class CloudflareAIService : IAIService
                     if (doc.RootElement.TryGetProperty("response", out var text))
                     {
                         contentToYield = text.GetString();
+                    }
+                    else if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                    {
+                        var delta = choices[0].GetProperty("delta");
+                        if (delta.TryGetProperty("content", out var contentElement) && contentElement.ValueKind == JsonValueKind.String)
+                        {
+                            contentToYield = contentElement.GetString();
+                        }
                     }
                 }
                 catch

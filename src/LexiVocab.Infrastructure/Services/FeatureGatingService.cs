@@ -35,14 +35,47 @@ public class FeatureGatingService : IFeatureGatingService
         // Fetch active subscription with its plan and features
         var activeSub = await _uow.Subscriptions.GetActiveWithFeaturesAsync(userId, ct);
 
+        // Fetch AI Quota usages
+        var dateKey = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var aiKey = $"quota:{userId}:AI_DAILY_LIMIT:{dateKey}";
+        var transKey = $"quota:{userId}:LLM_TRANSLATION_LIMIT:{dateKey}";
+        var quizKey = $"quota:{userId}:MAX_QUIZ_PER_DAY:{dateKey}";
+        
+        int aiUsage = 0, transUsage = 0, quizUsage = 0;
+        
+        if (_redis is not null)
+        {
+            var db = _redis.GetDatabase();
+            var vals = await db.StringGetAsync(new RedisKey[] { RedisKeyPrefix + aiKey, RedisKeyPrefix + transKey, RedisKeyPrefix + quizKey });
+            if (vals[0].HasValue) aiUsage = (int)vals[0];
+            if (vals[1].HasValue) transUsage = (int)vals[1];
+            if (vals[2].HasValue) quizUsage = (int)vals[2];
+        }
+        else
+        {
+            var aiStr = await _cache.GetStringAsync(aiKey, ct);
+            if (!string.IsNullOrEmpty(aiStr)) aiUsage = int.Parse(aiStr);
+            var transStr = await _cache.GetStringAsync(transKey, ct);
+            if (!string.IsNullOrEmpty(transStr)) transUsage = int.Parse(transStr);
+            var quizStr = await _cache.GetStringAsync(quizKey, ct);
+            if (!string.IsNullOrEmpty(quizStr)) quizUsage = int.Parse(quizStr);
+        }
+
+        var usages = new Dictionary<string, int>
+        {
+            { "AI_DAILY_LIMIT", aiUsage },
+            { "LLM_TRANSLATION_LIMIT", transUsage },
+            { "MAX_QUIZ_PER_DAY", quizUsage }
+        };
+
         // If no active sub (or expired), fall back to Free tier
         if (activeSub == null || (activeSub.EndDate.HasValue && activeSub.EndDate.Value < DateTime.UtcNow))
         {
             var freePlan = await GetPlanByCodeAsync("Free", ct);
-            return CreatePermissionsDto(freePlan, currentCount, null);
+            return CreatePermissionsDto(freePlan, currentCount, null, usages);
         }
 
-        return CreatePermissionsDto(activeSub.PlanDefinition, currentCount, activeSub.EndDate);
+        return CreatePermissionsDto(activeSub.PlanDefinition, currentCount, activeSub.EndDate, usages);
     }
 
     public async Task<bool> HasFeatureAsync(Guid userId, string featureCode, CancellationToken ct)
@@ -59,11 +92,10 @@ public class FeatureGatingService : IFeatureGatingService
 
         // 2. Get the limit from plan
         var permissions = await GetPermissionsAsync(userId, ct);
-        if (!permissions.FeatureFlags.TryGetValue(quotaLimitCode, out var limitStr) || 
-            !int.TryParse(limitStr, out var limit))
-        {
-            return false; // No limit defined = no access for safety
-        }
+        var limit = permissions.GetLimit(quotaLimitCode, 0);
+
+        if (limit == -1) return true; // Unlimited
+        if (limit == 0) return false; // Strictly blocked
 
         // 3. Consume quota atomically in Redis if available
         var dateKey = DateTime.UtcNow.ToString("yyyy-MM-dd");
@@ -125,9 +157,9 @@ return current
         return await _uow.PlanDefinitions.GetByNameWithFeaturesAsync(name, ct);
     }
 
-    private static UserPermissionsDto CreatePermissionsDto(Domain.Entities.PlanDefinition? plan, int currentCount, DateTime? expiration)
+    private static UserPermissionsDto CreatePermissionsDto(Domain.Entities.PlanDefinition? plan, int currentCount, DateTime? expiration, Dictionary<string, int> usages)
     {
-        if (plan == null) return new UserPermissionsDto("None", currentCount, expiration, new Dictionary<string, string>());
+        if (plan == null) return new UserPermissionsDto("None", currentCount, expiration, new Dictionary<string, string>(), usages ?? new());
 
         var flags = plan.PlanFeatures.ToDictionary(pf => pf.Feature.Code, pf => pf.Value);
 
@@ -135,7 +167,8 @@ return current
             Plan: plan.Name,
             CurrentCount: currentCount,
             PlanExpiresAt: expiration,
-            FeatureFlags: flags);
+            FeatureFlags: flags,
+            QuotaUsages: usages ?? new());
     }
 
 }

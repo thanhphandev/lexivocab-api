@@ -103,10 +103,17 @@ public class PayPalService : IPaymentService
         if (coupon != null)
         {
             if (coupon.DiscountType == DiscountType.Percentage)
+            {
                 finalPrice -= finalPrice * (coupon.DiscountValue / 100m);
+            }
             else
+            {
+                if (!string.Equals(coupon.Currency, pricing.Currency, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException($"This fixed-amount coupon is for {coupon.Currency?.ToUpper()} and cannot be used with a {pricing.Currency.ToUpper()} plan.");
+                }
                 finalPrice -= coupon.DiscountValue;
-            
+            }
             if (finalPrice < 0) finalPrice = 0;
         }
 
@@ -554,7 +561,8 @@ public class PayPalService : IPaymentService
             {
                 { "FullName", user.FullName },
                 { "PlanName", planName },
-                { "Amount", $"${tx.Amount:F2} {tx.Currency}" },
+                { "CouponRow", tx.Coupon != null ? $"<tr><td style=\"padding-bottom: 12px; font-size: 14px; color: #6b7280;\">Discount ({tx.Coupon.Code})</td><td style=\"padding-bottom: 12px; font-size: 14px; color: #111827; text-align: right; font-weight: 600;\">{(tx.Coupon.DiscountType == DiscountType.Percentage ? $"-{tx.Coupon.DiscountValue}%" : $"-{tx.Coupon.DiscountValue:F2} {tx.Currency}")}</td></tr>" : "" },
+                { "Amount", $"{tx.Amount:F2} {tx.Currency}" },
                 { "ExpiryDate", tx.Subscription.EndDate?.ToString("MMMM dd, yyyy") ?? "Lifetime" },
                 { "TransactionId", tx.ExternalOrderId ?? tx.Id.ToString() }
             });

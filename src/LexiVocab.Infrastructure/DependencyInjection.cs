@@ -62,7 +62,6 @@ public static class DependencyInjection
         // ─── Background Jobs ──────────────────────────────────
         services.AddTransient<Services.ISubscriptionExpirationJob, Services.SubscriptionExpirationJob>();
         services.AddTransient<Services.IReviewReminderJob, Services.ReviewReminderJob>();
-        services.AddTransient<Services.IMasterVocabularyUpdateJob, Services.MasterVocabularyUpdateJob>();
         services.AddTransient<Services.IPendingPaymentCleanupJob, Services.PendingPaymentCleanupJob>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -116,7 +115,7 @@ public static class DependencyInjection
         })
         .AddStandardResilienceHandler();
 
-        // ─── AI Services (Cloudflare Workers AI) ─────────────
+        // ─── AI Services (Cloudflare Workers AI & LLMs) ─────────────
         services.AddHttpClient<IAIService, Services.CloudflareAIService>(client =>
         {
             client.Timeout = TimeSpan.FromSeconds(60);
@@ -128,6 +127,31 @@ public static class DependencyInjection
             options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(90);
             options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(60);
         });
+
+        // ─── Translation Streaming Strategies ─────────────
+        services.AddScoped<ITranslationStreamService, Services.Translation.TranslationStreamService>();
+
+        services.AddHttpClient<Services.Translation.Providers.ITranslationProvider, Services.Translation.Providers.CloudflareTranslationProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        }).AddStandardResilienceHandler();
+
+        services.AddHttpClient<Services.Translation.Providers.ITranslationProvider, Services.Translation.Providers.OpenAiCompatibleTranslationProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        }).AddStandardResilienceHandler();
+
+        services.AddHttpClient<Services.Translation.Providers.ITranslationProvider, Services.Translation.Providers.GoogleTranslationProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        }).AddStandardResilienceHandler();
+
+        services.AddHttpClient<Services.Translation.Providers.ITranslationProvider, Services.Translation.Providers.LingvaTranslationProvider>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(15);
+        }).AddStandardResilienceHandler();
+
+        services.AddScoped<Services.Translation.Providers.ITranslationProvider, Services.Translation.Providers.BingTranslationProvider>();
 
         var jwtSecret = configuration["Jwt:Secret"]
             ?? throw new InvalidOperationException("Jwt:Secret is not configured");

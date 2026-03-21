@@ -31,11 +31,12 @@ public interface IVocabularyRepository : IRepository<UserVocabulary>
 
     /// <summary>
     /// Get all vocabulary cards due for review today (NextReviewDate &lt;= now, not archived).
-    /// This is the critical query — uses NextReviewDate index for sub-ms performance.
+    /// Separates New cards (RepetitionCount == 0) and Review cards (RepetitionCount > 0).
     /// </summary>
     Task<IReadOnlyList<UserVocabulary>> GetDueForReviewAsync(
         Guid userId,
-        int limit = 50,
+        int reviewLimit = 50,
+        int newCardLimit = 20,
         CancellationToken ct = default);
 
     /// <summary>

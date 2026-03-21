@@ -44,6 +44,21 @@ public class UserSettingConfiguration : IEntityTypeConfiguration<UserSetting>
             .HasColumnType("jsonb")
             .HasDefaultValueSql("'{}'::jsonb");
 
+        builder.Property(s => s.TargetLanguage)
+            .HasColumnName("target_language")
+            .HasMaxLength(50)
+            .HasDefaultValue("en");
+
+        builder.Property(s => s.NativeLanguage)
+            .HasColumnName("native_language")
+            .HasMaxLength(50)
+            .HasDefaultValue("vi");
+
+        builder.Property(s => s.CustomLlmsJson)
+            .HasColumnName("custom_llms_json")
+            .HasColumnType("jsonb")
+            .HasDefaultValueSql("'[]'::jsonb");
+
         builder.Property(s => s.CreatedAt)
             .HasColumnName("created_at")
             .HasDefaultValueSql("NOW()");

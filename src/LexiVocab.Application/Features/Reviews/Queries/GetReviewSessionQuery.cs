@@ -31,11 +31,14 @@ public class GetReviewSessionHandler : IRequestHandler<GetReviewSessionQuery, Re
         // Fetch user settings to enforce limits
         var user = await _uow.Users.GetByIdAsync(userId, ct);
         var maxReviewLimit = user?.UserSetting?.DailyReviewLimit ?? 100;
+        var maxNewCardLimit = user?.UserSetting?.DailyNewCardLimit ?? 20;
         
-        // Protect user from "Review Hell" by capping the limit
-        var actualLimit = Math.Min(request.Limit, maxReviewLimit);
+        // Protect user from "Review Hell" by capping the limit. 
+        // We use Math.Min against request.Limit dynamically if the UI requested a smaller batch.
+        var actualReviewLimit = Math.Min(request.Limit, maxReviewLimit);
+        var actualNewCardLimit = Math.Min(request.Limit, maxNewCardLimit);
 
-        var dueItems = await _uow.Vocabularies.GetDueForReviewAsync(userId, actualLimit, ct);
+        var dueItems = await _uow.Vocabularies.GetDueForReviewAsync(userId, actualReviewLimit, actualNewCardLimit, ct);
 
         var cards = dueItems.Select(v => new ReviewCardDto(
             v.Id,

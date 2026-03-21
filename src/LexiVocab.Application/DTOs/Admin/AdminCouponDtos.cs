@@ -11,6 +11,7 @@ public record AdminCouponDto(
     int CurrentUses,
     DateTime? ValidFrom,
     DateTime? ValidUntil,
+    string? Currency,
     bool IsActive,
     string? Description,
     DateTime CreatedAt,
@@ -24,6 +25,7 @@ public record CreateCouponRequest(
     int? MaxUses,
     DateTime? ValidFrom,
     DateTime? ValidUntil,
+    string? Currency,
     bool IsActive,
     string? Description
 );
@@ -35,6 +37,7 @@ public record UpdateCouponRequest(
     int? MaxUses,
     DateTime? ValidFrom,
     DateTime? ValidUntil,
+    string? Currency,
     bool IsActive,
     string? Description
 );

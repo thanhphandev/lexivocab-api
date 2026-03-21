@@ -16,6 +16,7 @@ public record CreateCouponCommand(
     int? MaxUses,
     DateTime? ValidFrom,
     DateTime? ValidUntil,
+    string? Currency,
     bool IsActive,
     string? Description) : IRequest<Result<AdminCouponDto>>, IAuditedRequest
 {
@@ -61,6 +62,7 @@ public class CreateCouponHandler : IRequestHandler<CreateCouponCommand, Result<A
             CurrentUses = 0,
             ValidFrom = request.ValidFrom,
             ValidUntil = request.ValidUntil,
+            Currency = request.DiscountType == DiscountType.FixedAmount ? request.Currency : null,
             IsActive = request.IsActive,
             Description = request.Description?.Trim()
         };
@@ -77,6 +79,7 @@ public class CreateCouponHandler : IRequestHandler<CreateCouponCommand, Result<A
             coupon.CurrentUses,
             coupon.ValidFrom,
             coupon.ValidUntil,
+            coupon.Currency,
             coupon.IsActive,
             coupon.Description,
             coupon.CreatedAt,

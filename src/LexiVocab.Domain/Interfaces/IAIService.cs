@@ -8,33 +8,19 @@ namespace LexiVocab.Domain.Interfaces;
 /// </summary>
 public interface IAIService
 {
-    /// <summary>
-    /// Uses AI to enrich a word's definition, phonetics, and example sentences.
-    /// </summary>
-    Task<MasterVocabulary?> EnrichWordAsync(string word, CancellationToken ct = default);
-
-    /// <summary>
-    /// Explains the usage and nuances of a word.
-    /// </summary>
-    Task<string?> ExplainUsageAsync(string word, string? context = null, CancellationToken ct = default);
 
     /// <summary>
     /// Returns synonyms, antonyms, and collocations for a word.
     /// </summary>
-    Task<string?> GetRelatedWordsAsync(string word, CancellationToken ct = default);
+    Task<string?> GetRelatedWordsAsync(string word, string? targetLanguage = null, string? userLanguage = null, CancellationToken ct = default);
 
     /// <summary>
     /// Streams the explanation of usage and nuances of a word.
     /// </summary>
-    IAsyncEnumerable<string> StreamExplainUsageAsync(string word, string? context = null, bool asJson = false, CancellationToken ct = default);
+    IAsyncEnumerable<string> StreamExplainUsageAsync(string word, string? context = null, bool asJson = false, string? targetLanguage = null, string? userLanguage = null, CancellationToken ct = default);
 
     /// <summary>
     /// Generates a multiple-choice quiz for a word.
     /// </summary>
-    Task<string?> GenerateQuizAsync(string word, CancellationToken ct = default);
-
-    /// <summary>
-    /// Generates mnemonics or memory aids for a word.
-    /// </summary>
-    Task<string?> GenerateMnemonicAsync(string word, string meaning, CancellationToken ct = default);
+    Task<string?> GenerateQuizAsync(string word, string? targetLanguage = null, string? userLanguage = null, CancellationToken ct = default);
 }

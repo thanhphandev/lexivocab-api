@@ -36,7 +36,13 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, Result<UserS
                 HighlightColor: "#FFD700",
                 ExcludedDomains: [],
                 DailyGoal: 20,
-                PreferencesJson: "{}"));
+                DailyNewCardLimit: 20,
+                DailyReviewLimit: 100,
+                PreferencesJson: "{}",
+                TargetLanguage: "English",
+                NativeLanguage: "Vietnamese",
+                CustomLlmsJson: "[]",
+                DefaultTranslator: "cloudflare"));
         }
 
         return Result<UserSettingsDto>.Success(new UserSettingsDto(
@@ -44,7 +50,13 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, Result<UserS
             settings.HighlightColor,
             settings.ExcludedDomains,
             settings.DailyGoal,
-            settings.PreferencesJson));
+            settings.DailyNewCardLimit,
+            settings.DailyReviewLimit,
+            settings.PreferencesJson,
+            settings.TargetLanguage,
+            settings.NativeLanguage,
+            settings.CustomLlmsJson,
+            settings.DefaultTranslator));
     }
 }
 
@@ -54,7 +66,13 @@ public record UpdateSettingsCommand(
     string? HighlightColor,
     List<string>? ExcludedDomains,
     int? DailyGoal,
-    string? PreferencesJson
+    int? DailyNewCardLimit,
+    int? DailyReviewLimit,
+    string? PreferencesJson,
+    string? TargetLanguage,
+    string? NativeLanguage,
+    string? CustomLlmsJson,
+    string? DefaultTranslator
 ) : IRequest<Result<UserSettingsDto>>;
 
 public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Result<UserSettingsDto>>
@@ -87,7 +105,13 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
         if (request.HighlightColor is not null) settings.HighlightColor = request.HighlightColor;
         if (request.ExcludedDomains is not null) settings.ExcludedDomains = request.ExcludedDomains;
         if (request.DailyGoal.HasValue) settings.DailyGoal = request.DailyGoal.Value;
+        if (request.DailyNewCardLimit.HasValue) settings.DailyNewCardLimit = request.DailyNewCardLimit.Value;
+        if (request.DailyReviewLimit.HasValue) settings.DailyReviewLimit = request.DailyReviewLimit.Value;
         if (request.PreferencesJson is not null) settings.PreferencesJson = request.PreferencesJson;
+        if (request.TargetLanguage is not null) settings.TargetLanguage = request.TargetLanguage;
+        if (request.NativeLanguage is not null) settings.NativeLanguage = request.NativeLanguage;
+        if (request.CustomLlmsJson is not null) settings.CustomLlmsJson = request.CustomLlmsJson;
+        if (request.DefaultTranslator is not null) settings.DefaultTranslator = request.DefaultTranslator;
         settings.UpdatedAt = DateTime.UtcNow;
 
         await _uow.SaveChangesAsync(ct);
@@ -97,6 +121,12 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
             settings.HighlightColor,
             settings.ExcludedDomains,
             settings.DailyGoal,
-            settings.PreferencesJson));
+            settings.DailyNewCardLimit,
+            settings.DailyReviewLimit,
+            settings.PreferencesJson,
+            settings.TargetLanguage,
+            settings.NativeLanguage,
+            settings.CustomLlmsJson,
+            settings.DefaultTranslator));
     }
 }

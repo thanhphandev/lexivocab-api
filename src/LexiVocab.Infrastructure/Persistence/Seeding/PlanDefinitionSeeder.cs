@@ -21,10 +21,8 @@ public class PlanDefinitionSeeder : IDataSeeder
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
-        if (await _dbContext.PlanDefinitions.AnyAsync(cancellationToken))
-        {
-            return; // Already seeded
-        }
+        var availableModelsId = new Guid("fccccccc-cccc-cccc-cccc-cccccccccccc");
+        var allModelsJson = "[{\"id\":\"cloudflare/@cf/meta/llama-3.1-70b-instruct\", \"name\":\"Llama 3.1 70B\", \"provider\":\"cloudflare\", \"group\":\"Free Models\"}, {\"id\":\"siliconflow/deepseek-r1\", \"name\":\"SiliconFlow DeepSeek\", \"provider\":\"siliconflow\", \"group\":\"Free Models\"}, {\"id\":\"zhipu/glm-4-flash\", \"name\":\"GLM-4 Flash\", \"provider\":\"zhipu\", \"group\":\"Free Models\", \"isWarning\":true}, {\"id\":\"anthropic/claude-4.5-haiku\", \"name\":\"Claude 4.5 Haiku\", \"provider\":\"anthropic\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"google/gemini-3-flash\", \"name\":\"Gemini 3 Flash\", \"provider\":\"google\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"openai/gpt-5.4\", \"name\":\"GPT 5.4\", \"provider\":\"openai\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"openai/gpt-5-mini\", \"name\":\"GPT 5 mini\", \"provider\":\"openai\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"qwen/qwen-3.5-plus\", \"name\":\"Qwen 3.5 Plus\", \"provider\":\"qwen\", \"group\":\"Advanced Models\", \"isPro\":true}, {\"id\":\"minmax/minmax-abab6.5s\", \"name\":\"MinMax 6.5s\", \"provider\":\"minmax\", \"group\":\"Advanced Models\", \"isPro\":true}]";
 
         var seedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -32,12 +30,18 @@ public class PlanDefinitionSeeder : IDataSeeder
         var maxWordsId = new Guid("f1111111-1111-1111-1111-111111111111");
         var aiAccessId = new Guid("f2222222-2222-2222-2222-222222222222");
         var supportLevelId = new Guid("f3333333-3333-3333-3333-333333333333");
-        var exportPdfId = new Guid("f4444444-4444-4444-4444-444444444444");
+        var exportAnkiId = new Guid("f4444444-4444-4444-4444-444444444444");
         var batchImportId = new Guid("f6666666-6666-6666-6666-666666666666");
         var aiDailyLimitId = new Guid("f7777777-7777-7777-7777-777777777777");
         var maxQuizPerDayId = new Guid("f8888888-8888-8888-8888-888888888888");
         var advancedAiId = new Guid("f9999999-9999-9999-9999-999999999999");
         var quizGenerationId = new Guid("faaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var llmTranslationLimitId = new Guid("fbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+        if (await _dbContext.PlanDefinitions.AnyAsync(cancellationToken))
+        {
+            return; // Already seeded. Database is clean for deployment normally.
+        }
 
         // Free Plan
         var freePlan = new PlanDefinition
@@ -66,15 +70,17 @@ public class PlanDefinitionSeeder : IDataSeeder
             ],
             PlanFeatures =
             [
-                new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "50" },
+                new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "30" },
                 new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "Community" },
-                new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "false" },
+                new PlanFeature { FeatureDefinitionId = exportAnkiId, Value = "false" },
                 new PlanFeature { FeatureDefinitionId = batchImportId, Value = "false" },
                 new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "10" },
                 new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "5" },
-                new PlanFeature { FeatureDefinitionId = advancedAiId, Value = "true" },
-                new PlanFeature { FeatureDefinitionId = quizGenerationId, Value = "true" }
+                new PlanFeature { FeatureDefinitionId = advancedAiId, Value = "false" },
+                new PlanFeature { FeatureDefinitionId = quizGenerationId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = availableModelsId, Value = allModelsJson },
+                new PlanFeature { FeatureDefinitionId = llmTranslationLimitId, Value = "20" }
             ]
         };
 
@@ -94,7 +100,7 @@ public class PlanDefinitionSeeder : IDataSeeder
                 new PlanPricing {
                     Id = new Guid("e2222222-2222-2222-2222-111111111111"),
                     BillingCycle = BillingCycle.Monthly,
-                    Price = 50000m, 
+                    Price = 49000m, 
                     Currency = "VND",
                     DurationDays = 30,
                     LabelKey = "duration_1m",
@@ -103,105 +109,84 @@ public class PlanDefinitionSeeder : IDataSeeder
                     CreatedAt = seedDate
                 },
                 new PlanPricing {
-                    Id = new Guid("e2222222-2222-2222-2222-222222222222"),
-                    BillingCycle = BillingCycle.Quarterly,
-                    Price = 142500m, // 5% off (base 50k)
-                    Currency = "VND",
-                    DurationDays = 90,
-                    LabelKey = "duration_3m",
-                    SortOrder = 2,
-                    IsActive = true,
-                    CreatedAt = seedDate
-                },
-                new PlanPricing {
                     Id = new Guid("e2222222-2222-2222-2222-333333333333"),
                     BillingCycle = BillingCycle.SemiAnnual,
-                    Price = 270000m, // 10% off (base 50k)
+                    Price = 249000m,
                     Currency = "VND",
                     DurationDays = 180,
                     LabelKey = "duration_6m",
-                    SortOrder = 3,
+                    SortOrder = 2,
                     IsActive = true,
                     CreatedAt = seedDate
                 },
                 new PlanPricing {
                     Id = new Guid("e2222222-2222-2222-2222-444444444444"),
                     BillingCycle = BillingCycle.Annual,
-                    Price = 480000m, // 20% off (base 50k)
+                    Price = 469000m,
                     Currency = "VND",
                     DurationDays = 365,
                     LabelKey = "duration_12m",
-                    SortOrder = 4,
+                    SortOrder = 3,
                     IsActive = true,
                     CreatedAt = seedDate
                 },
-                // USD TRADES
                 new PlanPricing {
                     Id = new Guid("c2222222-2222-2222-2222-111111111111"),
                     BillingCycle = BillingCycle.Monthly,
-                    Price = 9.99m, 
+                    Price = 1.99m, 
                     Currency = "USD",
                     DurationDays = 30,
                     LabelKey = "duration_1m",
-                    SortOrder = 5,
-                    IsActive = true,
-                    CreatedAt = seedDate
-                },
-                new PlanPricing {
-                    Id = new Guid("c2222222-2222-2222-2222-222222222222"),
-                    BillingCycle = BillingCycle.Quarterly,
-                    Price = 27.99m,
-                    Currency = "USD",
-                    DurationDays = 90,
-                    LabelKey = "duration_3m",
-                    SortOrder = 6,
+                    SortOrder = 4,
                     IsActive = true,
                     CreatedAt = seedDate
                 },
                 new PlanPricing {
                     Id = new Guid("c2222222-2222-2222-2222-333333333333"),
                     BillingCycle = BillingCycle.SemiAnnual,
-                    Price = 49.99m,
+                    Price = 9.99m,
                     Currency = "USD",
                     DurationDays = 180,
                     LabelKey = "duration_6m",
-                    SortOrder = 7,
+                    SortOrder = 5,
                     IsActive = true,
                     CreatedAt = seedDate
                 },
                 new PlanPricing {
                     Id = new Guid("c2222222-2222-2222-2222-444444444444"),
                     BillingCycle = BillingCycle.Annual,
-                    Price = 89.99m,
+                    Price = 19.99m,
                     Currency = "USD",
                     DurationDays = 365,
                     LabelKey = "duration_12m",
-                    SortOrder = 8,
+                    SortOrder = 6,
                     IsActive = true,
                     CreatedAt = seedDate
                 }
             ],
             PlanFeatures =
             [
-                new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "1000" },
+                new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "2000" },
                 new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "Email" },
-                new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = exportAnkiId, Value = "false" },
                 new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" },
-                new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "50" },
-                new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "20" },
+                new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "100" },
+                new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "25" },
                 new PlanFeature { FeatureDefinitionId = advancedAiId, Value = "true" },
-                new PlanFeature { FeatureDefinitionId = quizGenerationId, Value = "true" }
+                new PlanFeature { FeatureDefinitionId = quizGenerationId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = availableModelsId, Value = allModelsJson },
+                new PlanFeature { FeatureDefinitionId = llmTranslationLimitId, Value = "500" }
             ]
         };
 
-        // Business Plan
-        var businessPlan = new PlanDefinition
+        // Ultimate Plan
+        var ultimatePlan = new PlanDefinition
         {
             Id = new Guid("44444444-4444-4444-4444-444444444444"),
-            Name = "Business",
-            NameKey = "plan_business",
-            Description = "Lifetime access for professionals and teams",
+            Name = "Ultimate",
+            NameKey = "plan_ultimate",
+            Description = "Unlimited access for professionals and teams",
             DisplayOrder = 3,
             IsActive = true,
             IsRecommended = false,
@@ -210,43 +195,89 @@ public class PlanDefinitionSeeder : IDataSeeder
             [
                 new PlanPricing {
                     Id = new Guid("e4444444-4444-4444-4444-111111111111"),
-                    BillingCycle = BillingCycle.Lifetime,
-                    Price = 4990000m,
+                    BillingCycle = BillingCycle.Monthly,
+                    Price = 99000m,
                     Currency = "VND",
-                    DurationDays = null,
-                    LabelKey = "duration_lifetime",
+                    DurationDays = 30,
+                    LabelKey = "duration_1m",
                     SortOrder = 1,
                     IsActive = true,
                     CreatedAt = seedDate
                 },
                 new PlanPricing {
-                    Id = new Guid("c4444444-4444-4444-4444-111111111111"),
+                    Id = new Guid("e4444444-4444-4444-4444-222222222222"),
+                    BillingCycle = BillingCycle.Annual,
+                    Price = 890000m,
+                    Currency = "VND",
+                    DurationDays = 365,
+                    LabelKey = "duration_12m",
+                    SortOrder = 2,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("e4444444-4444-4444-4444-333333333333"),
                     BillingCycle = BillingCycle.Lifetime,
-                    Price = 199.99m,
+                    Price = 2490000m,
+                    Currency = "VND",
+                    DurationDays = null,
+                    LabelKey = "duration_lifetime",
+                    SortOrder = 3,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("c4444444-4444-4444-4444-111111111111"),
+                    BillingCycle = BillingCycle.Monthly,
+                    Price = 4.99m,
+                    Currency = "USD",
+                    DurationDays = 30,
+                    LabelKey = "duration_1m",
+                    SortOrder = 4,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("c4444444-4444-4444-4444-222222222222"),
+                    BillingCycle = BillingCycle.Annual,
+                    Price = 39.99m,
+                    Currency = "USD",
+                    DurationDays = 365,
+                    LabelKey = "duration_12m",
+                    SortOrder = 5,
+                    IsActive = true,
+                    CreatedAt = seedDate
+                },
+                new PlanPricing {
+                    Id = new Guid("c4444444-4444-4444-4444-333333333333"),
+                    BillingCycle = BillingCycle.Lifetime,
+                    Price = 99.99m,
                     Currency = "USD",
                     DurationDays = null,
                     LabelKey = "duration_lifetime",
-                    SortOrder = 2,
+                    SortOrder = 6,
                     IsActive = true,
                     CreatedAt = seedDate
                 }
             ],
             PlanFeatures =
             [
-                new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "Unlimited" },
+                new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "-1" },
                 new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "24/7 Priority" },
-                new PlanFeature { FeatureDefinitionId = exportPdfId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = exportAnkiId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" },
-                new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "Unlimited" },
-                new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "Unlimited" },
+                new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "-1" },
+                new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "-1" },
                 new PlanFeature { FeatureDefinitionId = advancedAiId, Value = "true" },
-                new PlanFeature { FeatureDefinitionId = quizGenerationId, Value = "true" }
+                new PlanFeature { FeatureDefinitionId = quizGenerationId, Value = "true" },
+                new PlanFeature { FeatureDefinitionId = availableModelsId, Value = allModelsJson },
+                new PlanFeature { FeatureDefinitionId = llmTranslationLimitId, Value = "-1" }
             ]
         };
 
         await _dbContext.PlanDefinitions.AddRangeAsync(
-            [freePlan, premiumPlan, businessPlan], cancellationToken);
+            [freePlan, premiumPlan, ultimatePlan], cancellationToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

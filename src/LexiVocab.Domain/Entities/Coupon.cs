@@ -22,6 +22,12 @@ public class Coupon : BaseEntity
     public decimal DiscountValue { get; set; }
 
     /// <summary>
+    /// Optional currency code (e.g., "USD", "VND") for FixedAmount coupons.
+    /// Ignored if DiscountType is Percentage.
+    /// </summary>
+    public string? Currency { get; set; }
+
+    /// <summary>
     /// Optional date when the coupon becomes valid.
     /// </summary>
     public DateTime? ValidFrom { get; set; }

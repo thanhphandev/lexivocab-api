@@ -32,6 +32,18 @@ public class UserSetting : BaseEntity
     /// <summary>JSON string storing other extension preferences.</summary>
     public string PreferencesJson { get; set; } = "{}";
 
+    /// <summary>Selected default translation provider (e.g., "google", "bing", "llm").</summary>
+    public string DefaultTranslator { get; set; } = "google";
+
+    /// <summary>Target language for LLM translation and prompts (Language the user is learning).</summary>
+    public string TargetLanguage { get; set; } = "English";
+
+    /// <summary>Native language used for interface, explanations, and main translations.</summary>
+    public string NativeLanguage { get; set; } = "Vietnamese";
+
+    /// <summary>JSON array storing custom LLM providers (e.g., OpenRouter, LM Studio).</summary>
+    public string CustomLlmsJson { get; set; } = "[]";
+
     // Navigation
     public User User { get; set; } = null!;
 }

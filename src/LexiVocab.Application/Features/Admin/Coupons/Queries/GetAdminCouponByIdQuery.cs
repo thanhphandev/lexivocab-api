@@ -31,6 +31,7 @@ public class GetAdminCouponByIdHandler : IRequestHandler<GetAdminCouponByIdQuery
             coupon.CurrentUses,
             coupon.ValidFrom,
             coupon.ValidUntil,
+            coupon.Currency,
             coupon.IsActive,
             coupon.Description,
             coupon.CreatedAt,
