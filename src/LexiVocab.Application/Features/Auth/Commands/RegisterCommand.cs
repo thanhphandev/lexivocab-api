@@ -74,6 +74,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
             PasswordHash = _hasher.Hash(request.Password),
             FullName = request.FullName.Trim(),
             LastLogin = DateTime.UtcNow,
+            AvatarUrl = $"https://api.dicebear.com/9.x/thumbs/svg?seed={Uri.EscapeDataString(request.Email.ToLowerInvariant().Trim())}",
             EmailConfirmed = !requireVerification
         };
 
@@ -107,7 +108,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 
             return Result<AuthResponse>.Created(new AuthResponse(
                 user.Id, user.Email, user.FullName, user.Role.ToString(),
-                null, null, null));
+                null, null, null, user.AvatarUrl));
         }
         else
         {
@@ -141,6 +142,6 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 
         return Result<AuthResponse>.Created(new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, refreshToken, accessTokenExpiry));
+            accessToken, refreshToken, accessTokenExpiry, user.AvatarUrl));
     }
 }

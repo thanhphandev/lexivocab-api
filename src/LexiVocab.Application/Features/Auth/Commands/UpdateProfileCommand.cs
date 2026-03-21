@@ -9,7 +9,8 @@ using MediatR;
 namespace LexiVocab.Application.Features.Auth.Commands;
 
 public record UpdateProfileCommand(
-    string FullName
+    string FullName,
+    string? AvatarUrl = null
 ) : IRequest<Result<UserProfileDto>>, IAuditedRequest
 {
     public AuditAction AuditAction => AuditAction.UserUpdated;
@@ -21,6 +22,8 @@ public class UpdateProfileValidator : AbstractValidator<UpdateProfileCommand>
     public UpdateProfileValidator()
     {
         RuleFor(x => x.FullName).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.AvatarUrl).Must(url => string.IsNullOrEmpty(url) || url.StartsWith("https://api.dicebear.com/") || url.StartsWith("https://lh3.googleusercontent.com/"))
+            .WithMessage("Avatar URL must be a valid DiceBear or Google image URL.");
     }
 }
 
@@ -46,6 +49,10 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Result
             return Result<UserProfileDto>.NotFound("User account no longer exists.");
 
         user.FullName = request.FullName.Trim();
+        if (request.AvatarUrl != null)
+        {
+            user.AvatarUrl = request.AvatarUrl;
+        }
         user.UpdatedAt = DateTime.UtcNow;
 
         _uow.Users.Update(user);
@@ -58,6 +65,7 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Result
             user.Role.ToString(),
             user.IsActive,
             user.CreatedAt,
-            user.LastLogin));
+            user.LastLogin,
+            user.AvatarUrl));
     }
 }

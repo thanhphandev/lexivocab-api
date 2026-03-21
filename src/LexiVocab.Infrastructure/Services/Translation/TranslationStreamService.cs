@@ -31,14 +31,7 @@ public class TranslationStreamService : ITranslationStreamService
         string? customModel = null, 
         CancellationToken cancellationToken = default)
     {
-        string providerType = provider?.ToLowerInvariant() ?? "cloudflare";
-
-        if (providerType.Contains('/'))
-        {
-            var parts = providerType.Split('/', 2);
-            providerType = parts[0];
-            modelId = parts[1];
-        }
+        string providerType = provider?.ToLowerInvariant() ?? "openrouter";
 
         var selectedProvider = _providers.FirstOrDefault(p => p.CanHandle(providerType));
 
@@ -73,14 +66,7 @@ public class TranslationStreamService : ITranslationStreamService
         string? customModel = null, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        string providerType = provider?.ToLowerInvariant() ?? "cloudflare";
-
-        if (providerType.Contains('/'))
-        {
-            var parts = providerType.Split('/', 2);
-            providerType = parts[0];
-            modelId = parts[1];
-        }
+        string providerType = provider?.ToLowerInvariant() ?? "openrouter";
 
         var selectedProvider = _providers.FirstOrDefault(p => p.CanHandle(providerType));
 

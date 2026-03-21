@@ -24,7 +24,7 @@ public class OpenAiCompatibleTranslationProvider : ITranslationProvider
         _logger = logger;
     }
 
-    public bool CanHandle(string provider) => provider != "cloudflare" && provider != "google" && provider != "lingva" && provider != "bing";
+    public bool CanHandle(string provider) => provider != "google" && provider != "lingva" && provider != "bing" && provider != "chrome-ai";
 
     public async Task<string> TranslateAsync(
         string word, string? context, string providerType, string? modelId, string? from, string? to, 
@@ -46,7 +46,7 @@ public class OpenAiCompatibleTranslationProvider : ITranslationProvider
     {
         string? baseUrl = customBaseUrl;
         string? apiKey = customApiKey;
-        string? model = customModel ?? modelId;
+        string? model = customModel ?? modelId ?? providerType;
 
         if (string.IsNullOrEmpty(baseUrl))
         {
@@ -65,7 +65,7 @@ public class OpenAiCompatibleTranslationProvider : ITranslationProvider
         string targetLang = LanguageMapper.GetName(to, false);
         string sourceLang = LanguageMapper.GetName(from, true);
 
-        string systemContent = $"You are a strict translation API. Your response must be EXACTLY and ONLY a raw JSON object. NO markdown formatting. NO code blocks (do not use ```json). NO conversational text. Format strictly as:\n{{\n  \"word\": \"translated/root form\",\n  \"meaning\": \"ONLY the short, direct translation in {targetLang}. NO explanations.\",\n  \"phonetic\": \"IPA transcription\",\n  \"context\": \"translated/simplified context sentence\"\n}}";
+        string systemContent = $"You are a strict translation API. Your response must be EXACTLY and ONLY a raw JSON object. NO markdown formatting. NO code blocks (do not use ```json). NO conversational text. Format strictly as:\n{{\n  \"word\": \"translated/root form\",\n  \"meaning\": \"ONLY the short, direct translation in {targetLang}. NO explanations.\",\n  \"phonetic\": \"IPA transcription\",\n  \"context\": \"the original context sentence translated to {sourceLang}\"\n}}";
 
         string userContent = $"Translate the word \"{word}\" from {sourceLang} to {targetLang}{(string.IsNullOrWhiteSpace(context) ? "" : $" using the following context: \"{context}\"")}.\n\nRemember: Output NOTHING but the raw JSON object starting with {{.";
 

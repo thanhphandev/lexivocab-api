@@ -33,6 +33,7 @@ public class User : BaseEntity
     /// <summary>Brute-force protection: lockout end time.</summary>
     public DateTime? LockoutEnd { get; set; }
 
+    public string? AvatarUrl { get; set; }
 
     // Navigation properties
     public ICollection<UserVocabulary> UserVocabularies { get; set; } = [];

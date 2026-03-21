@@ -24,7 +24,8 @@ public record AuthResponse(
     string Role,
     string? AccessToken,
     [property: JsonIgnore] string? RefreshToken,
-    DateTime? ExpiresAt);
+    DateTime? ExpiresAt,
+    string? AvatarUrl = null);
 
 public record UserProfileDto(
     Guid Id,
@@ -33,10 +34,12 @@ public record UserProfileDto(
     string Role,
     bool IsActive,
     DateTime CreatedAt,
-    DateTime? LastLogin);
+    DateTime? LastLogin,
+    string? AvatarUrl = null);
 
 public record UpdateProfileRequest(
-    string FullName);
+    string FullName,
+    string? AvatarUrl = null);
 
 public record ChangePasswordRequest(
     string CurrentPassword,

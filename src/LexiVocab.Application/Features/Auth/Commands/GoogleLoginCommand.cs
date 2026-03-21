@@ -69,6 +69,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
                 {
                     Email = googleUser.Email.ToLowerInvariant(),
                     FullName = googleUser.FullName,
+                    AvatarUrl = googleUser.PictureUrl ?? $"https://api.dicebear.com/9.x/thumbs/svg?seed={Uri.EscapeDataString(googleUser.Email.ToLowerInvariant())}",
                     AuthProvider = "Google",
                     AuthProviderId = googleUser.Subject,
                     EmailConfirmed = true,
@@ -110,6 +111,6 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
 
         return Result<AuthResponse>.Success(new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, refreshToken, accessTokenExpiry));
+            accessToken, refreshToken, accessTokenExpiry, user.AvatarUrl));
     }
 }

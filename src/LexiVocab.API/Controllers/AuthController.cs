@@ -165,7 +165,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request, CancellationToken ct)
     {
-        var result = await _mediator.Send(new UpdateProfileCommand(request.FullName), ct);
+        var result = await _mediator.Send(new UpdateProfileCommand(request.FullName, request.AvatarUrl), ct);
         return ToActionResult(result);
     }
 
