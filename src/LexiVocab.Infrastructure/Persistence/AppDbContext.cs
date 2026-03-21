@@ -24,6 +24,8 @@ public class AppDbContext : DbContext
     public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<UserGameStatistic> UserGameStatistics => Set<UserGameStatistic>();
+    public DbSet<GlobalGameDeck> GlobalGameDecks => Set<GlobalGameDeck>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

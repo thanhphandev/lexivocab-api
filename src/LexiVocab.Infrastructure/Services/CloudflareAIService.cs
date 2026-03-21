@@ -42,6 +42,14 @@ public class CloudflareAIService : IAIService
         return await CallWorkerAsync("generate-quiz", new { word, targetLanguage = mappedTargetLanguage, userLanguage = mappedUserLanguage }, ct);
     }
 
+    public async Task<string?> GenerateFillBlankAsync(string word, string? targetLanguage = null, string? userLanguage = null, CancellationToken ct = default)
+    {
+        var mappedTargetLanguage = LexiVocab.Infrastructure.Services.Translation.Providers.LanguageMapper.GetName(targetLanguage, false);
+        var mappedUserLanguage = LexiVocab.Infrastructure.Services.Translation.Providers.LanguageMapper.GetName(userLanguage, false);
+        return await CallWorkerAsync("generate-fill-blank", new { word, targetLanguage = mappedTargetLanguage, userLanguage = mappedUserLanguage }, ct);
+    }
+
+
 
     public async IAsyncEnumerable<string> StreamExplainUsageAsync(string word, string? context = null, bool asJson = false, string? targetLanguage = null, string? userLanguage = null, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
     {

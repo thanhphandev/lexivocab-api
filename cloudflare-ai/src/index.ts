@@ -92,6 +92,31 @@ export default {
       }
     }
 
+    if (url.pathname === "/generate-fill-blank") {
+      try {
+        const { word, targetLanguage, userLanguage } = await request.json() as { word: string, targetLanguage?: string, userLanguage?: string };
+        const tl = targetLanguage || "English";
+        const ul = userLanguage || "Vietnamese";
+
+        const response = await runWithFallback(env, {
+          messages: [
+            {
+              role: "system",
+              content: `Generate a fill-in-the-blank question for the ${tl} word "${word}". Create a natural context sentence in ${tl} with a blank "___" representing the word. Provide 3 plausible but incorrect options in ${tl}. The translation of the sentence must be in ${ul}. Strictly JSON: { "sentence": "I like to ___ coffee.", "translation": "Tôi thích uống cà phê.", "correctWord": "drink", "options": ["eat", "run", "drink", "sleep"], "explanation": "Brief tip in ${ul} why this word fits" }`
+            }
+          ],
+          max_tokens: 300,
+          response_format: { type: "json_object" }
+        });
+
+        return new Response(JSON.stringify(parseAiResponse(response)), {
+          headers: { "Content-Type": "application/json" }
+        });
+      } catch (error: any) {
+        return errorResponse(error);
+      }
+    }
+
     if (url.pathname === "/explain-usage-stream") {
       try {
         const { word, context, format, targetLanguage, userLanguage } = await request.json() as { word: string, context?: string, format?: string, targetLanguage?: string, userLanguage?: string };

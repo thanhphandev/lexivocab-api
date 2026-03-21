@@ -23,4 +23,9 @@ public interface IAIService
     /// Generates a multiple-choice quiz for a word.
     /// </summary>
     Task<string?> GenerateQuizAsync(string word, string? targetLanguage = null, string? userLanguage = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates a fill-in-the-blank question for a word.
+    /// </summary>
+    Task<string?> GenerateFillBlankAsync(string word, string? targetLanguage = null, string? userLanguage = null, CancellationToken ct = default);
 }

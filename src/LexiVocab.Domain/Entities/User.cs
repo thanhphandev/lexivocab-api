@@ -40,4 +40,5 @@ public class User : BaseEntity
     public UserSetting? UserSetting { get; set; }
     public ICollection<ReviewLog> ReviewLogs { get; set; } = [];
     public ICollection<Subscription> Subscriptions { get; set; } = [];
+    public UserGameStatistic? UserGameStatistic { get; set; }
 }
