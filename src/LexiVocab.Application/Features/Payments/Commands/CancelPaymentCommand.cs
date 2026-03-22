@@ -43,15 +43,15 @@ public class CancelPaymentHandler : IRequestHandler<CancelPaymentCommand, Result
             .GetByExternalOrderIdWithDetailsAsync(request.Reference, ct);
 
         if (tx == null)
-            return Result.NotFound("Payment transaction not found.");
+            return Result.NotFound("Payment transaction not found.", ErrorCode.PAYMENT_ORDER_NOT_FOUND);
 
         // Verify ownership
         if (tx.UserId != userId)
-            return Result.Failure("You do not have permission to cancel this payment.", 403);
+            return Result.Failure("You do not have permission to cancel this payment.", 403, ErrorCode.AUTHZ_RESOURCE_FORBIDDEN);
 
         // Can only cancel pending transactions
         if (tx.Status != PaymentStatus.Pending)
-            return Result.Failure($"Cannot cancel a payment with status '{tx.Status}'. Only pending payments can be cancelled.", 400);
+            return Result.Failure($"Cannot cancel a payment with status '{tx.Status}'. Only pending payments can be cancelled.", 400, ErrorCode.PAYMENT_ALREADY_PROCESSED);
 
         // Update transaction status
         tx.Status = PaymentStatus.Cancelled;

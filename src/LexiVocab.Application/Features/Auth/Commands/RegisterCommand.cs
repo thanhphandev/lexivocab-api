@@ -64,7 +64,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
     public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken ct)
     {
         if (await _uow.Users.EmailExistsAsync(request.Email, ct))
-            return Result<AuthResponse>.Conflict($"Email '{request.Email}' is already registered.");
+            return Result<AuthResponse>.Conflict($"Email '{request.Email}' is already registered.", ErrorCode.AUTH_EMAIL_ALREADY_EXISTS);
 
         var requireVerification = _configuration["Auth:RequireEmailVerification"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
 

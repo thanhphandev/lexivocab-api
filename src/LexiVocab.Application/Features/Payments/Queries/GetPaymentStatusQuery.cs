@@ -1,6 +1,7 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.DTOs.Payment;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Payments.Queries;
@@ -21,7 +22,7 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Re
         var tx = await _uow.PaymentTransactions
             .GetByExternalOrderIdAsync(request.Reference, ct);
 
-        if (tx == null) return Result<PaymentStatusDto>.NotFound("Transaction not found.");
+        if (tx == null) return Result<PaymentStatusDto>.NotFound("Transaction not found.", ErrorCode.PAYMENT_ORDER_NOT_FOUND);
 
         // If still pending but already expired, flip it server-side immediately.
         var now = DateTime.UtcNow;

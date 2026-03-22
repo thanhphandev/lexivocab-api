@@ -1,6 +1,7 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Tags.Commands;
@@ -22,11 +23,11 @@ public class AssignVocabToTagHandler : IRequestHandler<AssignVocabToTagCommand, 
     {
         var vocab = await _uow.Vocabularies.GetByIdAsync(request.VocabularyId, ct);
         if (vocab is null || vocab.UserId != _currentUser.UserId)
-            return Result.NotFound("Vocabulary not found.");
+            return Result.NotFound("Vocabulary not found.", ErrorCode.VOCAB_NOT_FOUND);
             
         var tag = await _uow.Tags.GetByIdAsync(request.TagId, ct);
         if (tag is null || tag.UserId != _currentUser.UserId)
-            return Result.NotFound("Tag not found.");
+            return Result.NotFound("Tag not found.", ErrorCode.TAG_NOT_FOUND);
 
         vocab.TagId = request.TagId;
         _uow.Vocabularies.Update(vocab);

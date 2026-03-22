@@ -2,6 +2,7 @@ using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Review;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Reviews.Queries;
@@ -39,6 +40,11 @@ public class GetReviewSessionHandler : IRequestHandler<GetReviewSessionQuery, Re
         var actualNewCardLimit = Math.Min(request.Limit, maxNewCardLimit);
 
         var dueItems = await _uow.Vocabularies.GetDueForReviewAsync(userId, actualReviewLimit, actualNewCardLimit, ct);
+
+        if (dueItems.Count == 0)
+        {
+            return Result<ReviewSessionDto>.NotFound("No cards due for review at this time.", ErrorCode.REVIEW_NO_CARDS_DUE);
+        }
 
         var cards = dueItems.Select(v => new ReviewCardDto(
             v.Id,

@@ -1,8 +1,10 @@
-using LexiVocab.Application.Features.Public.Coupons.Queries;
+
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 using Asp.Versioning;
+using Microsoft.AspNetCore.RateLimiting;
+using LexiVocab.Application.Features.Coupons.Queries;
 
 namespace LexiVocab.API.Controllers;
 
@@ -24,6 +26,7 @@ public class CouponsController : BaseApiController
     [ProducesResponseType(typeof(CouponValidationResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [EnableRateLimiting("UserReadLimit")]
     public async Task<IActionResult> ValidateCoupon([FromQuery] string code, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(code))

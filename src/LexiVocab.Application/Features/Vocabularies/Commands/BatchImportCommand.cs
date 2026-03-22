@@ -92,6 +92,10 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
 
             await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
         }
+        else if (request.Words.Count > 0)
+        {
+            return Result<int>.Failure("All words provided already exist or are duplicates.", 400, ErrorCode.VOCAB_BATCH_IMPORT_FAILED);
+        }
 
         return Result<int>.Created(entities.Count);
     }

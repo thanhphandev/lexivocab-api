@@ -51,7 +51,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
     {
         var googleUser = await _googleAuth.ValidateIdTokenAsync(request.IdToken, ct);
         if (googleUser is null)
-            return Result<AuthResponse>.Unauthorized("Invalid Google ID token.");
+            return Result<AuthResponse>.Unauthorized("Invalid Google ID token.", ErrorCode.AUTH_GOOGLE_TOKEN_INVALID);
 
         var user = await _uow.Users.GetByAuthProviderAsync("Google", googleUser.Subject, ct);
 
@@ -62,6 +62,12 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
             {
                 user.AuthProvider = "Google";
                 user.AuthProviderId = googleUser.Subject;
+
+                // Sync Google profile picture if the user doesn't already have an avatar
+                if (string.IsNullOrEmpty(user.AvatarUrl) && !string.IsNullOrEmpty(googleUser.PictureUrl))
+                {
+                    user.AvatarUrl = googleUser.PictureUrl;
+                }
             }
             else
             {
@@ -92,7 +98,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
         }
 
         if (!user.IsActive)
-            return Result<AuthResponse>.Forbidden("Account is deactivated.");
+            return Result<AuthResponse>.Forbidden("Account is deactivated.", ErrorCode.AUTH_ACCOUNT_DISABLED);
 
         user.LastLogin = DateTime.UtcNow;
 

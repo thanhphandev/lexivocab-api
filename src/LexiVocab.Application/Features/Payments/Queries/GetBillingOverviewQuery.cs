@@ -3,6 +3,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Payment;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Payments.Queries;
@@ -29,7 +30,7 @@ public class GetBillingOverviewHandler : IRequestHandler<GetBillingOverviewQuery
         var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
 
         var user = await _uow.Users.GetByIdAsync(userId, ct);
-        if (user == null) return Result<BillingOverviewDto>.NotFound("User not found.");
+        if (user == null) return Result<BillingOverviewDto>.NotFound("User not found.", ErrorCode.RESOURCE_NOT_FOUND);
 
         var activeSub = await _uow.Subscriptions.GetActiveByUserIdAsync(userId, ct);
 

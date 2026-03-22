@@ -1,5 +1,6 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
+using LexiVocab.Application.Common.Helpers;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
@@ -46,26 +47,36 @@ public class StreamInputTranslateHandler : BaseAIHandler, IRequestHandler<Stream
         var quotaCheck = await CheckTranslationQuotaAsync(_featureGating, userId, user, customMapping.Provider ?? request.Provider, customMapping.ModelId ?? request.ModelId, ct);
         if (!quotaCheck.IsSuccess)
         {
-            return Result<IAsyncEnumerable<string>>.Failure(quotaCheck.Error ?? "Quota exceeded", quotaCheck.StatusCode);
+            return Result<IAsyncEnumerable<string>>.Failure(quotaCheck.Error ?? "Quota exceeded", quotaCheck.StatusCode, quotaCheck.ErrorCode);
         }
 
         var parameters = new Dictionary<string, string>
         {
             { "Text", request.Text },
-            { "TargetLanguage", targetLang ?? "English" },
+            { "TargetLanguage", LanguageMapper.GetName(targetLang ?? "English", false) },
             { "Style", string.IsNullOrWhiteSpace(request.Style) ? "Natural and accurate" : request.Style }
         };
 
-        var stream = _orchestrator.StreamTaskAsync(
-            AIUseCase.InputTranslation, 
-            parameters, 
-            customMapping.Provider ?? request.Provider ?? "openrouter", 
-            customMapping.ModelId ?? request.ModelId, 
-            false, 
-            customMapping.BaseUrl, 
-            customMapping.ApiKey, 
-            ct);
+        try
+        {
+            var stream = _orchestrator.StreamTaskAsync(
+                AIUseCase.InputTranslation, 
+                parameters, 
+                customMapping.Provider ?? request.Provider ?? "openrouter", 
+                customMapping.ModelId ?? request.ModelId, 
+                false, 
+                customMapping.BaseUrl, 
+                customMapping.ApiKey, 
+                ct);
 
-        return Result<IAsyncEnumerable<string>>.Success(stream);
+            return Result<IAsyncEnumerable<string>>.Success(stream);
+        }
+        catch (Exception ex)
+        {
+            if (ex is System.Net.Http.HttpRequestException || ex is System.TimeoutException)
+                return Result<IAsyncEnumerable<string>>.Failure("AI Service is currently unavailable.", 503, LexiVocab.Domain.Enums.ErrorCode.AI_SERVICE_UNAVAILABLE);
+                
+            return Result<IAsyncEnumerable<string>>.Failure("An unexpected error occurred with the AI provider.", 500, LexiVocab.Domain.Enums.ErrorCode.AI_PROVIDER_ERROR);
+        }
     }
 }

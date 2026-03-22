@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace LexiVocab.Infrastructure.Services.Translation.Providers;
+namespace LexiVocab.Application.Common.Helpers;
 
 public static class LanguageMapper
 {

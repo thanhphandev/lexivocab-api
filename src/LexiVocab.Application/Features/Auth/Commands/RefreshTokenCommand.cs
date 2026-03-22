@@ -53,21 +53,21 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                     return Result<AuthResponse>.Success(savedResponse);
             }
 
-            return Result<AuthResponse>.Unauthorized("Invalid or expired refresh token. It may have been revoked.");
+            return Result<AuthResponse>.Unauthorized("Invalid or expired refresh token. It may have been revoked.", ErrorCode.AUTH_SESSION_EXPIRED);
         }
 
         var metadataStr = JsonSerializer.Deserialize<RefreshTokenMetadata>(cachedTokenData);
         if (metadataStr is null)
-            return Result<AuthResponse>.Unauthorized("Invalid token metadata.");
+            return Result<AuthResponse>.Unauthorized("Invalid token metadata.", ErrorCode.AUTH_REFRESH_TOKEN_INVALID);
 
         var userId = metadataStr.UserId;
         var user = await _uow.Users.GetByIdAsync(userId, ct);
         
         if (user is null || !user.IsActive)
-            return Result<AuthResponse>.Unauthorized("Account is deactivated or does not exist.");
+            return Result<AuthResponse>.Unauthorized("Account is deactivated or does not exist.", ErrorCode.AUTH_ACCOUNT_DISABLED);
 
         if (string.IsNullOrEmpty(user.RefreshTokenHash) || user.RefreshTokenExpiryTime < DateTime.UtcNow)
-            return Result<AuthResponse>.Unauthorized("Refresh token has been invalidated or expired.");
+            return Result<AuthResponse>.Unauthorized("Refresh token has been invalidated or expired.", ErrorCode.AUTH_TOKEN_EXPIRED);
 
         var accessTokenResult = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
         var accessToken = accessTokenResult.Token;

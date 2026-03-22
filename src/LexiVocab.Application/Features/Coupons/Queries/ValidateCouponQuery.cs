@@ -3,12 +3,13 @@ using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
 
-namespace LexiVocab.Application.Features.Public.Coupons.Queries;
+namespace LexiVocab.Application.Features.Coupons.Queries;
 
 public record CouponValidationResult(
     string Code,
     DiscountType DiscountType,
-    decimal DiscountValue);
+    decimal DiscountValue,
+    string? Currency = null);
 
 public record ValidateCouponQuery(string Code) : IRequest<Result<CouponValidationResult>>;
 
@@ -27,23 +28,24 @@ public class ValidateCouponHandler : IRequestHandler<ValidateCouponQuery, Result
         var coupon = await _uow.Coupons.GetByCodeAsync(formattedCode, ct);
 
         if (coupon == null || !coupon.IsActive)
-            return Result<CouponValidationResult>.NotFound("Invalid or inactive coupon code.");
+            return Result<CouponValidationResult>.NotFound("Invalid or inactive coupon code.", ErrorCode.PAYMENT_INVALID_COUPON);
 
         var now = DateTime.UtcNow;
 
         if (coupon.ValidFrom.HasValue && coupon.ValidFrom.Value > now)
-            return Result<CouponValidationResult>.Failure("This coupon is not yet valid.");
+            return Result<CouponValidationResult>.Failure("This coupon is not yet valid.", 400, ErrorCode.PAYMENT_INVALID_COUPON);
 
         if (coupon.ValidUntil.HasValue && coupon.ValidUntil.Value < now)
-            return Result<CouponValidationResult>.Failure("This coupon has expired.");
+            return Result<CouponValidationResult>.Failure("This coupon has expired.", 400, ErrorCode.PAYMENT_COUPON_EXPIRED);
 
         if (coupon.MaxUses.HasValue && coupon.CurrentUses >= coupon.MaxUses.Value)
-            return Result<CouponValidationResult>.Failure("This coupon has reached its maximum usage limit.");
+            return Result<CouponValidationResult>.Failure("This coupon has reached its maximum usage limit.", 400, ErrorCode.PAYMENT_INVALID_COUPON);
 
         return Result<CouponValidationResult>.Success(new CouponValidationResult(
             coupon.Code,
             coupon.DiscountType,
-            coupon.DiscountValue
+            coupon.DiscountValue,
+            coupon.Currency
         ));
     }
 }

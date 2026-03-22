@@ -3,6 +3,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Settings;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Settings;
@@ -218,7 +219,7 @@ public class TestBotSettingsHandler : IRequestHandler<TestBotSettingsCommand, Re
         }
         
         if (!telegramSuccess || !zaloSuccess) 
-            return Result<bool>.Failure("Failed to send test. Check token & ID validity.");
+            return Result<bool>.Failure("Failed to send test. Check token & ID validity.", 400, ErrorCode.VALIDATION_FAILED);
 
         return Result<bool>.Success(true);
     }

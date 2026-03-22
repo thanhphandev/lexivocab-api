@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Application.Common.Helpers;
 
 namespace LexiVocab.Infrastructure.Services.Translation.Providers;
 

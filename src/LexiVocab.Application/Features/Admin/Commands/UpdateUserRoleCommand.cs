@@ -26,10 +26,10 @@ public class UpdateUserRoleHandler : IRequestHandler<UpdateUserRoleCommand, Resu
 
         // Security: Prevents an Admin from changing their own role or another Admin's role
         if (user.Id == _currentUser.UserId)
-            return Result<string>.Failure("You cannot change your own role.", 403);
+            return Result<string>.Forbidden("You cannot change your own role.", LexiVocab.Domain.Enums.ErrorCode.AUTHZ_ADMIN_ONLY);
 
-        if (user.Role == UserRole.Admin)
-            return Result<string>.Failure("You cannot modify the role of another administrator.", 403);
+        if (user.Role == LexiVocab.Domain.Enums.UserRole.Admin)
+            return Result<string>.Forbidden("You cannot modify the role of another administrator.", LexiVocab.Domain.Enums.ErrorCode.AUTHZ_ADMIN_ONLY);
 
         if (!Enum.TryParse<UserRole>(request.Role, true, out var roleEnum))
         {

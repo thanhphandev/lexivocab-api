@@ -23,7 +23,12 @@ public class ChangePasswordValidator : AbstractValidator<ChangePasswordCommand>
     public ChangePasswordValidator()
     {
         RuleFor(x => x.CurrentPassword).NotEmpty();
-        RuleFor(x => x.NewPassword).NotEmpty().MinimumLength(6);
+        RuleFor(x => x.NewPassword)
+            .NotEmpty().WithMessage("Password is required.")
+            .MinimumLength(8).WithMessage("Password must be at least 8 characters.").WithErrorCode(ErrorCode.AUTH_PASSWORD_TOO_WEAK.ToString())
+            .Matches(@"[A-Z]").WithMessage("Password must contain at least one uppercase letter.").WithErrorCode(ErrorCode.AUTH_PASSWORD_TOO_WEAK.ToString())
+            .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter.").WithErrorCode(ErrorCode.AUTH_PASSWORD_TOO_WEAK.ToString())
+            .Matches(@"\d").WithMessage("Password must contain at least one digit.").WithErrorCode(ErrorCode.AUTH_PASSWORD_TOO_WEAK.ToString());
     }
 }
 
@@ -50,17 +55,17 @@ public class ChangePasswordHandler : IRequestHandler<ChangePasswordCommand, Resu
     {
         var userId = _currentUser.UserId;
         if (userId == null)
-            return Result.NotFound("User not found in context.");
+            return Result.NotFound("User not found in context.", ErrorCode.RESOURCE_NOT_FOUND);
 
         var user = await _uow.Users.GetByIdAsync(userId.Value, ct);
         if (user == null)
-            return Result.NotFound("User account no longer exists.");
+            return Result.NotFound("User account no longer exists.", ErrorCode.RESOURCE_NOT_FOUND);
 
         if (user.AuthProvider != null)
-            return Result.Conflict("Social login accounts cannot change passwords.");
+            return Result.Conflict("Social login accounts cannot change passwords.", ErrorCode.AUTH_SOCIAL_LOGIN_CONFLICT);
 
         if (string.IsNullOrEmpty(user.PasswordHash) || !_passwordHasher.Verify(request.CurrentPassword, user.PasswordHash))
-            return Result.Failure("Current password is incorrect.");
+            return Result.Failure("Current password is incorrect.", 400, ErrorCode.AUTH_INVALID_CREDENTIALS);
 
         user.PasswordHash = _passwordHasher.Hash(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;

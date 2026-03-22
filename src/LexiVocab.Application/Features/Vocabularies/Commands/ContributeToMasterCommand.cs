@@ -26,7 +26,7 @@ public class ContributeToMasterHandler : IRequestHandler<ContributeToMasterComma
         var userVocab = await _uow.Vocabularies.GetByIdAsync(request.VocabularyId, ct);
         
         if (userVocab == null || userVocab.UserId != userId)
-            return Result<bool>.NotFound($"Vocabulary with ID {request.VocabularyId} not found.");
+            return Result<bool>.NotFound($"Vocabulary with ID {request.VocabularyId} not found.", LexiVocab.Domain.Enums.ErrorCode.VOCAB_NOT_FOUND);
 
         if (userVocab.MasterVocabularyId.HasValue)
             return Result<bool>.Success(true); // Already linked/contributed

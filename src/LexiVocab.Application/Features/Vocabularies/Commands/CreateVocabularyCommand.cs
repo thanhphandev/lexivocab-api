@@ -48,11 +48,11 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         var maxWords = permissions.GetLimit("MAX_WORDS");
         if (permissions.IsOverQuota("MAX_WORDS", permissions.CurrentCount))
         {
-            return Result<VocabularyDto>.Failure($"ERR_QUOTA_EXCEEDED: You have reached the limit of {maxWords} vocabulary words.", 403);
+            return Result<VocabularyDto>.Forbidden($"ERR_QUOTA_EXCEEDED: You have reached the limit of {maxWords} vocabulary words.", ErrorCode.VOCAB_QUOTA_EXCEEDED);
         }
 
         if (await _uow.Vocabularies.WordExistsForUserAsync(userId, request.WordText, ct))
-            return Result<VocabularyDto>.Conflict($"Word '{request.WordText}' already saved.");
+            return Result<VocabularyDto>.Conflict($"Word '{request.WordText}' already saved.", ErrorCode.VOCAB_ALREADY_EXISTS);
 
         Guid? assignedTagId = request.TagId;
         if (assignedTagId == null && !string.IsNullOrWhiteSpace(request.SourceUrl))

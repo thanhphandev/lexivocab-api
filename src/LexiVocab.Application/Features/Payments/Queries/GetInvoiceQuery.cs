@@ -1,6 +1,7 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Payments.Queries;
@@ -26,7 +27,7 @@ public class GetInvoiceHandler : IRequestHandler<GetInvoiceQuery, Result<Invoice
 
         var tx = await _uow.PaymentTransactions.GetByIdAsync(request.TransactionId, ct);
         if (tx == null || tx.UserId != userId)
-            return Result<InvoiceFileDto>.NotFound("Invoice not found.");
+            return Result<InvoiceFileDto>.NotFound("Invoice not found.", ErrorCode.RESOURCE_NOT_FOUND);
 
         var csv = BuildCsv(tx, userId);
         var bytes = System.Text.Encoding.UTF8.GetBytes(csv);

@@ -44,21 +44,21 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
     {
         var user = await _uow.Users.GetByEmailAsync(request.Email.ToLowerInvariant().Trim(), ct);
         if (user is null || user.PasswordHash is null)
-            return Result<AuthResponse>.Unauthorized("Invalid email or password.");
+            return Result<AuthResponse>.Unauthorized("Invalid email or password.", ErrorCode.AUTH_INVALID_CREDENTIALS);
 
         // Check if account is locked
         if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTime.UtcNow)
         {
             var remainingMinutes = Math.Ceiling((user.LockoutEnd.Value - DateTime.UtcNow).TotalMinutes);
-            return Result<AuthResponse>.Forbidden($"Account is locked due to too many failed attempts. Please try again in {remainingMinutes} minutes.");
+            return Result<AuthResponse>.Forbidden($"Account is locked due to too many failed attempts. Please try again in {remainingMinutes} minutes.", ErrorCode.AUTH_ACCOUNT_LOCKED);
         }
 
         if (!user.IsActive)
-            return Result<AuthResponse>.Forbidden("Account is deactivated.");
+            return Result<AuthResponse>.Forbidden("Account is deactivated.", ErrorCode.AUTH_ACCOUNT_DISABLED);
 
         var requireVerification = _configuration["Auth:RequireEmailVerification"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
         if (requireVerification && !user.EmailConfirmed)
-            return Result<AuthResponse>.Forbidden("Your email is not verified. Please check your inbox for the verification code or request a new one.");
+            return Result<AuthResponse>.Forbidden("Your email is not verified. Please check your inbox for the verification code or request a new one.", ErrorCode.AUTH_EMAIL_NOT_VERIFIED);
 
         if (!_hasher.Verify(request.Password, user.PasswordHash))
         {
@@ -68,12 +68,12 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
                 user.LockoutEnd = DateTime.UtcNow.AddMinutes(15);
                 _uow.Users.Update(user);
                 await _uow.SaveChangesAsync(ct);
-                return Result<AuthResponse>.Forbidden("Account has been locked for 15 minutes due to too many failed login attempts.");
+                return Result<AuthResponse>.Forbidden("Account has been locked for 15 minutes due to too many failed login attempts.", ErrorCode.AUTH_ACCOUNT_LOCKED);
             }
             
             _uow.Users.Update(user);
             await _uow.SaveChangesAsync(ct);
-            return Result<AuthResponse>.Unauthorized("Invalid email or password.");
+            return Result<AuthResponse>.Unauthorized("Invalid email or password.", ErrorCode.AUTH_INVALID_CREDENTIALS);
         }
 
         // Reset lockout on success

@@ -44,7 +44,15 @@ public class SubmitReviewHandler : IRequestHandler<SubmitReviewCommand, Result<R
         var vocab = await _uow.Vocabularies.GetByIdAsync(request.UserVocabularyId, ct);
 
         if (vocab is null || vocab.UserId != userId)
-            return Result<ReviewResultDto>.NotFound("Vocabulary card not found.");
+            return Result<ReviewResultDto>.NotFound("Vocabulary card not found.", ErrorCode.VOCAB_NOT_FOUND);
+
+        // Treat submitting a card NOT due as a session violation
+        if (vocab.NextReviewDate > DateTime.UtcNow)
+        {
+            return Result<ReviewResultDto>.Failure(
+                "Review session for this card not found. It may have already been completed.",
+                400, ErrorCode.REVIEW_SESSION_NOT_FOUND);
+        }
 
         // SM-2 Calculation
         var result = _srs.Calculate(

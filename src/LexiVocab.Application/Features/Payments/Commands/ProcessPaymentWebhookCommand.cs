@@ -27,7 +27,7 @@ public class ProcessPaymentWebhookHandler : IRequestHandler<ProcessPaymentWebhoo
         if (!isValid)
         {
             _logger.LogWarning("{Provider} Webhook Verification Failed.", request.Provider);
-            return Result<Unit>.Failure("Invalid webhook signature.", 401);
+            return Result<Unit>.Failure("Invalid webhook signature.", 401, ErrorCode.AUTH_INVALID_TOKEN);
         }
 
         await service.ProcessWebhookEventAsync(request.Body, ct);

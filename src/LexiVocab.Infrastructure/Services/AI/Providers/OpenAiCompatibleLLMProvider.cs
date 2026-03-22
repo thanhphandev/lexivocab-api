@@ -109,10 +109,10 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
             initException = ex;
         }
 
-        if (initException != null)
+        if (initException != null || enumerator == null)
         {
             _logger.LogError(initException, "Error creating stream with OpenAI SDK.");
-            yield return JsonSerializer.Serialize(new { error = $"Request Error: {initException.Message}" });
+            yield return JsonSerializer.Serialize(new { error = $"Request Error: {initException?.Message ?? "Unknown initialization error"}" });
             yield break;
         }
 

@@ -42,11 +42,11 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Result
     {
         var userId = _currentUser.UserId;
         if (userId == null)
-            return Result<UserProfileDto>.NotFound("User not found in context.");
+            return Result<UserProfileDto>.NotFound("User not found in context.", ErrorCode.RESOURCE_NOT_FOUND);
 
         var user = await _uow.Users.GetByIdAsync(userId.Value, ct);
         if (user == null)
-            return Result<UserProfileDto>.NotFound("User account no longer exists.");
+            return Result<UserProfileDto>.NotFound("User account no longer exists.", ErrorCode.RESOURCE_NOT_FOUND);
 
         user.FullName = request.FullName.Trim();
         if (request.AvatarUrl != null)

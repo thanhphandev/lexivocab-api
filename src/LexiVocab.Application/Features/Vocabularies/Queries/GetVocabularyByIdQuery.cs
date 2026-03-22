@@ -2,6 +2,7 @@ using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Vocabulary;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
@@ -39,7 +40,7 @@ public class GetVocabularyByIdHandler : IRequestHandler<GetVocabularyByIdQuery, 
 
         var entity = await _uow.Vocabularies.GetByIdAsync(request.Id, ct);
         if (entity is null || entity.UserId != userId)
-            return Result<VocabularyDto>.NotFound("Vocabulary not found.");
+            return Result<VocabularyDto>.NotFound("Vocabulary not found.", ErrorCode.VOCAB_NOT_FOUND);
 
         var dto = new VocabularyDto(
             entity.Id, entity.TagId, entity.WordText, entity.CustomMeaning, entity.ContextSentence, entity.SourceUrl,

@@ -31,10 +31,10 @@ public class UpdateUserStatusHandler : IRequestHandler<UpdateUserStatusCommand, 
         var currentAdminId = _currentUser.UserId;
         
         if (targetUser.Id == currentAdminId)
-            return Result<string>.Failure("You cannot change your own status.", 403);
+            return Result<string>.Forbidden("You cannot change your own status.", LexiVocab.Domain.Enums.ErrorCode.AUTHZ_ADMIN_ONLY);
 
         if (targetUser.Role == LexiVocab.Domain.Enums.UserRole.Admin)
-            return Result<string>.Failure("You cannot deactivate or modify another administrator.", 403);
+            return Result<string>.Forbidden("You cannot deactivate or modify another administrator.", LexiVocab.Domain.Enums.ErrorCode.AUTHZ_ADMIN_ONLY);
 
         targetUser.IsActive = request.IsActive;
         targetUser.UpdatedAt = DateTime.UtcNow;

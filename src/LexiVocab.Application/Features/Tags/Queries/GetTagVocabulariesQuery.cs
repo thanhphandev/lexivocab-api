@@ -3,6 +3,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Tag;
 using LexiVocab.Application.DTOs.Vocabulary;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Tags.Queries;
@@ -28,7 +29,7 @@ public class GetTagVocabulariesHandler : IRequestHandler<GetTagVocabulariesQuery
     {
         var tag = await _uow.Tags.GetByIdAsync(request.TagId, ct);
         if (tag is null || tag.UserId != _currentUser.UserId)
-            return Result<PagedResult<VocabularyDto>>.NotFound("Tag not found.");
+            return Result<PagedResult<VocabularyDto>>.NotFound("Tag not found.", ErrorCode.TAG_NOT_FOUND);
 
         var (items, totalCount) = await _uow.Vocabularies.GetByTagIdAsync(
             _currentUser.UserId.Value, request.TagId, request.Page, request.PageSize, ct);

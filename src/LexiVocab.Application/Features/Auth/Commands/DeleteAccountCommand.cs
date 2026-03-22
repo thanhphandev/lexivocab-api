@@ -30,11 +30,11 @@ public class DeleteAccountHandler : IRequestHandler<DeleteAccountCommand, Result
     {
         var userId = _currentUser.UserId;
         if (userId == null)
-            return Result.NotFound("User not found in context.");
+            return Result.NotFound("User not found in context.", ErrorCode.RESOURCE_NOT_FOUND);
 
         var user = await _uow.Users.GetByIdAsync(userId.Value, ct);
         if (user == null)
-            return Result.NotFound("User account no longer exists.");
+            return Result.NotFound("User account no longer exists.", ErrorCode.RESOURCE_NOT_FOUND);
 
         _uow.Users.Remove(user);
         await _uow.SaveChangesAsync(ct);

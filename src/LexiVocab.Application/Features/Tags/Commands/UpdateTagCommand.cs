@@ -2,6 +2,7 @@ using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Tag;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Tags.Commands;
@@ -29,7 +30,7 @@ public class UpdateTagHandler : IRequestHandler<UpdateTagCommand, Result<TagDto>
     {
         var entity = await _uow.Tags.GetByIdAsync(request.Id, ct);
         if (entity is null || entity.UserId != _currentUser.UserId)
-            return Result<TagDto>.NotFound("Tag not found.");
+            return Result<TagDto>.NotFound("Tag not found.", ErrorCode.TAG_NOT_FOUND);
 
         entity.Name = request.Name.Trim();
         entity.Slug = request.Name.Trim().ToLowerInvariant().Replace(" ", "-");

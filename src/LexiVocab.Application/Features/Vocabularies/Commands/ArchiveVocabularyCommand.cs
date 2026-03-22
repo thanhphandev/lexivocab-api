@@ -32,7 +32,7 @@ public class ArchiveVocabularyHandler : IRequestHandler<ArchiveVocabularyCommand
     {
         var entity = await _uow.Vocabularies.GetByIdAsync(request.Id, ct);
         if (entity is null || entity.UserId != _currentUser.UserId)
-            return Result.NotFound("Vocabulary not found.");
+            return Result.NotFound("Vocabulary not found.", ErrorCode.VOCAB_NOT_FOUND);
 
         entity.IsArchived = !entity.IsArchived; // Toggle archive status
         entity.UpdatedAt = DateTime.UtcNow;

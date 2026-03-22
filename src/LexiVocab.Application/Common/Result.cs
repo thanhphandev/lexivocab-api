@@ -1,8 +1,13 @@
+using LexiVocab.Domain.Enums;
+using LexiVocab.Domain.Models;
+
 namespace LexiVocab.Application.Common;
 
 public interface IResult
 {
     bool IsSuccess { get; }
+    ErrorCode ErrorCode { get; }
+    ErrorDetails? Details { get; }
 }
 
 /// <summary>
@@ -15,22 +20,36 @@ public class Result<T> : IResult
     public T? Data { get; }
     public string? Error { get; }
     public int StatusCode { get; }
+    public ErrorCode ErrorCode { get; }
+    public ErrorDetails? Details { get; }
 
-    private Result(bool isSuccess, T? data, string? error, int statusCode)
+    private Result(bool isSuccess, T? data, string? error, int statusCode, ErrorCode errorCode, ErrorDetails? details)
     {
         IsSuccess = isSuccess;
         Data = data;
         Error = error;
         StatusCode = statusCode;
+        ErrorCode = errorCode;
+        Details = details;
     }
 
-    public static Result<T> Success(T data) => new(true, data, null, 200);
-    public static Result<T> Created(T data) => new(true, data, null, 201);
-    public static Result<T> Failure(string error, int statusCode = 400) => new(false, default, error, statusCode);
-    public static Result<T> NotFound(string error = "Resource not found") => new(false, default, error, 404);
-    public static Result<T> Unauthorized(string error = "Unauthorized") => new(false, default, error, 401);
-    public static Result<T> Forbidden(string error = "Forbidden") => new(false, default, error, 403);
-    public static Result<T> Conflict(string error) => new(false, default, error, 409);
+    public static Result<T> Success(T data) => new(true, data, null, 200, ErrorCode.UNKNOWN_ERROR, null);
+    public static Result<T> Created(T data) => new(true, data, null, 201, ErrorCode.UNKNOWN_ERROR, null);
+    
+    public static Result<T> Failure(string error, int statusCode = 400, ErrorCode errorCode = ErrorCode.VALIDATION_FAILED, ErrorDetails? details = null) 
+        => new(false, default, error, statusCode, errorCode, details);
+        
+    public static Result<T> NotFound(string error = "Resource not found", ErrorCode errorCode = ErrorCode.RESOURCE_NOT_FOUND) 
+        => new(false, default, error, 404, errorCode, null);
+        
+    public static Result<T> Unauthorized(string error = "Unauthorized", ErrorCode errorCode = ErrorCode.AUTH_INVALID_TOKEN) 
+        => new(false, default, error, 401, errorCode, null);
+        
+    public static Result<T> Forbidden(string error = "Forbidden", ErrorCode errorCode = ErrorCode.AUTHZ_RESOURCE_FORBIDDEN) 
+        => new(false, default, error, 403, errorCode, null);
+        
+    public static Result<T> Conflict(string error, ErrorCode errorCode = ErrorCode.RESOURCE_CONFLICT) 
+        => new(false, default, error, 409, errorCode, null);
 }
 
 /// <summary>
@@ -41,16 +60,26 @@ public class Result : IResult
     public bool IsSuccess { get; }
     public string? Error { get; }
     public int StatusCode { get; }
+    public ErrorCode ErrorCode { get; }
+    public ErrorDetails? Details { get; }
 
-    private Result(bool isSuccess, string? error, int statusCode)
+    private Result(bool isSuccess, string? error, int statusCode, ErrorCode errorCode, ErrorDetails? details)
     {
         IsSuccess = isSuccess;
         Error = error;
         StatusCode = statusCode;
+        ErrorCode = errorCode;
+        Details = details;
     }
 
-    public static Result Success() => new(true, null, 200);
-    public static Result Failure(string error, int statusCode = 400) => new(false, error, statusCode);
-    public static Result NotFound(string error = "Resource not found") => new(false, error, 404);
-    public static Result Conflict(string error) => new(false, error, 409);
+    public static Result Success() => new(true, null, 200, ErrorCode.UNKNOWN_ERROR, null);
+    
+    public static Result Failure(string error, int statusCode = 400, ErrorCode errorCode = ErrorCode.VALIDATION_FAILED, ErrorDetails? details = null) 
+        => new(false, error, statusCode, errorCode, details);
+        
+    public static Result NotFound(string error = "Resource not found", ErrorCode errorCode = ErrorCode.RESOURCE_NOT_FOUND) 
+        => new(false, error, 404, errorCode, null);
+        
+    public static Result Conflict(string error, ErrorCode errorCode = ErrorCode.RESOURCE_CONFLICT) 
+        => new(false, error, 409, errorCode, null);
 }

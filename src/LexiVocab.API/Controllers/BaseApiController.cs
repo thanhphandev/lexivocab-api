@@ -11,7 +11,14 @@ public abstract class BaseApiController : ControllerBase
         if (result.IsSuccess)
             return StatusCode(result.StatusCode, new { success = true, data = result.Data });
         
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+        return StatusCode(result.StatusCode, new 
+        { 
+            success = false, 
+            error = result.Error,
+            errorCode = result.ErrorCode.ToString(),
+            traceId = HttpContext.TraceIdentifier,
+            details = result.Details
+        });
     }
 
     protected IActionResult ToActionResult(Result result)
@@ -19,6 +26,13 @@ public abstract class BaseApiController : ControllerBase
         if (result.IsSuccess)
             return StatusCode(result.StatusCode, new { success = true });
         
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+        return StatusCode(result.StatusCode, new 
+        { 
+            success = false, 
+            error = result.Error,
+            errorCode = result.ErrorCode.ToString(),
+            traceId = HttpContext.TraceIdentifier,
+            details = result.Details
+        });
     }
 }

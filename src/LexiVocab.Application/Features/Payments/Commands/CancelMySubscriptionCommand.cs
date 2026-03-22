@@ -27,11 +27,22 @@ public class CancelMySubscriptionHandler : IRequestHandler<CancelMySubscriptionC
     {
         var userId = _currentUser.UserId;
         if (userId == null)
-            return Result.NotFound("User not found in context.");
+            return Result.NotFound("User not found in context.", ErrorCode.RESOURCE_NOT_FOUND);
 
         var activeSub = await _uow.Subscriptions.GetActiveByUserIdAsync(userId.Value, ct);
         if (activeSub == null)
-            return Result.Failure("No active subscription found.", 404);
+        {
+            var subs = await _uow.Subscriptions.GetByUserIdAsync(userId.Value, ct);
+            if (subs.Any())
+            {
+                var latest = subs.OrderByDescending(s => s.CreatedAt).First();
+                if (latest.Status == SubscriptionStatus.Expired || (latest.EndDate.HasValue && latest.EndDate < DateTime.UtcNow))
+                    return Result.Failure("Subscription is already expired.", 400, ErrorCode.SUB_EXPIRED);
+                if (latest.Status == SubscriptionStatus.Cancelled)
+                    return Result.Failure("Subscription is already cancelled.", 400, ErrorCode.SUB_CANCELLED);
+            }
+            return Result.Failure("No active subscription found.", 404, ErrorCode.SUB_NOT_FOUND);
+        }
 
         activeSub.Status = SubscriptionStatus.Cancelled;
         activeSub.EndDate = DateTime.UtcNow;

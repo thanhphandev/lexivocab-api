@@ -11,7 +11,7 @@ public class SubmitReviewCommandValidator : AbstractValidator<SubmitReviewComman
             .NotEmpty().WithMessage("Vocabulary ID is required.");
 
         RuleFor(x => x.QualityScore)
-            .IsInEnum().WithMessage("Invalid quality score.");
+            .IsInEnum().WithMessage("Invalid quality score.").WithErrorCode(LexiVocab.Domain.Enums.ErrorCode.REVIEW_INVALID_QUALITY_SCORE.ToString());
 
         RuleFor(x => x.TimeSpentMs)
             .GreaterThanOrEqualTo(0).When(x => x.TimeSpentMs.HasValue)

@@ -32,13 +32,13 @@ public class UpdateVocabularyTagHandler : IRequestHandler<UpdateVocabularyTagCom
     {
         var entity = await _uow.Vocabularies.GetByIdAsync(request.Id, ct);
         if (entity is null || entity.UserId != _currentUser.UserId)
-            return Result.NotFound("Vocabulary not found.");
+            return Result.NotFound("Vocabulary not found.", ErrorCode.VOCAB_NOT_FOUND);
 
         if (request.TagId.HasValue)
         {
             var tag = await _uow.Tags.GetByIdAsync(request.TagId.Value, ct);
             if (tag is null || tag.UserId != _currentUser.UserId)
-                return Result.NotFound("Tag not found.");
+                return Result.NotFound("Tag not found.", ErrorCode.TAG_NOT_FOUND);
         }
 
         var oldTagId = entity.TagId;

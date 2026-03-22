@@ -34,7 +34,7 @@ public class VerifyEmailHandler : IRequestHandler<VerifyEmailCommand, Result>
         var attemptsKey = $"email-verify-attempts:{email}";
         
         if (string.IsNullOrEmpty(savedCode))
-            return Result.Failure("Invalid or expired verification code.", 400);
+            return Result.Failure("Invalid or expired verification code.", 400, ErrorCode.AUTH_VERIFICATION_CODE_EXPIRED);
 
         if (savedCode != request.Code)
         {
@@ -46,16 +46,16 @@ public class VerifyEmailHandler : IRequestHandler<VerifyEmailCommand, Result>
             {
                 await _cache.RemoveAsync(cacheKey, ct);
                 await _cache.RemoveAsync(attemptsKey, ct);
-                return Result.Failure("Too many failed attempts. Please request a new verification code.", 429);
+                return Result.Failure("Too many failed attempts. Please request a new verification code.", 429, ErrorCode.RATE_LIMIT_EXCEEDED);
             }
 
             await _cache.SetStringAsync(attemptsKey, attempts.ToString(), new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15) }, ct);
-            return Result.Failure("Invalid verification code.", 400);
+            return Result.Failure("Invalid verification code.", 400, ErrorCode.AUTH_VERIFICATION_CODE_INVALID);
         }
 
         var user = await _uow.Users.GetByEmailAsync(email, ct);
         if (user == null)
-            return Result.NotFound("User no longer exists.");
+            return Result.NotFound("User no longer exists.", ErrorCode.RESOURCE_NOT_FOUND);
 
         if (user.EmailConfirmed)
             return Result.Success();

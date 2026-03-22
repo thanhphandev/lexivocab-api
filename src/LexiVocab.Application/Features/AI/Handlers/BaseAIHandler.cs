@@ -2,6 +2,7 @@ using System.Text.Json;
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.AI;
@@ -39,7 +40,7 @@ public abstract class BaseAIHandler
         return (resolvedProvider, resolvedModelId, resolvedBaseUrl, resolvedApiKey, resolvedModel);
     }
 
-    protected async Task<Result<bool>> CheckTranslationQuotaAsync(IFeatureGatingService featureGating, Guid userId, LexiVocab.Domain.Entities.User? user, string? provider, string? modelId, CancellationToken ct)
+    protected async Task<Result<bool>> CheckTranslationQuotaAsync(IFeatureGatingService featureGating, Guid userId, LexiVocab.Domain.Entities.User? user, string? provider, string? modelId, CancellationToken ct, string quotaLimitCode = "LLM_TRANSLATION_LIMIT")
     {
         string p = provider ?? "cloudflare";
         if (p == "custom" || p.StartsWith("google", StringComparison.OrdinalIgnoreCase) || p.StartsWith("bing", StringComparison.OrdinalIgnoreCase) || p.StartsWith("lingva", StringComparison.OrdinalIgnoreCase) || p.StartsWith("chrome-ai", StringComparison.OrdinalIgnoreCase))
@@ -69,12 +70,12 @@ public abstract class BaseAIHandler
 
         if (isProModel && !await featureGating.HasFeatureAsync(userId, "ADVANCED_AI", ct))
         {
-            return Result<bool>.Failure("This AI model requires an active Premium subscription.", 403);
+            return Result<bool>.Failure("This AI model requires an active Premium subscription.", 403, ErrorCode.AUTHZ_INSUFFICIENT_PERMISSIONS);
         }
 
-        if (!await featureGating.ConsumeQuotaAsync(userId, "AI_ACCESS", "LLM_TRANSLATION_LIMIT", ct))
+        if (!await featureGating.ConsumeQuotaAsync(userId, "AI_ACCESS", quotaLimitCode, ct))
         {
-            return Result<bool>.Failure("Daily LLM translation limit reached. Upgrade to Pro for high volume translations.", 403);
+            return Result<bool>.Failure($"Daily AI limit ({quotaLimitCode}) reached. Upgrade to Pro for more generations.", 403, ErrorCode.AI_QUOTA_EXCEEDED);
         }
 
         return Result<bool>.Success(true);

@@ -3,6 +3,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Tag;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Enums;
 using MediatR;
 
 namespace LexiVocab.Application.Features.Tags.Commands;
@@ -33,7 +34,7 @@ public class CreateTagHandler : IRequestHandler<CreateTagCommand, Result<TagDto>
         var existing = await _uow.Tags.GetBySlugAsync(userId, slug, ct);
         if (existing != null)
         {
-            return Result<TagDto>.Conflict($"Tag with name '{request.Name}' already exists.");
+            return Result<TagDto>.Conflict($"Tag with name '{request.Name}' already exists.", ErrorCode.TAG_NAME_ALREADY_EXISTS);
         }
         
         var entity = new VocabTag

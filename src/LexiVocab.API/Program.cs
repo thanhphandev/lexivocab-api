@@ -234,6 +234,17 @@ try
     // ─── Middleware Pipeline ──────────────────────────────────
     // Order matters: Exception → Security Headers → HTTPS → CORS → RateLimit → Auth → Controllers
     app.UseMiddleware<GlobalExceptionMiddleware>();
+
+    // Support Chrome's Private Network Access preflight requests for localhost testing from public websites
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Headers.TryGetValue("Access-Control-Request-Private-Network", out var isPrivate) && isPrivate == "true")
+        {
+            context.Response.Headers.Append("Access-Control-Allow-Private-Network", "true");
+        }
+        await next();
+    });
+
     app.UseCors("LexiVocabPolicy");
     app.UseMiddleware<SecurityHeadersMiddleware>();
 

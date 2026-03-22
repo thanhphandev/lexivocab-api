@@ -34,11 +34,11 @@ public class ResetPasswordHandler : IRequestHandler<ResetPasswordCommand, Result
 
         var savedCode = await _cache.GetStringAsync(cacheKey, ct);
         if (string.IsNullOrEmpty(savedCode) || savedCode != request.Code)
-            return Result.Failure("Invalid or expired reset code.", 400);
+            return Result.Failure("Invalid or expired reset code.", 400, ErrorCode.AUTH_VERIFICATION_CODE_EXPIRED);
 
         var user = await _uow.Users.GetByEmailAsync(email, ct);
         if (user == null)
-            return Result.NotFound("User no longer exists.");
+            return Result.NotFound("User no longer exists.", ErrorCode.RESOURCE_NOT_FOUND);
 
         user.PasswordHash = _hasher.Hash(request.NewPassword);
         user.RefreshTokenHash = null; // Force logout on all devices

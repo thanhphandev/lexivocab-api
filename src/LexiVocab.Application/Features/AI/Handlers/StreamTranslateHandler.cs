@@ -42,10 +42,20 @@ public class StreamTranslateHandler : BaseAIHandler, IRequestHandler<StreamTrans
         var quotaCheck = await CheckTranslationQuotaAsync(_featureGating, userId, user, customMapping.Provider ?? request.Provider, customMapping.ModelId ?? request.ModelId, ct);
         if (!quotaCheck.IsSuccess)
         {
-            return Result<IAsyncEnumerable<string>>.Failure(quotaCheck.Error ?? "Quota exceeded", quotaCheck.StatusCode);
+            return Result<IAsyncEnumerable<string>>.Failure(quotaCheck.Error ?? "Quota exceeded", quotaCheck.StatusCode, quotaCheck.ErrorCode);
         }
 
-        var stream = _translationStreamService.StreamTranslateAsync(request.Word, request.Context, customMapping.Provider, customMapping.ModelId, request.From, targetLang, customMapping.BaseUrl, customMapping.ApiKey, customMapping.Model, ct);
-        return Result<IAsyncEnumerable<string>>.Success(stream);
+        try
+        {
+            var stream = _translationStreamService.StreamTranslateAsync(request.Word, request.Context, customMapping.Provider, customMapping.ModelId, request.From, targetLang, customMapping.BaseUrl, customMapping.ApiKey, customMapping.Model, ct);
+            return Result<IAsyncEnumerable<string>>.Success(stream);
+        }
+        catch (Exception ex)
+        {
+            if (ex is System.Net.Http.HttpRequestException || ex is System.TimeoutException)
+                return Result<IAsyncEnumerable<string>>.Failure("AI Service is currently unavailable.", 503, LexiVocab.Domain.Enums.ErrorCode.AI_SERVICE_UNAVAILABLE);
+                
+            return Result<IAsyncEnumerable<string>>.Failure("An unexpected error occurred with the AI provider.", 500, LexiVocab.Domain.Enums.ErrorCode.AI_PROVIDER_ERROR);
+        }
     }
 }

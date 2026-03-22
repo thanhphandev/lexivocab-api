@@ -42,10 +42,26 @@ public class TranslateHandler : BaseAIHandler, IRequestHandler<TranslateQuery, R
         var quotaCheck = await CheckTranslationQuotaAsync(_featureGating, userId, user, customMapping.Provider ?? request.Provider, customMapping.ModelId ?? request.ModelId, ct);
         if (!quotaCheck.IsSuccess)
         {
-            return Result<string>.Failure(quotaCheck.Error ?? "Quota exceeded", quotaCheck.StatusCode);
+            return Result<string>.Failure(quotaCheck.Error ?? "Quota exceeded", quotaCheck.StatusCode, quotaCheck.ErrorCode);
         }
 
-        var jsonResult = await _translationStreamService.TranslateAsync(request.Word, request.Context, customMapping.Provider, customMapping.ModelId, request.From, targetLang, customMapping.BaseUrl, customMapping.ApiKey, customMapping.Model, ct);
-        return Result<string>.Success(jsonResult);
+        try
+        {
+            var jsonResult = await _translationStreamService.TranslateAsync(request.Word, request.Context, customMapping.Provider, customMapping.ModelId, request.From, targetLang, customMapping.BaseUrl, customMapping.ApiKey, customMapping.Model, ct);
+            
+            if (jsonResult != null && jsonResult.Contains("\"error\":"))
+            {
+                var code = jsonResult.Contains("model", StringComparison.OrdinalIgnoreCase) ? LexiVocab.Domain.Enums.ErrorCode.AI_MODEL_NOT_AVAILABLE : LexiVocab.Domain.Enums.ErrorCode.AI_PROVIDER_ERROR;
+                return Result<string>.Failure("AI Provider Error", 502, code);
+            }
+            return Result<string>.Success(jsonResult ?? string.Empty);
+        }
+        catch (Exception ex)
+        {
+            if (ex is System.Net.Http.HttpRequestException || ex is System.TimeoutException)
+                return Result<string>.Failure("AI Service is currently unavailable.", 503, LexiVocab.Domain.Enums.ErrorCode.AI_SERVICE_UNAVAILABLE);
+                
+            return Result<string>.Failure("An unexpected error occurred with the AI provider.", 500, LexiVocab.Domain.Enums.ErrorCode.AI_PROVIDER_ERROR);
+        }
     }
 }

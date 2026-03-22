@@ -105,7 +105,3 @@ Based on past feature development, pay strict attention to the following to avoi
    - *Fix*: `PagedResult<T>` has no custom constructor and relies on object initializers. Use `new PagedResult<T> { Items = items, Page = page, PageSize = pageSize, TotalCount = total };`.
 
 ---
-**Detailed Reference Documentation:**
-- Architecture: [ARCHITECTURE.md](file:///e:/lexivocab-ex/LexiVocabAPI/ARCHITECTURE.md)
-- Development Guide: [docs/DEVELOPMENT-GUIDE.md](file:///e:/lexivocab-ex/LexiVocabAPI/docs/DEVELOPMENT-GUIDE.md)
-- Testing Strategy: [docs/TESTING.md](file:///e:/lexivocab-ex/LexiVocabAPI/docs/TESTING.md)

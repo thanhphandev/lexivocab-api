@@ -37,7 +37,7 @@ public class UpdateVocabularyHandler : IRequestHandler<UpdateVocabularyCommand, 
     {
         var entity = await _uow.Vocabularies.GetByIdAsync(request.Id, ct);
         if (entity is null || entity.UserId != _currentUser.UserId)
-            return Result<VocabularyDto>.NotFound("Vocabulary not found.");
+            return Result<VocabularyDto>.NotFound("Vocabulary not found.", ErrorCode.VOCAB_NOT_FOUND);
 
         if (request.CustomMeaning is not null) entity.CustomMeaning = request.CustomMeaning.Trim();
         if (request.ContextSentence is not null) entity.ContextSentence = request.ContextSentence.Trim();
