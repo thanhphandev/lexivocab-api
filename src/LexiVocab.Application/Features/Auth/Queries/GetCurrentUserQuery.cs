@@ -30,6 +30,6 @@ public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, R
 
         return Result<UserProfileDto>.Success(new UserProfileDto(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            user.IsActive, user.CreatedAt, user.LastLogin));
+            user.IsActive, user.CreatedAt, user.LastLogin, user.AvatarUrl));
     }
 }
