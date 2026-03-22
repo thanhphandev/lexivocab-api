@@ -98,6 +98,6 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
 
         return Result<AuthResponse>.Success(new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, refreshToken, accessTokenExpiry));
+            accessToken, refreshToken, accessTokenExpiry, user.AvatarUrl));
     }
 }

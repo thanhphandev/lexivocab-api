@@ -52,6 +52,33 @@ public class JwtTokenService : IJwtTokenService
         return new TokenResult(tokenString, expiresAt);
     }
 
+    public TokenResult GenerateImpersonationToken(Guid userId, string email, string role, Guid impersonatorId)
+    {
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new Claim(JwtRegisteredClaimNames.Email, email),
+            new Claim(ClaimTypes.Role, role),
+            new Claim("ImpersonatorId", impersonatorId.ToString()),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
+                ClaimValueTypes.Integer64)
+        };
+
+        // Fixed 15 minutes expiration for impersonation tokens
+        var expiresAt = DateTime.UtcNow.AddMinutes(15);
+
+        var token = new JwtSecurityToken(
+            issuer: _config["Jwt:Issuer"],
+            audience: _config["Jwt:Audience"],
+            claims: claims,
+            expires: expiresAt,
+            signingCredentials: new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256));
+
+        var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+        return new TokenResult(tokenString, expiresAt);
+    }
+
     public string GenerateRefreshToken()
     {
         var randomBytes = new byte[32];

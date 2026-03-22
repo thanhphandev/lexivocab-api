@@ -99,6 +99,20 @@ public class AdminController : BaseApiController
     }
 
     /// <summary>
+    /// Impersonate a user for debugging (Generates a 15-minute token).
+    /// </summary>
+    /// <param name="id">Target User ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns Auth response with impersonation JWT.</response>
+    [HttpPost("users/{id}/impersonate")]
+    [ProducesResponseType(typeof(LexiVocab.Application.DTOs.Auth.AuthResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ImpersonateUser(Guid id, CancellationToken ct)
+    {
+        var result = await _mediator.Send(new ImpersonateUserCommand(id), ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
     /// Manually add subscription.
     /// </summary>
     /// <param name="id">User ID.</param>

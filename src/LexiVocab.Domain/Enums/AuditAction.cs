@@ -42,6 +42,7 @@ public enum AuditAction
     AdminUserActivated = 51,
     AdminRoleChanged = 52,
     SystemSettingUpdated = 53,
+    ImpersonateUser = 54,
 
     // ─── System ──────────────────────────────────────────
     RateLimited = 90,

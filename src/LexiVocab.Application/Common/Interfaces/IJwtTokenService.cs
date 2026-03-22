@@ -11,6 +11,7 @@ public record TokenResult(string Token, DateTime ExpiresAt);
 public interface IJwtTokenService
 {
     TokenResult GenerateAccessToken(Guid userId, string email, string role);
+    TokenResult GenerateImpersonationToken(Guid userId, string email, string role, Guid impersonatorId);
     string GenerateRefreshToken();
     Guid? ValidateAccessToken(string token);
     Guid? GetUserIdFromExpiredToken(string token);
