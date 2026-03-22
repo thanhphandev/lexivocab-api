@@ -9,7 +9,8 @@ public record UserPermissionsDto(
     int CurrentCount,
     DateTime? PlanExpiresAt,
     Dictionary<string, string> FeatureFlags,
-    Dictionary<string, int> QuotaUsages = null!
+    Dictionary<string, int> QuotaUsages = null!,
+    int DisplayOrder = 0
 )
 {
     public UserPermissionsDto() : this(string.Empty, 0, null, new(), new()) { }

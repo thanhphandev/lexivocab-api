@@ -12,7 +12,7 @@ public record StreamWordExplanationQuery(string Word, string? Context = null, bo
     public string? QuotaLimitCode => "AI_DAILY_LIMIT";
 }
 
-public class StreamWordExplanationHandler : IRequestHandler<StreamWordExplanationQuery, Result<IAsyncEnumerable<string>>>
+public class StreamWordExplanationHandler : BaseAIHandler, IRequestHandler<StreamWordExplanationQuery, Result<IAsyncEnumerable<string>>>
 {
     private readonly IAIOrchestratorService _aiService;
     private readonly ICurrentUserService _currentUser;
@@ -41,7 +41,18 @@ public class StreamWordExplanationHandler : IRequestHandler<StreamWordExplanatio
             { "userLanguage", ul }
         };
 
-        var stream = _aiService.StreamTaskAsync(LexiVocab.Domain.Enums.AIUseCase.ExplainUsage, parameters, request.Provider, request.ModelId, request.AsJson, null, null, ct);
+        var customMapping = ResolveCustomProvider(user, request.Provider, request.ModelId, null, null, null);
+
+        var stream = _aiService.StreamTaskAsync(
+            LexiVocab.Domain.Enums.AIUseCase.ExplainUsage, 
+            parameters, 
+            customMapping.Provider ?? request.Provider, 
+            customMapping.ModelId ?? request.ModelId, 
+            request.AsJson, 
+            customMapping.BaseUrl, 
+            customMapping.ApiKey, 
+            ct);
+
         return Result<IAsyncEnumerable<string>>.Success(stream);
     }
 }

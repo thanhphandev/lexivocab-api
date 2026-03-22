@@ -159,7 +159,7 @@ return current
 
     private static UserPermissionsDto CreatePermissionsDto(Domain.Entities.PlanDefinition? plan, int currentCount, DateTime? expiration, Dictionary<string, int> usages)
     {
-        if (plan == null) return new UserPermissionsDto("None", currentCount, expiration, new Dictionary<string, string>(), usages ?? new());
+        if (plan == null) return new UserPermissionsDto("None", currentCount, expiration, new Dictionary<string, string>(), usages ?? new(), 0);
 
         var flags = plan.PlanFeatures.ToDictionary(pf => pf.Feature.Code, pf => pf.Value);
 
@@ -168,7 +168,8 @@ return current
             CurrentCount: currentCount,
             PlanExpiresAt: expiration,
             FeatureFlags: flags,
-            QuotaUsages: usages ?? new());
+            QuotaUsages: usages ?? new(),
+            DisplayOrder: plan.DisplayOrder);
     }
 
 }

@@ -14,7 +14,7 @@ public record GetWordQuizQuery(string Word, string? TargetLanguage = null, strin
     public string? QuotaLimitCode => "MAX_QUIZ_PER_DAY";
 }
 
-public class GetWordQuizHandler : IRequestHandler<GetWordQuizQuery, Result<QuizDto>>
+public class GetWordQuizHandler : BaseAIHandler, IRequestHandler<GetWordQuizQuery, Result<QuizDto>>
 {
     private readonly IAIOrchestratorService _aiService;
     private readonly ICurrentUserService _currentUser;
@@ -42,7 +42,18 @@ public class GetWordQuizHandler : IRequestHandler<GetWordQuizQuery, Result<QuizD
             { "userLanguage", ul }
         };
 
-        var json = await _aiService.ExecuteTaskAsync(LexiVocab.Domain.Enums.AIUseCase.GenerateQuiz, parameters, request.Provider, request.ModelId, true, null, null, ct);
+        var customMapping = ResolveCustomProvider(user, request.Provider, request.ModelId, null, null, null);
+
+        var json = await _aiService.ExecuteTaskAsync(
+            LexiVocab.Domain.Enums.AIUseCase.GenerateQuiz, 
+            parameters, 
+            customMapping.Provider ?? request.Provider, 
+            customMapping.ModelId ?? request.ModelId, 
+            true, 
+            customMapping.BaseUrl, 
+            customMapping.ApiKey, 
+            ct);
+
         if (string.IsNullOrEmpty(json)) return Result<QuizDto>.Failure("AI failed to generate quiz");
 
         try {

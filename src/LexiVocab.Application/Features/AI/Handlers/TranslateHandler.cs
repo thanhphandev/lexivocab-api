@@ -39,7 +39,7 @@ public class TranslateHandler : BaseAIHandler, IRequestHandler<TranslateQuery, R
         
         var customMapping = ResolveCustomProvider(user, request.Provider, request.ModelId, request.CustomBaseUrl, request.CustomApiKey, request.CustomModel);
         
-        var quotaCheck = await CheckTranslationQuotaAsync(_featureGating, userId, user, customMapping.Provider ?? request.Provider, ct);
+        var quotaCheck = await CheckTranslationQuotaAsync(_featureGating, userId, user, customMapping.Provider ?? request.Provider, customMapping.ModelId ?? request.ModelId, ct);
         if (!quotaCheck.IsSuccess)
         {
             return Result<string>.Failure(quotaCheck.Error ?? "Quota exceeded", quotaCheck.StatusCode);

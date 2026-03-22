@@ -14,7 +14,7 @@ public record GetRelatedWordsQuery(string Word, string? TargetLanguage = null, s
     public string? QuotaLimitCode => "AI_DAILY_LIMIT";
 }
 
-public class GetRelatedWordsHandler : IRequestHandler<GetRelatedWordsQuery, Result<RelatedWordsDto>>
+public class GetRelatedWordsHandler : BaseAIHandler, IRequestHandler<GetRelatedWordsQuery, Result<RelatedWordsDto>>
 {
     private readonly IAIOrchestratorService _aiService;
     private readonly ICurrentUserService _currentUser;
@@ -42,7 +42,18 @@ public class GetRelatedWordsHandler : IRequestHandler<GetRelatedWordsQuery, Resu
             { "userLanguage", ul }
         };
 
-        var json = await _aiService.ExecuteTaskAsync(LexiVocab.Domain.Enums.AIUseCase.SuggestRelated, parameters, request.Provider, request.ModelId, true, null, null, ct);
+        var customMapping = ResolveCustomProvider(user, request.Provider, request.ModelId, null, null, null);
+
+        var json = await _aiService.ExecuteTaskAsync(
+            LexiVocab.Domain.Enums.AIUseCase.SuggestRelated, 
+            parameters, 
+            customMapping.Provider ?? request.Provider, 
+            customMapping.ModelId ?? request.ModelId, 
+            true, 
+            customMapping.BaseUrl, 
+            customMapping.ApiKey, 
+            ct);
+
         if (string.IsNullOrEmpty(json)) return Result<RelatedWordsDto>.Failure("AI failed to suggest related words");
 
         try {

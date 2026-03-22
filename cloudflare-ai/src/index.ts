@@ -4,6 +4,22 @@ export interface Env {
   API_KEY: string;
 }
 
+// Standard LlmRequest format matching OpenAiCompatibleLLMProvider.cs
+interface LlmRequestMessage {
+  Role: string;
+  Content: string;
+}
+
+interface LlmRequest {
+  Messages: LlmRequestMessage[];
+  ModelId?: string;
+  Temperature?: number;
+  MaxTokens?: number;
+  Stream?: boolean;
+  ResponseFormatJson?: boolean;
+  ProviderName?: string;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -21,37 +37,36 @@ export default {
 
     try {
       const body = await request.json() as any;
-      const model = body.model || "@cf/meta/llama-3.1-70b-instruct";
+      
+      // Normalize input: support both PascalCase (LlmRequest) and OpenAI format (snake_case/camelCase)
+      const requestData: LlmRequest = {
+        Messages: body.Messages || body.messages || [],
+        ModelId: body.ModelId || body.model || "@cf/meta/llama-3.1-70b-instruct",
+        Temperature: body.Temperature ?? body.temperature,
+        MaxTokens: body.MaxTokens ?? body.max_tokens,
+        Stream: body.Stream ?? body.stream ?? false,
+        ResponseFormatJson: body.ResponseFormatJson ?? (body.response_format?.type === 'json_object'),
+        ProviderName: body.ProviderName
+      };
+      
+      // Map to Cloudflare AI format
+      const model = requestData.ModelId!;
       
       const payload: any = {
-        messages: body.messages,
-        stream: body.stream || false,
+        messages: requestData.Messages.map(m => ({ role: m.Role, content: m.Content })),
+        stream: requestData.Stream,
       };
 
-      if (body.max_tokens) payload.max_tokens = body.max_tokens;
-      if (body.temperature) payload.temperature = body.temperature;
-      if (body.response_format) payload.response_format = body.response_format;
+      if (requestData.MaxTokens) payload.max_tokens = requestData.MaxTokens;
+      if (requestData.Temperature !== undefined) payload.temperature = requestData.Temperature;
+      if (requestData.ResponseFormatJson) payload.response_format = { type: 'json_object' };
 
       let response;
       try {
         response = await env.AI.run(model, payload);
       } catch (err: any) {
-        if (err.message && err.message.includes("json_object")) {
-          console.warn(`Model ${model} rejected json_object format, retrying without it.`);
-          delete payload.response_format;
-          try {
-            response = await env.AI.run(model, payload);
-          } catch(err2: any) {
-            if (model.includes("70b")) {
-              console.warn(`Model ${model} failed again, falling back to 8b. Error: ${err2.message}`);
-              response = await env.AI.run("@cf/meta/llama-3-8b-instruct", payload);
-            } else {
-              throw err2;
-            }
-          }
-        } 
-        // Fallback to 8b if 70b fails
-        else if (model.includes("70b")) {
+    
+        if (model.includes("70b")) {
           console.warn(`Model ${model} failed, falling back to 8b. Error: ${err.message}`);
           response = await env.AI.run("@cf/meta/llama-3-8b-instruct", payload);
         } else {
@@ -120,8 +135,8 @@ export default {
         // Non-streaming response transformation
         let content = response.response;
         
-        // If response_format is json_object, try to clean it
-        if (payload.response_format?.type === 'json_object') {
+        // If ResponseFormatJson is true, try to clean the JSON response
+        if (requestData.ResponseFormatJson) {
           const start = content.indexOf('{');
           const end = content.lastIndexOf('}');
           if (start !== -1 && end !== -1 && end > start) {

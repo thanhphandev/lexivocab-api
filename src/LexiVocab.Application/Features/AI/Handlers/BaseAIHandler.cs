@@ -39,7 +39,7 @@ public abstract class BaseAIHandler
         return (resolvedProvider, resolvedModelId, resolvedBaseUrl, resolvedApiKey, resolvedModel);
     }
 
-    protected async Task<Result<bool>> CheckTranslationQuotaAsync(IFeatureGatingService featureGating, Guid userId, LexiVocab.Domain.Entities.User? user, string? provider, CancellationToken ct)
+    protected async Task<Result<bool>> CheckTranslationQuotaAsync(IFeatureGatingService featureGating, Guid userId, LexiVocab.Domain.Entities.User? user, string? provider, string? modelId, CancellationToken ct)
     {
         string p = provider ?? "cloudflare";
         if (p == "custom" || p.StartsWith("google", StringComparison.OrdinalIgnoreCase) || p.StartsWith("bing", StringComparison.OrdinalIgnoreCase) || p.StartsWith("lingva", StringComparison.OrdinalIgnoreCase) || p.StartsWith("chrome-ai", StringComparison.OrdinalIgnoreCase))
@@ -48,6 +48,8 @@ public abstract class BaseAIHandler
         }
 
         bool isProModel = false;
+        string lookupId = !string.IsNullOrWhiteSpace(modelId) ? modelId : p;
+
         var permissions = await featureGating.GetPermissionsAsync(userId, ct);
         if (permissions.FeatureFlags.TryGetValue("AVAILABLE_LLM_MODELS", out var modelsJson))
         {
@@ -55,7 +57,7 @@ public abstract class BaseAIHandler
                 using var doc = JsonDocument.Parse(modelsJson);
                 foreach (var el in doc.RootElement.EnumerateArray())
                 {
-                    if (el.TryGetProperty("id", out var idProp) && idProp.GetString() == p)
+                    if (el.TryGetProperty("id", out var idProp) && (idProp.GetString() == lookupId || idProp.GetString() == p))
                     {
                         if (el.TryGetProperty("isPro", out var isProProp) && isProProp.ValueKind == JsonValueKind.True)
                             isProModel = true;

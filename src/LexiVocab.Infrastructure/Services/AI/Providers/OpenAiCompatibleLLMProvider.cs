@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
@@ -12,6 +10,8 @@ using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Models.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using OpenAI.Chat;
+using System.ClientModel;
 
 namespace LexiVocab.Infrastructure.Services.AI.Providers;
 
@@ -57,168 +57,114 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         string? customApiKey = null, 
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        string? baseUrl = customBaseUrl;
-        string? apiKey = customApiKey;
+        // 1. Determine Provider to get config
+        string pName = request.ProviderName ?? _configuration["AIProviders:DefaultProvider"] ?? "openai";
+        var configSection = _configuration.GetSection($"AIProviders:{pName}");
 
-        if (string.IsNullOrEmpty(baseUrl))
-        {
-            string pName = request.ProviderName ?? "openrouter";
-            var configSection = _configuration.GetSection($"AIProviders:{pName}");
-            baseUrl = configSection?["BaseUrl"];
-            apiKey = configSection?["ApiKey"];
-        }
+        string? baseUrl = customBaseUrl ?? configSection["BaseUrl"];
+        string? apiKey = customApiKey ?? configSection["ApiKey"];
+        string modelId = string.IsNullOrWhiteSpace(request.ModelId) ? (configSection["DefaultModel"] ?? "gpt-4o-mini") : request.ModelId;
 
         if (string.IsNullOrEmpty(baseUrl) || string.IsNullOrEmpty(apiKey))
         {
-            _logger.LogError("OpenAI provider is missing BaseUrl or ApiKey");
-            yield return JsonSerializer.Serialize(new { error = "Configuration missing for Custom Provider. Please check Base URL and API Key." });
+            _logger.LogError("OpenAI provider configuration is missing BaseUrl or ApiKey for provider '{Provider}'", pName);
+            yield return JsonSerializer.Serialize(new { error = $"Configuration missing for AI Provider '{pName}'. Please check Base URL and API Key." });
             yield break;
         }
 
-        var payload = new
+        // 2. Initialize compatible OpenAI Client
+        var options = new OpenAI.OpenAIClientOptions { Endpoint = new Uri(baseUrl) };
+        var client = new ChatClient(modelId, new ApiKeyCredential(apiKey), options);
+
+        // 3. Map messages
+        var chatMessages = request.Messages.Select(m => m.Role.ToLower() switch {
+            "system" => (ChatMessage)new SystemChatMessage(m.Content),
+            "assistant" => new AssistantChatMessage(m.Content),
+            _ => new UserChatMessage(m.Content)
+        }).ToList();
+
+        // 4. Configure options
+        var maxTokensStr = configSection["MaxTokens"];
+        int defaultMaxTokens = 500;
+        if (!string.IsNullOrEmpty(maxTokensStr)) int.TryParse(maxTokensStr, out defaultMaxTokens);
+
+        var completionOptions = new ChatCompletionOptions
         {
-            model = string.IsNullOrWhiteSpace(request.ModelId) ? "gpt-4o-mini" : request.ModelId,
-            messages = request.Messages.Select(m => new { role = m.Role, content = m.Content }).ToArray(),
-            max_tokens = request.MaxTokens ?? 500,
-            temperature = request.Temperature ?? 0.7,
-            stream = true,
-            response_format = request.ResponseFormatJson ? new { type = "json_object" } : null
+            MaxOutputTokenCount = request.MaxTokens ?? defaultMaxTokens,
+            Temperature = (float?)(request.Temperature ?? 0.7),
+            ResponseFormat = request.ResponseFormatJson ? ChatResponseFormat.CreateJsonObjectFormat() : null
         };
 
-        var requestUri = baseUrl.EndsWith("/chat/completions") ? baseUrl : $"{baseUrl.TrimEnd('/')}/chat/completions";
-        var httpRequest = new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = JsonContent.Create(payload, new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"))
-        };
-        httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+        // 5. Stream results
+        IAsyncEnumerator<StreamingChatCompletionUpdate>? enumerator = null;
+        Exception? initException = null;
 
-        using var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            var errorBody = await response.Content.ReadAsStringAsync(ct);
-            yield return JsonSerializer.Serialize(new { error = $"HTTP {response.StatusCode}: {errorBody}" });
+            var updates = client.CompleteChatStreamingAsync(chatMessages, completionOptions, ct);
+            enumerator = updates.GetAsyncEnumerator(ct);
+        }
+        catch (Exception ex)
+        {
+            initException = ex;
+        }
+
+        if (initException != null)
+        {
+            _logger.LogError(initException, "Error creating stream with OpenAI SDK.");
+            yield return JsonSerializer.Serialize(new { error = $"Request Error: {initException.Message}" });
             yield break;
         }
 
-        var contentType = response.Content.Headers.ContentType?.MediaType;
-        if (contentType == "application/json")
+        try
         {
-            var fullJson = await response.Content.ReadAsStringAsync(ct);
-            string? parsedContent = null;
-            try
+            bool hasMore = true;
+            while (hasMore)
             {
-                using var doc = JsonDocument.Parse(fullJson);
-                if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
-                {
-                    parsedContent = choices[0].GetProperty("message").GetProperty("content").GetString() ?? "";
-                }
-            }
-            catch { }
-            
-            if (parsedContent != null)
-            {
-                yield return parsedContent;
-                yield break;
-            }
-            
-            yield return fullJson;
-            yield break;
-        }
+                StreamingChatCompletionUpdate? update = null;
+                Exception? caughtException = null;
 
-        using var stream = await response.Content.ReadAsStreamAsync(ct);
-        using var reader = new StreamReader(stream);
-
-        int braceDepth = 0;
-        bool hasStartedJson = false;
-        bool hasFinishedJson = false;
-        bool inString = false;
-        bool escapeNext = false;
-
-        while (!ct.IsCancellationRequested)
-        {
-            var line = await reader.ReadLineAsync(ct);
-            if (line == null) break;
-            if (string.IsNullOrWhiteSpace(line)) continue;
-
-            if (line.StartsWith("data: "))
-            {
-                var data = line["data: ".Length..].Trim();
-                if (data == "[DONE]") break;
-
-                string? contentToYield = null;
-                string? errorToYield = null;
                 try
                 {
-                    using var doc = JsonDocument.Parse(data);
-                    if (doc.RootElement.TryGetProperty("error", out var streamErr))
+                    if (!await enumerator.MoveNextAsync())
                     {
-                        errorToYield = JsonSerializer.Serialize(new { error = $"Stream Error: {streamErr.GetRawText()}" });
+                        hasMore = false;
                     }
-                    else if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                    else
                     {
-                        var delta = choices[0].GetProperty("delta");
-                        if (delta.TryGetProperty("content", out var contentElement) && contentElement.ValueKind == JsonValueKind.String)
+                        update = enumerator.Current;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    caughtException = ex;
+                    hasMore = false;
+                }
+
+                if (caughtException != null)
+                {
+                    _logger.LogError(caughtException, "Error during streaming with OpenAI SDK.");
+                    yield return JsonSerializer.Serialize(new { error = $"Stream Error: {caughtException.Message}" });
+                    break;
+                }
+
+                if (update != null)
+                {
+                    foreach (var part in update.ContentUpdate)
+                    {
+                        if (!string.IsNullOrEmpty(part.Text))
                         {
-                            string rawContent = contentElement.GetString() ?? "";
-                            if (!request.ResponseFormatJson)
-                            {
-                                contentToYield = rawContent;
-                            }
-                            else if (!hasFinishedJson)
-                            {
-                                string filteredContent = "";
-                                foreach (char c in rawContent)
-                                {
-                                    if (!hasStartedJson)
-                                    {
-                                        if (c == '{')
-                                        {
-                                            hasStartedJson = true;
-                                            braceDepth = 1;
-                                            filteredContent += c;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        filteredContent += c;
-
-                                        if (escapeNext) escapeNext = false;
-                                        else if (c == '\\') escapeNext = true;
-                                        else if (c == '"') inString = !inString;
-                                        else if (!inString)
-                                        {
-                                            if (c == '{') braceDepth++;
-                                            else if (c == '}') braceDepth--;
-                                        }
-
-                                        if (braceDepth == 0 && !inString && hasStartedJson)
-                                        {
-                                            hasFinishedJson = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                                
-                                if (!string.IsNullOrEmpty(filteredContent))
-                                {
-                                    contentToYield = filteredContent;
-                                }
-                            }
+                            yield return part.Text;
                         }
                     }
                 }
-                catch { }
-
-                if (errorToYield != null)
-                {
-                    yield return errorToYield;
-                    yield break;
-                }
-
-                if (!string.IsNullOrEmpty(contentToYield))
-                {
-                    yield return contentToYield;
-                }
+            }
+        }
+        finally
+        {
+            if (enumerator != null)
+            {
+                await enumerator.DisposeAsync();
             }
         }
     }
