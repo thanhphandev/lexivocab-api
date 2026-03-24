@@ -38,10 +38,7 @@ public class PlanDefinitionSeeder : IDataSeeder
         var quizGenerationId = new Guid("faaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         var llmTranslationLimitId = new Guid("fbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
 
-        if (await _dbContext.PlanDefinitions.AnyAsync(cancellationToken))
-        {
-            return; // Already seeded. Database is clean for deployment normally.
-        }
+        // We define the plans first, then check if we need to insert or sync later.
 
         // Free Plan
         var freePlan = new PlanDefinition
@@ -169,7 +166,7 @@ public class PlanDefinitionSeeder : IDataSeeder
                 new PlanFeature { FeatureDefinitionId = maxWordsId, Value = "2000" },
                 new PlanFeature { FeatureDefinitionId = aiAccessId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = supportLevelId, Value = "Email" },
-                new PlanFeature { FeatureDefinitionId = exportAnkiId, Value = "false" },
+                new PlanFeature { FeatureDefinitionId = exportAnkiId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = batchImportId, Value = "true" },
                 new PlanFeature { FeatureDefinitionId = aiDailyLimitId, Value = "100" },
                 new PlanFeature { FeatureDefinitionId = maxQuizPerDayId, Value = "25" },
@@ -276,8 +273,58 @@ public class PlanDefinitionSeeder : IDataSeeder
             ]
         };
 
-        await _dbContext.PlanDefinitions.AddRangeAsync(
-            [freePlan, premiumPlan, ultimatePlan], cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        var existingPlans = await _dbContext.PlanDefinitions
+            .Include(p => p.PlanFeatures)
+            .ToListAsync(cancellationToken);
+
+        var definedPlans = new[] { freePlan, premiumPlan, ultimatePlan };
+
+        if (!existingPlans.Any())
+        {
+            await _dbContext.PlanDefinitions.AddRangeAsync(definedPlans, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        bool hasChanges = false;
+        foreach (var existingPlan in existingPlans)
+        {
+            var definedPlan = definedPlans.FirstOrDefault(p => p.Id == existingPlan.Id);
+            if (definedPlan != null)
+            {
+                // Sync missing PlanPricing
+                foreach (var definedPrice in definedPlan.Pricings)
+                {
+                    if (!existingPlan.Pricings.Any(p => p.Id == definedPrice.Id))
+                    {
+                        existingPlan.Pricings.Add(definedPrice);
+                        hasChanges = true;
+                    }
+                }
+
+                // Sync missing PlanFeatures
+                foreach (var definedFeature in definedPlan.PlanFeatures)
+                {
+                    var existingFeature = existingPlan.PlanFeatures
+                        .FirstOrDefault(f => f.FeatureDefinitionId == definedFeature.FeatureDefinitionId);
+
+                    if (existingFeature == null)
+                    {
+                        existingPlan.PlanFeatures.Add(new PlanFeature
+                        {
+                            PlanDefinitionId = existingPlan.Id,
+                            FeatureDefinitionId = definedFeature.FeatureDefinitionId,
+                            Value = definedFeature.Value
+                        });
+                        hasChanges = true;
+                    }
+                }
+            }
+        }
+
+        if (hasChanges)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }

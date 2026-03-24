@@ -39,6 +39,12 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
     {
         var userId = _currentUser.UserId!.Value;
         
+        var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
+        if (!permissions.HasFeature(request.FeatureCode))
+        {
+            return Result<int>.Forbidden("ERR_PREMIUM_REQUIRED", ErrorCode.AUTHZ_RESOURCE_FORBIDDEN);
+        }
+
         var allWordTexts = request.Words.Select(w => w.WordText.ToLowerInvariant().Trim()).ToList();
         var existingWords = await _uow.Vocabularies.GetExistingWordsAsync(userId, allWordTexts, ct);
 

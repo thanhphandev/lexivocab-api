@@ -34,6 +34,12 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
         {
             var userId = _currentUser.UserId!.Value;
             
+            var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
+            if (!permissions.HasFeature(request.FeatureCode))
+            {
+                return Result<ExportDataDto>.Forbidden("ERR_PREMIUM_REQUIRED", ErrorCode.AUTHZ_RESOURCE_FORBIDDEN);
+            }
+
             var result = await _uow.Vocabularies.GetByUserIdAsync(userId, 1, int.MaxValue, null, null, null, ct);
             var vocabularies = result.Items;
 

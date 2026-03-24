@@ -48,7 +48,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
         var maxWords = permissions.GetLimit("MAX_WORDS");
         if (permissions.IsOverQuota("MAX_WORDS", permissions.CurrentCount))
         {
-            return Result<VocabularyDto>.Forbidden($"ERR_QUOTA_EXCEEDED: You have reached the limit of {maxWords} vocabulary words.", ErrorCode.VOCAB_QUOTA_EXCEEDED);
+            return Result<VocabularyDto>.Forbidden("ERR_QUOTA_EXCEEDED", ErrorCode.VOCAB_QUOTA_EXCEEDED);
         }
 
         if (await _uow.Vocabularies.WordExistsForUserAsync(userId, request.WordText, ct))
@@ -75,6 +75,8 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
             }
         }
 
+        var masterVocab = await _uow.MasterVocabularies.GetByWordAsync(request.WordText.ToLowerInvariant().Trim(), ct);
+
         var entity = new UserVocabulary
         {
             UserId = userId,
@@ -84,7 +86,8 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
             ContextSentence = request.ContextSentence?.Trim(),
             SourceUrl = request.SourceUrl?.Trim(),
             NextReviewDate = DateTime.UtcNow,
-            MasterVocabulary = null
+            MasterVocabularyId = masterVocab?.Id,
+            MasterVocabulary = masterVocab
         };
 
         await _uow.Vocabularies.AddAsync(entity, ct);
