@@ -248,9 +248,13 @@ public class SepayService : IPaymentService
         // Ensure Subscription is loaded
         if (tx.Subscription == null)
         {
-            // If repository didn't include it, we might need to load it.
-            // But usually IUnitOfWork repository should handle includes if designed for this.
-            _logger.LogError("Subscription not loaded for transaction {Reference}.", reference);
+            _logger.LogInformation("Subscription not pre-loaded for transaction {Reference}. Attempting to load...", reference);
+            tx.Subscription = (await _uow.Subscriptions.GetByIdAsync(tx.SubscriptionId, ct))!;
+        }
+
+        if (tx.Subscription == null)
+        {
+            _logger.LogError("Subscription {SubscriptionId} not found for transaction {Reference}. Cannot activate.", tx.SubscriptionId, reference);
             return; 
         }
 
@@ -285,6 +289,12 @@ public class SepayService : IPaymentService
             var user = await _uow.Users.GetByIdAsync(tx.UserId, ct);
             if (user != null)
             {
+                // Ensure PlanDefinition is loaded for the Name
+                if (tx.Subscription.PlanDefinition == null)
+                {
+                    tx.Subscription.PlanDefinition = (await _uow.PlanDefinitions.GetByIdAsync(tx.Subscription.PlanDefinitionId, ct))!;
+                }
+
                 var html = await _templateService.RenderTemplateAsync("PaymentSuccess", new Dictionary<string, string>
                 {
                     { "FullName", user.FullName },

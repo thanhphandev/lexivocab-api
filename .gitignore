@@ -5,6 +5,9 @@
 .github/
 # dotenv files
 .env
+.env.production
+.env.local
+.env.staging
 [Bb]in/
 [Oo]bj/
 *.dll

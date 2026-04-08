@@ -1,6 +1,7 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.DTOs.Admin;
 using LexiVocab.Application.Features.Admin.Transactions.Queries;
+using LexiVocab.Application.Features.Admin.Transactions.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -64,7 +65,7 @@ public class AdminTransactionsController : BaseApiController
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RefundTransaction(Guid id, [FromBody] RefundTransactionRequest request, CancellationToken ct)
     {
-        var command = new LexiVocab.Application.Features.Admin.Transactions.Commands.ProcessRefundCommand(id, request.Reason);
+        var command = new ProcessRefundCommand(id, request.Reason);
         var result = await _mediator.Send(command, ct);
         return ToActionResult(result);
     }

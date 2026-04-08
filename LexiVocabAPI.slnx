@@ -4,7 +4,10 @@
     <File Path=".gitignore" />
     <File Path="ARCHITECTURE.md" />
     <File Path="docker-compose.yml" />
+    <File Path="docker-compose.override.yml" />
+    <File Path="docker-compose.prod.yml" />
     <File Path="Dockerfile" />
+    <File Path="ngrok-config.yml" />
     <Project Path="src/LexiVocab.API/LexiVocab.API.csproj" />
     <Project Path="src/LexiVocab.Application/LexiVocab.Application.csproj" />
     <Project Path="src/LexiVocab.Domain/LexiVocab.Domain.csproj" />

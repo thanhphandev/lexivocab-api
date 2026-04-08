@@ -26,8 +26,20 @@ public class DbContextSeeder
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         
-        // Ensure database is created
-        await dbContext.Database.MigrateAsync(cancellationToken);
+        // Ensure database is created with execution strategy for resiliency
+        if (dbContext.Database.IsRelational())
+        {
+            var executionStrategy = dbContext.Database.CreateExecutionStrategy();
+            await executionStrategy.ExecuteAsync(async () =>
+            {
+                await dbContext.Database.MigrateAsync(cancellationToken);
+            });
+            _logger.LogInformation("✅ Database migration applied via execution strategy.");
+        }
+        else
+        {
+            await dbContext.Database.EnsureCreatedAsync(cancellationToken);
+        }
         
         // Get all seeders and run them in order
         var seeders = scope.ServiceProvider.GetServices<IDataSeeder>()

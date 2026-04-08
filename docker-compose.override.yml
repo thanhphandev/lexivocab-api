@@ -17,7 +17,7 @@ services:
       - "--config"
       - "/etc/ngrok.yml"
     environment:
-      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-35QFzz8BWWahUfmFZTClj72CnWy_7r5LM8XuRJES33oVMYo89}
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
     ports:
       - "4040:4040"  # Ngrok inspect UI: http://localhost:4040
     volumes:

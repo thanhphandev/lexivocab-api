@@ -38,4 +38,12 @@ public class Subscription : BaseEntity
     // ─── Navigation ──────────────────────────────────────────────
     public User User { get; set; } = null!;
     public ICollection<PaymentTransaction> PaymentTransactions { get; set; } = [];
+
+    // ─── Domain Logic ────────────────────────────────────────────
+    public bool IsExpired()
+    {
+        if (Status != SubscriptionStatus.Active) return true;
+        if (EndDate.HasValue && EndDate.Value < DateTime.UtcNow) return true;
+        return false;
+    }
 }

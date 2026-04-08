@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Asp.Versioning;
+using LexiVocab.Application.DTOs.Auth;
 
 namespace LexiVocab.API.Controllers;
 
@@ -105,7 +106,7 @@ public class AdminController : BaseApiController
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns Auth response with impersonation JWT.</response>
     [HttpPost("users/{id}/impersonate")]
-    [ProducesResponseType(typeof(LexiVocab.Application.DTOs.Auth.AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> ImpersonateUser(Guid id, CancellationToken ct)
     {
         var result = await _mediator.Send(new ImpersonateUserCommand(id), ct);
@@ -351,7 +352,7 @@ public class AdminController : BaseApiController
     /// <summary>Batch import master vocabulary words.</summary>
     [HttpPost("vocabularies/master/batch")]
     [ProducesResponseType(typeof(int), StatusCodes.Status201Created)]
-    public async Task<IActionResult> CreateMasterVocabularyBatch([FromBody] LexiVocab.Application.Features.Admin.Vocabularies.Commands.CreateMasterVocabularyBatchCommand command, CancellationToken ct)
+    public async Task<IActionResult> CreateMasterVocabularyBatch([FromBody] CreateMasterVocabularyBatchCommand command, CancellationToken ct)
     {
         var result = await _mediator.Send(command, ct);
         return ToActionResult(result);
@@ -362,7 +363,7 @@ public class AdminController : BaseApiController
     [ProducesResponseType(typeof(MasterVocabularyDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> LookupMasterVocabularyFromDictionary([FromQuery] string word, CancellationToken ct)
     {
-        var result = await _mediator.Send(new LexiVocab.Application.Features.Admin.Vocabularies.Queries.SuggestMasterVocabFromDictionaryQuery(word), ct);
+        var result = await _mediator.Send(new SuggestMasterVocabFromDictionaryQuery(word), ct);
         return ToActionResult(result);
     }
 
@@ -381,7 +382,7 @@ public class AdminController : BaseApiController
     /// <summary>Approve a community-contributed master vocabulary word.</summary>
     [HttpPatch("vocabularies/master/{id}/approve")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> ApproveMasterVocabulary(Guid id, [FromBody] LexiVocab.Application.Features.Admin.Vocabularies.Commands.ApproveMasterVocabularyCommand command, CancellationToken ct)
+    public async Task<IActionResult> ApproveMasterVocabulary(Guid id, [FromBody] ApproveMasterVocabularyCommand command, CancellationToken ct)
     {
         if (id != command.Id)
             return BadRequest(new { success = false, error = "Path ID and Body ID mismatch." });

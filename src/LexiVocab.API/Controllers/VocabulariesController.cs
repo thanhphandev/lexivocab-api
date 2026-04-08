@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 using Asp.Versioning;
+using LexiVocab.Application.DTOs.MasterVocabulary;
 
 namespace LexiVocab.API.Controllers;
 
@@ -58,7 +59,7 @@ public class VocabulariesController : BaseApiController
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns list of master vocabulary entries.</response>
     [HttpGet("explore")]
-    [ProducesResponseType(typeof(PagedResult<LexiVocab.Application.DTOs.MasterVocabulary.MasterVocabularyDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResult<MasterVocabularyDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Explore(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,

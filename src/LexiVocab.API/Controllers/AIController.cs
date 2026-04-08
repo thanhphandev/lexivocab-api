@@ -1,4 +1,3 @@
-using LexiVocab.Application.Common;
 using LexiVocab.Application.DTOs.AI;
 using LexiVocab.Application.Features.AI;
 using MediatR;

@@ -1,4 +1,3 @@
-using LexiVocab.Application.Common;
 using LexiVocab.Application.Features.MasterVocabularies.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

@@ -100,9 +100,9 @@ try
         options.AddPolicy("LexiVocabPolicy", policy =>
         {
             var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                ?? ["http://localhost:3000", "http://localhost:5173"];
+                ?? ["http://localhost:3000", "http://localhost:5173", "http://localhost:5000"];
 
-            policy.SetIsOriginAllowed(_ => true) // Allow any origin
+            policy.WithOrigins(origins)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -294,21 +294,11 @@ try
     if (app.Environment.IsDevelopment())
     {
         using var scope = app.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        if (db.Database.IsRelational())
-        {
-            var executionStrategy = db.Database.CreateExecutionStrategy();
-            await executionStrategy.ExecuteAsync(async () =>
-            {
-                await db.Database.MigrateAsync();
-            });
-        }
-        Log.Information("✅ Database migration applied.");
-
-        // Call the data seeder to populate default features and plans
+        
+        // Call the data seeder to migrate and populate default features and plans
         var seeder = scope.ServiceProvider.GetRequiredService<LexiVocab.Infrastructure.Persistence.Seeding.DbContextSeeder>();
         await seeder.SeedAllAsync();
-        Log.Information("✅ Database seeding completed.");
+        Log.Information("✅ Database initialization and seeding completed.");
     }
 
     // ─── Health Check Endpoint ────────────────────────────────

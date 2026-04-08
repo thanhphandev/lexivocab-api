@@ -63,7 +63,6 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
                 user.AuthProvider = "Google";
                 user.AuthProviderId = googleUser.Subject;
 
-                // Sync Google profile picture if the user doesn't already have an avatar
                 if (string.IsNullOrEmpty(user.AvatarUrl) && !string.IsNullOrEmpty(googleUser.PictureUrl))
                 {
                     user.AvatarUrl = googleUser.PictureUrl;
@@ -75,7 +74,6 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
                 {
                     Email = googleUser.Email.ToLowerInvariant(),
                     FullName = googleUser.FullName,
-                    AvatarUrl = googleUser.PictureUrl ?? $"https://api.dicebear.com/9.x/thumbs/svg?seed={Uri.EscapeDataString(googleUser.Email.ToLowerInvariant())}",
                     AuthProvider = "Google",
                     AuthProviderId = googleUser.Subject,
                     EmailConfirmed = true,

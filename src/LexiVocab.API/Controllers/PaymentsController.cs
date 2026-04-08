@@ -1,5 +1,4 @@
 using LexiVocab.Application.Common;
-using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Payment;
 using LexiVocab.Application.Features.Payments.Commands;
 using LexiVocab.Application.Features.Payments.Queries;

@@ -45,32 +45,35 @@ public class PendingPaymentCleanupJob : IPendingPaymentCleanupJob
 
         foreach (var tx in candidates)
         {
-            tx.Status = PaymentStatus.Expired;
-            tx.CancelledAt = now;
-            tx.CancelReason = "Expired by configured pending payment expiry.";
+            // Use unified helper for core status updates
+            var expired = LexiVocab.Application.Features.Payments.Queries.PaymentExpirationHelper.ExpireIfNeeded(tx, now, 
+                (msg, args) => _logger.LogInformation(msg, args));
 
-            if (tx.Subscription != null && tx.Subscription.Status == SubscriptionStatus.Pending)
-                tx.Subscription.Status = SubscriptionStatus.Cancelled;
-
-            // Send payment expired email
-            try
+            if (expired)
             {
-                var user = tx.User;
-                var html = await _templateService.RenderTemplateAsync("PaymentExpired", new Dictionary<string, string>
+                // Send payment expired email
+                try
                 {
-                    { "FullName", user.FullName },
-                    { "Amount", $"${tx.Amount:F2} {tx.Currency}" }
-                });
-                _emailQueue.EnqueueEmail(user.Email, "⏰ Payment Expired", html);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send payment expired email for transaction {TransactionId}", tx.Id);
+                    var user = tx.User;
+                    if (user != null)
+                    {
+                        var html = await _templateService.RenderTemplateAsync("PaymentExpired", new Dictionary<string, string>
+                        {
+                            { "FullName", user.FullName },
+                            { "Amount", $"{tx.Amount:F2} {tx.Currency}" }
+                        });
+                        _emailQueue.EnqueueEmail(user.Email, "⏰ Payment Expired", html);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send payment expired email for transaction {TransactionId}", tx.Id);
+                }
             }
         }
 
         var changed = await _db.SaveChangesAsync(ct);
-        _logger.LogInformation("PendingPaymentCleanupJob: updated {Count} tx(s), SaveChanges={Changed}", candidates.Count, changed);
+        _logger.LogInformation("PendingPaymentCleanupJob: checked {Count} tx(s), SaveChanges={Changed}", candidates.Count, changed);
     }
 }
 
