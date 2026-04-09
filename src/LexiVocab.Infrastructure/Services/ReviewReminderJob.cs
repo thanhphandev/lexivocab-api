@@ -18,6 +18,7 @@ public class ReviewReminderJob : IReviewReminderJob
     private readonly IZaloNotificationService _zaloService;
     private readonly IEmailTemplateService _templateService;
     private readonly IConfiguration _configuration;
+    private readonly IEncryptionService _encryption;
     private readonly ILogger<ReviewReminderJob> _logger;
 
     public ReviewReminderJob(
@@ -27,6 +28,7 @@ public class ReviewReminderJob : IReviewReminderJob
         IZaloNotificationService zaloService,
         IEmailTemplateService templateService,
         IConfiguration configuration,
+        IEncryptionService encryption,
         ILogger<ReviewReminderJob> logger)
     {
         _db = db;
@@ -35,6 +37,7 @@ public class ReviewReminderJob : IReviewReminderJob
         _zaloService = zaloService;
         _templateService = templateService;
         _configuration = configuration;
+        _encryption = encryption;
         _logger = logger;
     }
 
@@ -120,14 +123,16 @@ public class ReviewReminderJob : IReviewReminderJob
 
                 if (user.IsTelegramReminderEnabled && !string.IsNullOrWhiteSpace(user.TelegramBotToken) && !string.IsNullOrWhiteSpace(user.TelegramChatId))
                 {
-                    await _telegramService.SendMessageAsync(user.TelegramBotToken, user.TelegramChatId, textMessage, ct);
+                    var tgToken = _encryption.Decrypt(user.TelegramBotToken) ?? user.TelegramBotToken; // Fallback to plain if decryption fails (for transition)
+                    await _telegramService.SendMessageAsync(tgToken, user.TelegramChatId, textMessage, ct);
                 }
 
                 if (user.IsZaloReminderEnabled && !string.IsNullOrWhiteSpace(user.ZaloBotToken) && !string.IsNullOrWhiteSpace(user.ZaloUserId))
                 {
-                    await _zaloService.SendMessageAsync(user.ZaloBotToken, user.ZaloUserId, textMessage, ct);
+                    var zaToken = _encryption.Decrypt(user.ZaloBotToken) ?? user.ZaloBotToken;
+                    await _zaloService.SendMessageAsync(zaToken, user.ZaloUserId, textMessage, ct);
                     // Send a lively sticker to Zalo via the SDK format!
-                    await _zaloService.SendStickerAsync(user.ZaloBotToken, user.ZaloUserId, "f67c2c2c1069f937a078", ct);
+                    await _zaloService.SendStickerAsync(zaToken, user.ZaloUserId, "f67c2c2c1069f937a078", ct);
                 }
             }
             catch (Exception ex)

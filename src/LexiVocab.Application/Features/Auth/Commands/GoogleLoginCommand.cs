@@ -74,6 +74,7 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
                 {
                     Email = googleUser.Email.ToLowerInvariant(),
                     FullName = googleUser.FullName,
+                    AvatarUrl = googleUser.PictureUrl, // Set avatar for new user
                     AuthProvider = "Google",
                     AuthProviderId = googleUser.Subject,
                     EmailConfirmed = true,
@@ -92,6 +93,14 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
                     _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! 🚀", html);
                 }
                 catch { /* Non-critical */ }
+            }
+        }
+        else
+        {
+            // Update avatar if currently empty for returning Google users
+            if (string.IsNullOrEmpty(user.AvatarUrl) && !string.IsNullOrEmpty(googleUser.PictureUrl))
+            {
+                user.AvatarUrl = googleUser.PictureUrl;
             }
         }
 

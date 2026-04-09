@@ -15,11 +15,13 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, Result<UserS
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IEncryptionService _encryption;
 
-    public GetSettingsHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public GetSettingsHandler(IUnitOfWork uow, ICurrentUserService currentUser, IEncryptionService encryption)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _encryption = encryption;
     }
 
     public async Task<Result<UserSettingsDto>> Handle(GetSettingsQuery request, CancellationToken ct)
@@ -67,10 +69,10 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, Result<UserS
             settings.DefaultTranslator,
             settings.IsEmailReminderEnabled,
             settings.IsTelegramReminderEnabled,
-            settings.TelegramBotToken,
+            _encryption.Decrypt(settings.TelegramBotToken ?? ""),
             settings.TelegramChatId,
             settings.IsZaloReminderEnabled,
-            settings.ZaloBotToken,
+            _encryption.Decrypt(settings.ZaloBotToken ?? ""),
             settings.ZaloUserId));
     }
 }
@@ -101,11 +103,13 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IEncryptionService _encryption;
 
-    public UpdateSettingsHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public UpdateSettingsHandler(IUnitOfWork uow, ICurrentUserService currentUser, IEncryptionService encryption)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _encryption = encryption;
     }
 
     public async Task<Result<UserSettingsDto>> Handle(UpdateSettingsCommand request, CancellationToken ct)
@@ -137,10 +141,14 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
         
         if (request.IsEmailReminderEnabled.HasValue) settings.IsEmailReminderEnabled = request.IsEmailReminderEnabled.Value;
         if (request.IsTelegramReminderEnabled.HasValue) settings.IsTelegramReminderEnabled = request.IsTelegramReminderEnabled.Value;
-        if (request.TelegramBotToken is not null) settings.TelegramBotToken = request.TelegramBotToken;
+        if (request.TelegramBotToken is not null) 
+            settings.TelegramBotToken = string.IsNullOrWhiteSpace(request.TelegramBotToken) 
+                ? null : _encryption.Encrypt(request.TelegramBotToken);
         if (request.TelegramChatId is not null) settings.TelegramChatId = request.TelegramChatId;
         if (request.IsZaloReminderEnabled.HasValue) settings.IsZaloReminderEnabled = request.IsZaloReminderEnabled.Value;
-        if (request.ZaloBotToken is not null) settings.ZaloBotToken = request.ZaloBotToken;
+        if (request.ZaloBotToken is not null) 
+            settings.ZaloBotToken = string.IsNullOrWhiteSpace(request.ZaloBotToken) 
+                ? null : _encryption.Encrypt(request.ZaloBotToken);
         if (request.ZaloUserId is not null) settings.ZaloUserId = request.ZaloUserId;
         
         settings.UpdatedAt = DateTime.UtcNow;
@@ -161,10 +169,10 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
             settings.DefaultTranslator,
             settings.IsEmailReminderEnabled,
             settings.IsTelegramReminderEnabled,
-            settings.TelegramBotToken,
+            _encryption.Decrypt(settings.TelegramBotToken ?? ""),
             settings.TelegramChatId,
             settings.IsZaloReminderEnabled,
-            settings.ZaloBotToken,
+            _encryption.Decrypt(settings.ZaloBotToken ?? ""),
             settings.ZaloUserId));
     }
 }

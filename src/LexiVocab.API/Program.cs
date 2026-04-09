@@ -99,13 +99,23 @@ try
     {
         options.AddPolicy("LexiVocabPolicy", policy =>
         {
-            var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                ?? ["http://localhost:3000", "http://localhost:5173", "http://localhost:5000"];
-
-            policy.WithOrigins(origins)
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
+            if (builder.Environment.IsDevelopment())
+            {
+                policy.SetIsOriginAllowed(_ => true) // Allow any origin in dev (e.g., wikipedia.org -> localhost)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            }
+            else
+            {
+                var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                    ?? ["https://lexivocab.store"];
+                
+                policy.WithOrigins(origins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            }
         });
     });
 

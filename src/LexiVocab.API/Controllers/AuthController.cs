@@ -164,7 +164,7 @@ public class AuthController : BaseApiController
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request, CancellationToken ct)
     {
-        var refreshToken = Request.Cookies["refreshToken"];
+        var refreshToken = Request.Cookies["refreshToken"] ?? request.RefreshToken;
         if (string.IsNullOrEmpty(refreshToken))
             return StatusCode(StatusCodes.Status401Unauthorized, new { success = false, error = "Refresh token is missing. Please login again." });
 
@@ -189,12 +189,7 @@ public class AuthController : BaseApiController
             await _mediator.Send(new LogoutCommand(refreshToken));
         }
 
-        Response.Cookies.Delete("refreshToken", new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true, // We assume production is over HTTPS
-            SameSite = SameSiteMode.None
-        });
+        Response.Cookies.Delete("refreshToken", GetCookieOptions());
         return Ok(new { success = true, message = "Logged out successfully." });
     }
 
@@ -275,12 +270,7 @@ public class AuthController : BaseApiController
         if (result.IsSuccess)
         {
             // Revoke current session cookie since we invalidated the token hash.
-            Response.Cookies.Delete("refreshToken", new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None
-            });
+            Response.Cookies.Delete("refreshToken", GetCookieOptions());
             return Ok(new { success = true, message = "Password changed successfully. Please log in again." });
         }
         return ToActionResult(result);
@@ -303,12 +293,7 @@ public class AuthController : BaseApiController
         var result = await _mediator.Send(new DeleteAccountCommand(), ct);
         if (result.IsSuccess)
         {
-            Response.Cookies.Delete("refreshToken", new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None
-            });
+            Response.Cookies.Delete("refreshToken", GetCookieOptions());
             return Ok(new { success = true, message = "Account deleted successfully." });
         }
         return ToActionResult(result);
@@ -332,12 +317,7 @@ public class AuthController : BaseApiController
         var result = await _mediator.Send(new RevokeAllSessionsCommand(currentRefreshToken), ct);
         if (result.IsSuccess)
         {
-            Response.Cookies.Delete("refreshToken", new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None
-            });
+            Response.Cookies.Delete("refreshToken", GetCookieOptions());
             return Ok(new { success = true, message = "All sessions revoked. Please log in again." });
         }
         return ToActionResult(result);
@@ -376,15 +356,22 @@ public class AuthController : BaseApiController
     private void SetRefreshTokenCookie(string refreshToken)
     {
         var refreshTokenExpiryDays = int.Parse(_configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true, // Ensure it's transmitted over HTTPS only
-            SameSite = SameSiteMode.None, // Support both Chrome Extensions and Next.js
-            Expires = DateTime.UtcNow.AddDays(refreshTokenExpiryDays)
-        };
+        var cookieOptions = GetCookieOptions();
+        cookieOptions.Expires = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
+
         // Ensure consistency with the reader in RefreshToken / Logout
         Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
+    }
+
+    private CookieOptions GetCookieOptions()
+    {
+        return new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps,
+            SameSite = Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
+            Path = "/"
+        };
     }
 
 }

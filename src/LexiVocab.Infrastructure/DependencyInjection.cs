@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<ICouponRepository, CouponRepository>();
 
         // ─── Data Seeders ─────────────────────────────────────
+        services.AddScoped<IDataSeeder, UserSeeder>();
         services.AddScoped<IDataSeeder, FeatureDefinitionSeeder>();
         services.AddScoped<IDataSeeder, PlanDefinitionSeeder>();
         services.AddScoped<DbContextSeeder>();
@@ -119,6 +120,7 @@ public static class DependencyInjection
         services.AddScoped<IPaymentService, Services.SepayService>();
 
         // ─── Google OAuth ─────────────────────────────────────
+        services.AddScoped<IEncryptionService, Services.EncryptionService>();
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 
         // ─── Dictionary Enrichment ───────────────────────────

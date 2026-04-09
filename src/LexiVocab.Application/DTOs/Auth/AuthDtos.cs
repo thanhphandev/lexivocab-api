@@ -15,7 +15,8 @@ public record GoogleLoginRequest(
     string IdToken);
 
 public record RefreshTokenRequest(
-    string AccessToken);
+    string AccessToken,
+    string? RefreshToken = null);
 
 public record AuthResponse(
     Guid UserId,
@@ -23,7 +24,7 @@ public record AuthResponse(
     string FullName,
     string Role,
     string? AccessToken,
-    [property: JsonIgnore] string? RefreshToken,
+    string? RefreshToken,
     DateTime? ExpiresAt,
     string? AvatarUrl = null);
 
