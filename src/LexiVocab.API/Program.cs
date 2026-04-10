@@ -300,15 +300,17 @@ try
 
     app.MapControllers();
 
-    // ─── Auto-Migrate & Seed Database in Development ──────────────
-    if (app.Environment.IsDevelopment())
+    // ─── Auto-Migrate & Seed Database ──────────────────────────────
+    var runMigrations = builder.Configuration.GetValue<bool>("RUN_MIGRATIONS", false);
+    if (app.Environment.IsDevelopment() || runMigrations)
     {
         using var scope = app.Services.CreateScope();
         
         // Call the data seeder to migrate and populate default features and plans
         var seeder = scope.ServiceProvider.GetRequiredService<LexiVocab.Infrastructure.Persistence.Seeding.DbContextSeeder>();
         await seeder.SeedAllAsync();
-        Log.Information("✅ Database initialization and seeding completed.");
+        Log.Information("✅ Database initialization and seeding completed (Mode: {Mode}).", 
+            runMigrations ? "Production-Override" : "Development");
     }
 
     // ─── Health Check Endpoint ────────────────────────────────

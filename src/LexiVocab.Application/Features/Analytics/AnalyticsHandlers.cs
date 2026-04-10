@@ -2,6 +2,8 @@ using System.Text.Json;
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Analytics;
+using LexiVocab.Application.DTOs.Vocabulary;
+using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
@@ -41,6 +43,11 @@ public class GetDashboardHandler : IRequestHandler<GetDashboardQuery, Result<Das
 
         var (total, active, archived, dueToday) = await _uow.Vocabularies.GetStatsAsync(userId, ct);
 
+        // Fetch top 10 recent words for the carousel
+        var (recentEntities, _) = await _uow.Vocabularies.GetByUserIdAsync(
+            userId, page: 1, pageSize: 10, isArchived: false, ct: ct);
+        var recentWords = recentEntities.Select(MapToDto).ToList();
+
         var today = DateTime.UtcNow.Date;
         var weekStart = today.AddDays(-(int)today.DayOfWeek);
 
@@ -59,7 +66,7 @@ public class GetDashboardHandler : IRequestHandler<GetDashboardQuery, Result<Das
         var totalStudyDays = heatmap.Count(h => h.Count > 0);
 
         var dashboardDto = new DashboardDto(
-            new VocabularyOverviewDto(total, active, archived, dueToday),
+            new VocabularyOverviewDto(total, active, archived, dueToday, recentWords),
             new ReviewOverviewDto(reviewsToday, reviewsThisWeek, avgQualityWeek),
             currentStreak,
             totalStudyDays);
@@ -69,6 +76,14 @@ public class GetDashboardHandler : IRequestHandler<GetDashboardQuery, Result<Das
 
         return Result<DashboardDto>.Success(dashboardDto);
     }
+
+    private static VocabularyDto MapToDto(UserVocabulary v) => new(
+        v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
+        v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
+        v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
+        v.MasterVocabulary?.PhoneticUk, v.MasterVocabulary?.PhoneticUs,
+        v.MasterVocabulary?.AudioUrl, v.MasterVocabulary?.PartOfSpeech,
+        v.MasterVocabulary?.IsApproved);
 }
 
 // ─── Heatmap Data ───────────────────────────────────────────────

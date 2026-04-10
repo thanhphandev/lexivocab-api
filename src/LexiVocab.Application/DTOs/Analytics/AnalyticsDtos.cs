@@ -1,3 +1,6 @@
+using LexiVocab.Application.DTOs.Vocabulary;
+using System.Collections.Generic;
+
 namespace LexiVocab.Application.DTOs.Analytics;
 
 public record DashboardDto(
@@ -10,7 +13,8 @@ public record VocabularyOverviewDto(
     int TotalWords,
     int ActiveWords,
     int MasteredWords,
-    int DueToday);
+    int DueToday,
+    IReadOnlyList<VocabularyDto> RecentVocabulary);
 
 public record ReviewOverviewDto(
     int TotalReviewsToday,
