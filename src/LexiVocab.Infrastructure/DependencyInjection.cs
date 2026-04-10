@@ -23,15 +23,46 @@ namespace LexiVocab.Infrastructure;
 /// </summary>
 public static class DependencyInjection
 {
+    private static string NormalizePostgresConnectionString(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString)) return connectionString;
+        
+        if (!connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) && 
+            !connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            return connectionString;
+        }
+
+        try
+        {
+            var uri = new Uri(connectionString);
+            var userInfo = uri.UserInfo.Split(':');
+            var user = userInfo[0];
+            var password = userInfo.Length > 1 ? userInfo[1] : string.Empty;
+            var host = uri.Host;
+            var port = uri.Port > 0 ? uri.Port : 5432;
+            var database = uri.AbsolutePath.TrimStart('/');
+
+            // Reconstruct as standard Npgsql Key=Value string compatible with all providers (Hangfire, etc)
+            return $"Host={host};Port={port};Database={database};Username={user};Password={password};Pooling=true;Maximum Pool Size=100;SslMode=Prefer;Trust Server Certificate=true;";
+        }
+        catch
+        {
+            return connectionString;
+        }
+    }
+
     private static string GetDbConnectionString(IConfiguration configuration)
     {
         // 1. Try direct DATABASE_URL (Railway/Heroku default)
         var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-        if (!string.IsNullOrWhiteSpace(dbUrl)) return dbUrl;
+        if (!string.IsNullOrWhiteSpace(dbUrl)) return NormalizePostgresConnectionString(dbUrl);
 
         // 2. Try ConnectionStrings:DefaultConnection
-        return configuration.GetConnectionString("DefaultConnection") 
+        var connStr = configuration.GetConnectionString("DefaultConnection") 
                ?? throw new InvalidOperationException("Database connection string not found.");
+        
+        return NormalizePostgresConnectionString(connStr);
     }
 
     private static string? GetRedisConnectionString(IConfiguration configuration)
