@@ -23,15 +23,37 @@ namespace LexiVocab.Infrastructure;
 /// </summary>
 public static class DependencyInjection
 {
+    private static string GetDbConnectionString(IConfiguration configuration)
+    {
+        // 1. Try direct DATABASE_URL (Railway/Heroku default)
+        var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+        if (!string.IsNullOrWhiteSpace(dbUrl)) return dbUrl;
+
+        // 2. Try ConnectionStrings:DefaultConnection
+        return configuration.GetConnectionString("DefaultConnection") 
+               ?? throw new InvalidOperationException("Database connection string not found.");
+    }
+
+    private static string? GetRedisConnectionString(IConfiguration configuration)
+    {
+        // 1. Try direct REDIS_URL
+        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+        if (!string.IsNullOrWhiteSpace(redisUrl)) return redisUrl;
+
+        // 2. Try ConnectionStrings:Redis
+        return configuration.GetConnectionString("Redis");
+    }
+
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
     {
         // ─── EF Core + PostgreSQL ─────────────────────────────
+        var dbConnectionString = GetDbConnectionString(configuration);
         services.AddDbContext<AppDbContext>(options =>
         {
             options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection"),
+                dbConnectionString,
                 npgsqlOptions =>
                 {
                     npgsqlOptions.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
@@ -90,7 +112,7 @@ public static class DependencyInjection
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection"))));
+            .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(dbConnectionString)));
 
         // Add the processing server as IHostedService
         services.AddHangfireServer(options =>
@@ -214,7 +236,7 @@ public static class DependencyInjection
         });
 
         // ─── Redis Distributed Cache ──────────────────────────
-        var redisConnection = configuration.GetConnectionString("Redis");
+        var redisConnection = GetRedisConnectionString(configuration);
         if (!string.IsNullOrWhiteSpace(redisConnection))
         {
             services.AddStackExchangeRedisCache(options =>

@@ -57,13 +57,31 @@ try
     // ─── Health Checks ────────────────────────────────────────
     var healthChecks = builder.Services.AddHealthChecks();
     
-    var dbConnStr = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (!string.IsNullOrWhiteSpace(dbConnStr))
-        healthChecks.AddNpgSql(dbConnStr);
+    // Diagnostic log for Cloud Deployment
+    var rawDbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? builder.Configuration.GetConnectionString("DefaultConnection");
+    if (!string.IsNullOrEmpty(rawDbUrl))
+    {
+        var displayHost = "Unknown/URI";
+        if (rawDbUrl.Contains("Host=", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = rawDbUrl.Split(';');
+            var hostPart = parts.FirstOrDefault(p => p.StartsWith("Host=", StringComparison.OrdinalIgnoreCase));
+            displayHost = hostPart?.Split('=')[1] ?? displayHost;
+        }
+        else if (rawDbUrl.Contains("@"))
+        {
+            displayHost = rawDbUrl.Split('@')[1].Split('/')[0].Split(':')[0];
+        }
+        Log.Information("🏗️ Database resolved. Host: {Host}, Environment: {Env}", displayHost, builder.Environment.EnvironmentName);
+        healthChecks.AddNpgSql(rawDbUrl);
+    }
         
-    var redisConnStr = builder.Configuration.GetConnectionString("Redis");
-    if (!string.IsNullOrWhiteSpace(redisConnStr))
-        healthChecks.AddRedis(redisConnStr);
+    var rawRedisUrl = Environment.GetEnvironmentVariable("REDIS_URL") ?? builder.Configuration.GetConnectionString("Redis");
+    if (!string.IsNullOrWhiteSpace(rawRedisUrl))
+    {
+        Log.Information("🏗️ Redis resolved (Source: {Source})", Environment.GetEnvironmentVariable("REDIS_URL") != null ? "REDIS_URL" : "Config");
+        healthChecks.AddRedis(rawRedisUrl);
+    }
 
     // ─── Controllers ──────────────────────────────────────────
     builder.Services.AddControllers()
