@@ -20,13 +20,14 @@ public class SmtpEmailService : IEmailService
 
     public async Task SendEmailAsync(string to, string subject, string htmlBody, CancellationToken ct = default)
     {
-        var server = _config["Smtp:Server"];
-        var port = _config.GetValue<int>("Smtp:Port", 587);
-        var username = _config["Smtp:Username"];
-        var password = _config["Smtp:Password"];
-        var senderName = _config["Smtp:SenderName"] ?? "LexiVocab";
-        var senderEmail = _config["Smtp:SenderEmail"] ?? username;
-        var useSsl = _config.GetValue<bool>("Smtp:UseSsl", false);
+        var server = _config["Smtp:Server"] ?? Environment.GetEnvironmentVariable("SMTP_HOST");
+        var portStr = Environment.GetEnvironmentVariable("SMTP_PORT");
+        var port = !string.IsNullOrEmpty(portStr) ? int.Parse(portStr) : _config.GetValue<int>("Smtp:Port", 587);
+        var username = _config["Smtp:Username"] ?? Environment.GetEnvironmentVariable("SMTP_USER");
+        var password = _config["Smtp:Password"] ?? Environment.GetEnvironmentVariable("SMTP_PASSWORD");
+        var senderName = _config["Smtp:SenderName"] ?? Environment.GetEnvironmentVariable("SMTP_SENDER_NAME") ?? "LexiVocab Team";
+        var senderEmail = _config["Smtp:SenderEmail"] ?? Environment.GetEnvironmentVariable("SMTP_SENDER_EMAIL") ?? username;
+
 
         if (string.IsNullOrEmpty(server) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {
@@ -44,11 +45,11 @@ public class SmtpEmailService : IEmailService
         message.Body = builder.ToMessageBody();
 
         using var client = new SmtpClient();
+        client.Timeout = 15000; // 15 seconds fast fail
         try
         {
-            // Connect
-            var secureSocketOptions = useSsl ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
-            await client.ConnectAsync(server!, port, secureSocketOptions, ct);
+            // Connect using Auto which determines the best SSL/TLS handshake based on the port
+            await client.ConnectAsync(server!, port, SecureSocketOptions.Auto, ct);
 
             // Authenticate (Remove XOAUTH2 as a mechanism if we use standard username/pwd)
             client.AuthenticationMechanisms.Remove("XOAUTH2");

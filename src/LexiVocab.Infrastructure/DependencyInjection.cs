@@ -122,7 +122,20 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // ─── Email Services ────────────────────────────────
-        services.AddTransient<IEmailService, Services.SmtpEmailService>();
+        var resendApiKey = configuration["Resend:ApiKey"] ?? Environment.GetEnvironmentVariable("RESEND_API_KEY");
+        if (!string.IsNullOrEmpty(resendApiKey))
+        {
+            services.AddHttpClient("ResendClient", client => {
+                client.Timeout = TimeSpan.FromSeconds(30);
+            })
+            .AddStandardResilienceHandler();
+            services.AddTransient<IEmailService, Services.ResendEmailService>();
+        }
+        else
+        {
+            services.AddTransient<IEmailService, Services.SmtpEmailService>();
+        }
+        
         services.AddScoped<IEmailQueueService, Services.HangfireEmailQueueService>();
         services.AddSingleton<IEmailTemplateService, Services.EmailTemplateService>();
 
