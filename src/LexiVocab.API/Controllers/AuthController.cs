@@ -350,7 +350,14 @@ public class AuthController : BaseApiController
             return StatusCode(result.StatusCode, new { success = true, data = result.Data });
         }
 
-        return StatusCode(result.StatusCode, new { success = false, error = result.Error });
+        return StatusCode(result.StatusCode, new 
+        { 
+            success = false, 
+            error = result.Error,
+            errorCode = result.ErrorCode.ToString(),
+            traceId = HttpContext.TraceIdentifier,
+            details = result.Details
+        });
     }
 
     private void SetRefreshTokenCookie(string refreshToken)
