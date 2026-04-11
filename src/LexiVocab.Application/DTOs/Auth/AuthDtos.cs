@@ -26,7 +26,9 @@ public record AuthResponse(
     string? AccessToken,
     string? RefreshToken,
     DateTime? ExpiresAt,
-    string? AvatarUrl = null);
+    string? AvatarUrl = null,
+    bool IsEmailVerified = false,
+    bool IsActive = true);
 
 public record UserProfileDto(
     Guid Id,

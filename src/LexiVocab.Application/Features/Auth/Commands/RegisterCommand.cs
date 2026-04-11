@@ -108,7 +108,8 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 
             return Result<AuthResponse>.Created(new AuthResponse(
                 user.Id, user.Email, user.FullName, user.Role.ToString(),
-                null, null, null, user.AvatarUrl));
+                null, null, null, user.AvatarUrl,
+                user.EmailConfirmed, user.IsActive));
         }
         else
         {
@@ -142,6 +143,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 
         return Result<AuthResponse>.Created(new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, refreshToken, accessTokenExpiry, user.AvatarUrl));
+            accessToken, refreshToken, accessTokenExpiry, user.AvatarUrl,
+            user.EmailConfirmed, user.IsActive));
     }
 }

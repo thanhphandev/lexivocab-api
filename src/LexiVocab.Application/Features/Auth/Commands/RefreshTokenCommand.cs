@@ -88,7 +88,8 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
 
         var authResponse = new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, newRefreshToken, accessTokenExpiry);
+            accessToken, newRefreshToken, accessTokenExpiry, user.AvatarUrl,
+            user.EmailConfirmed, user.IsActive);
 
         await _cache.SetStringAsync(
             $"rf_token_grace:{request.RefreshToken}", 
