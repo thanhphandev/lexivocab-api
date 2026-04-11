@@ -112,6 +112,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSeeder, UserSeeder>();
         services.AddScoped<IDataSeeder, FeatureDefinitionSeeder>();
         services.AddScoped<IDataSeeder, PlanDefinitionSeeder>();
+        services.AddScoped<IDataSeeder, MasterVocabularySeeder>();
         services.AddScoped<DbContextSeeder>();
         // ─── Background Jobs ──────────────────────────────────
         services.AddTransient<Services.ISubscriptionExpirationJob, Services.SubscriptionExpirationJob>();

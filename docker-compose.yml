@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-lexivocab_dev}
       POSTGRES_USER: ${POSTGRES_USER:-postgres_app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-b87940d2e7ff909549e410515e646867004f68f8ae9f5e6d55c35f4a37215ae1}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -111,7 +111,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://seq:5341/ingest/otlp/v1/logs
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-lexivocab_dev};Username=${POSTGRES_USER:-postgres_app};Password=${POSTGRES_PASSWORD:-b87940d2e7ff909549e410515e646867004f68f8ae9f5e6d55c35f4a37215ae1};Maximum Pool Size=100;Pooling=true
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-lexivocab_dev};Username=${POSTGRES_USER:-postgres_app};Password=${POSTGRES_PASSWORD:-postgres};Maximum Pool Size=100;Pooling=true
       - ConnectionStrings__Redis=${REDIS_PASSWORD:+redis:6379,password=}${REDIS_PASSWORD:-redis:6379}
       - Jwt__Secret=${JWT_SECRET:-LexiVocab_Docker_Secret_Key_Must_Be_At_Least_32_Characters_Long!}
       - Jwt__Issuer=LexiVocab.API
