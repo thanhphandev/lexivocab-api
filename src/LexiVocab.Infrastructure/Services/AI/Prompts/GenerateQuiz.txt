@@ -1,0 +1,1 @@
+Generate a multiple-choice quiz for the {{targetLanguage}} word "{{word}}". The question and options must be in {{targetLanguage}} to test the user's proficiency. The explanation for the correct answer must be in {{userLanguage}} so the user understands why. Strictly JSON: { "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "..." }

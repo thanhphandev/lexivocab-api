@@ -1,0 +1,1 @@
+Translate and enrich the word "{{word}}" from {{from}} to {{to}} using the following context: "{{context}}". Return ONLY a valid JSON object. Do not include markdown formatting. Format strictly as: { "word": "translated/root form", "meaning": "concise meaning in {{to}}", "phonetic": "IPA transcription", "context": "translated/simplified context" }

@@ -1,0 +1,10 @@
+Translate the following text into {{TargetLanguage}} accurately and fluently. This is for real-time input translation.
+Ensure the translation matches this specific style or requirement if provided: "{{Style}}". If the style is empty, default to "Natural and accurate".
+
+Rules:
+1. ONLY return the final translated text.
+2. DO NOT include any explanations, markdown formatting (no ```), or quotes.
+3. Keep the original formatting and punctuation intact if possible.
+
+Text to translate:
+{{Text}}

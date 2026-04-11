@@ -97,61 +97,28 @@ sudo apt install certbot python3-certbot-nginx -y
 
 > **Không commit file này lên git.** Thêm vào `.gitignore`.
 
-```bash
-# Tạo file từ template
-cp .env.example .env.production
-```
-
-Điền đầy đủ các giá trị sau:
+Điền đầy đủ các giá trị sau (đã được cấu hình trong `.env.production` mẫu):
 
 ```dotenv
-# ─── Database ────────────────────────────────────────────────────
-POSTGRES_DB=lexivocab_prod
-POSTGRES_USER=lexivocab_app               # Không dùng 'postgres' superuser
-POSTGRES_PASSWORD=<sinh bằng: openssl rand -hex 32>
-POSTGRES_PORT=5432
-
-# ─── Redis ───────────────────────────────────────────────────────
-REDIS_PASSWORD=<sinh bằng: openssl rand -hex 32>
-
-# ─── JWT ─────────────────────────────────────────────────────────
-JWT_SECRET=<sinh bằng: openssl rand -hex 32>   # Tối thiểu 64 ký tự
-JWT_EXPIRY_MINUTES=120
-
-# ─── SEQ Logging ─────────────────────────────────────────────────
-SEQ_ADMIN_PASSWORD=<mật khẩu mạnh>
-
-# ─── pgAdmin ─────────────────────────────────────────────────────
-PGADMIN_EMAIL=admin@yourdomain.com
-PGADMIN_PASSWORD=<mật khẩu mạnh>
-
-# ─── ASP.NET Core ────────────────────────────────────────────────
+# ─── ASP.NET Core ─────────────────────────────────────────
 ASPNETCORE_ENVIRONMENT=Production
 
-# ─── Sepay Payment ───────────────────────────────────────────────
-SEPAY_API_KEY=<lấy từ my.sepay.vn>
-SEPAY_BANK_ACCOUNT=<số tài khoản ngân hàng>
-SEPAY_BANK_NAME=<mã ngân hàng: BIDV/MB/VCB>
-SEPAY_API_BASE_URL=https://my.sepay.vn/api
+# ─── Database (PostgreSQL) ────────────────────────────────
+POSTGRES_HOST=postgres                    # Đặt là 'postgres' nếu dùng container, hoặc IP/Domain database ngoài
+POSTGRES_DB=lexivocab_prod
+POSTGRES_USER=lexivocab_app               # Không dùng 'postgres' superuser
+POSTGRES_PASSWORD=<sinh_password_manh>
+POSTGRES_PORT=5432
+# ─── Redis ────────────────────────────────────────────────
+REDIS_PASSWORD=<sinh_password_manh>
 
-# ─── PayPal (nếu dùng) ───────────────────────────────────────────
-PAYPAL_CLIENT_ID=<từ developer.paypal.com>
-PAYPAL_CLIENT_SECRET=<từ developer.paypal.com>
-PAYPAL_MODE=live
+# ─── JWT ──────────────────────────────────────────────────
+JWT_SECRET=<sinh_key_64_ky_tu>
 
-# ─── Stripe (nếu dùng) ───────────────────────────────────────────
-STRIPE_PUBLISHABLE_KEY=pk_live_...
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-
-# ─── Email (SMTP) ────────────────────────────────────────────────
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=noreply@yourdomain.com
-SMTP_PASSWORD=<app password>
-
-# ─── CORS ────────────────────────────────────────────────────────
-CORS_ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+# ─── App URL & CORS ───────────────────────────────────────
+APP_URL=https://lexivocab.store
+CORS_ORIGIN_0=https://lexivocab.store
+CORS_ORIGIN_1=https://www.lexivocab.store
 ```
 
 ### 3.2 Sinh secret key an toàn
@@ -173,6 +140,16 @@ openssl rand -hex 24
 chmod 600 .env.production
 chown root:root .env.production
 ```
+
+---
+
+### 3.3 Linh hoạt Host & Cloud-Native (Railway, AWS, etc.)
+
+API LexiVocab được thiết kế để triển khai linh hoạt trên mọi môi trường:
+
+1.  **Docker Compose:** Sử dụng các biến `POSTGRES_HOST=postgres` và `REDIS_HOST=redis` để API kết nối trong mạng nội bộ Docker.
+2.  **Railway / Render:** API tự động ưu tiên các biến môi trường nền tảng như `DATABASE_URL` và `REDIS_URL`. Nếu các biến này có giá trị (dạng URI: `postgres://...`), API sẽ tự xử lý và chuẩn hóa.
+3.  **Managed DB (RDS):** Chỉ cần thay `POSTGRES_HOST` bằng địa chỉ instance DB của bạn.
 
 ---
 
@@ -225,90 +202,71 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-    # KHÔNG expose port 5432 ra ngoài trong production
     expose:
       - "5432"
     networks:
-      - lexivocab-internal
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-          cpus: '1.0'
+      - lexivocab-network
 
   redis:
     image: redis:7-alpine
     container_name: lexivocab-redis
     restart: always
-    command: redis-server --requirepass "${REDIS_PASSWORD}" --maxmemory 256mb --maxmemory-policy allkeys-lru
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: sh -c 'if [ -n "$REDIS_PASSWORD" ]; then redis-server --requirepass "$REDIS_PASSWORD"; else redis-server; fi'
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
     expose:
       - "6379"
     networks:
-      - lexivocab-internal
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: '0.5'
+      - lexivocab-network
 
   api:
-    image: lexivocab-api:latest       # Hoặc ECR image URI
+    image: ${API_IMAGE:-lexivocab-api:latest}
     container_name: lexivocab-api
     restart: always
+    ports:
+      - "${API_PORT:-5000}:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://seq:5341/ingest/otlp/v1/logs
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Maximum Pool Size=100;Pooling=true;Connection Idle Lifetime=300
-      - ConnectionStrings__Redis=redis:6379,password=${REDIS_PASSWORD},ssl=false,abortConnect=false
+      
+      - ConnectionStrings__DefaultConnection=Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};Maximum Pool Size=100;Pooling=true
+      - ConnectionStrings__Redis=${REDIS_HOST:-redis}:6379,password=${REDIS_PASSWORD},ssl=false,abortConnect=false
+      
       - Jwt__Secret=${JWT_SECRET}
-      - Jwt__Issuer=LexiVocab.API
-      - Jwt__Audience=LexiVocab.Clients
-      - Jwt__AccessTokenExpiryMinutes=${JWT_EXPIRY_MINUTES:-120}
+      - Google__ClientId=${GOOGLE_CLIENT_ID}
+      - Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
+      - Smtp__Server=${SMTP_HOST}
+      - Smtp__Port=${SMTP_PORT:-587}
+      - Smtp__Username=${SMTP_USER}
+      - Smtp__Password=${SMTP_PASSWORD}
       - Sepay__ApiKey=${SEPAY_API_KEY}
-      - Sepay__BankAccount=${SEPAY_BANK_ACCOUNT}
-      - Sepay__BankName=${SEPAY_BANK_NAME}
-      - Sepay__ApiBaseUrl=${SEPAY_API_BASE_URL}
       - PayPal__ClientId=${PAYPAL_CLIENT_ID}
       - PayPal__ClientSecret=${PAYPAL_CLIENT_SECRET}
-      - PayPal__Mode=${PAYPAL_MODE:-live}
-      - Stripe__SecretKey=${STRIPE_SECRET_KEY}
-      - Stripe__WebhookSecret=${STRIPE_WEBHOOK_SECRET}
-      - Smtp__Host=${SMTP_HOST}
-      - Smtp__Port=${SMTP_PORT:-587}
-      - Smtp__User=${SMTP_USER}
-      - Smtp__Password=${SMTP_PASSWORD}
-      - Cors__AllowedOrigins=${CORS_ALLOWED_ORIGINS}
+      - App__Url=${APP_URL}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    expose:
-      - "8080"
-    volumes:
-      - api-logs:/app/logs
+      seq:
+        condition: service_started
     networks:
-      - lexivocab-internal
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      - lexivocab-network
     deploy:
       resources:
         limits:
@@ -322,28 +280,19 @@ services:
     environment:
       - ACCEPT_EULA=Y
       - SEQ_FIRSTRUN_ADMINPASSWORD=${SEQ_ADMIN_PASSWORD}
-    expose:
-      - "5341"
-      - "80"
-    volumes:
-      - seqdata:/data
+    ports:
+      - "5341:5341"
+      - "8899:80"
     networks:
-      - lexivocab-internal
-    deploy:
-      resources:
-        limits:
-          memory: 512M
+      - lexivocab-network
 
 volumes:
   pgdata:
   redisdata:
-  seqdata:
-  api-logs:
 
 networks:
-  lexivocab-internal:
+  lexivocab-network:
     driver: bridge
-    internal: false     # API cần kết nối internet (payment webhooks)
 ```
 
 ### 5.2 Deploy lần đầu
@@ -383,115 +332,138 @@ curl -s http://localhost:8080/health | jq .
 
 ---
 
-## 6. Phương án B — AWS ECS + ECR (CI/CD)
 
-### 6.1 Cấu hình GitHub Secrets
+## 7. Phương án C — Azure Container Apps
 
-Vào `Settings → Secrets and variables → Actions` và thêm:
+Kiến trúc này sử dụng Azure Container Apps (serverless containers), PostgreSQL Flexible Server, và Azure Cache for Redis. Phương án này tối ưu chi phí (scale-to-zero) và dễ triển khai nhất.
 
-| Secret                  | Giá trị                                     |
-|-------------------------|---------------------------------------------|
-| `AWS_ROLE_ARN`          | ARN của IAM Role cho GitHub OIDC            |
-| `JWT_SECRET`            | JWT secret key (≥64 ký tự)                 |
-| `POSTGRES_PASSWORD`     | Password database                           |
-| `REDIS_PASSWORD`        | Password Redis                              |
-| `SEPAY_API_KEY`         | API key từ SePay                            |
-| `STRIPE_SECRET_KEY`     | Stripe secret key                           |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret                       |
-| `PAYPAL_CLIENT_SECRET`  | PayPal client secret                        |
+### 7.1 Chuẩn bị môi trường Azure (Dùng Azure CLI)
 
-### 6.2 Cấu hình AWS IAM (OIDC Trust Policy)
+```bash
+# 1. Đăng nhập Azure
+az login
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
-      },
-      "Action": "sts:AssumeRoleWithWebIdentity",
-      "Condition": {
-        "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-        },
-        "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:your-org/LexiVocabAPI:ref:refs/heads/main"
-        }
-      }
-    }
-  ]
-}
+# 2. Tạo Resource Group
+az group create --name rg-lexivocab --location southeastasia
+
+# 3. Tạo Azure Container Registry (ACR)
+az acr create --resource-group rg-lexivocab --name lexivocabacr --sku Basic --admin-enabled true
+
+# 4. Tạo PostgreSQL Flexible Server (Burstable B1ms - đủ cho thesis demo)
+az postgres flexible-server create \
+  --resource-group rg-lexivocab \
+  --name lexivocab-pg \
+  --location southeastasia \
+  --admin-user lexivocab_admin \
+  --admin-password "<STRONG_PASSWORD>" \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --storage-size 32 \
+  --version 16 \
+  --public-access 0.0.0.0 \
+  --yes
+
+# 5. Tạo Database
+az postgres flexible-server db create \
+  --resource-group rg-lexivocab \
+  --server-name lexivocab-pg \
+  --database-name lexivocab_prod
+
+# 6. Tạo Azure Cache for Redis
+az redis create \
+  --resource-group rg-lexivocab \
+  --name lexivocab-redis \
+  --location southeastasia \
+  --sku Basic \
+  --vm-size c0 \
+  --redis-version 6
+
+# 7. Tạo Container Apps Environment
+az containerapp env create \
+  --name lexivocab-env \
+  --resource-group rg-lexivocab \
+  --location southeastasia
 ```
 
-### 6.3 IAM Permission cần thiết
+### 7.2 Build và Push Docker Image lên ACR
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ecr:GetAuthorizationToken",
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:BatchGetImage",
-        "ecr:InitiateLayerUpload",
-        "ecr:UploadLayerPart",
-        "ecr:CompleteLayerUpload",
-        "ecr:PutImage"
-      ],
-      "Resource": "arn:aws:ecr:ap-southeast-1:<ACCOUNT_ID>:repository/lexivocab-prod-api"
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ecs:UpdateService",
-        "ecs:DescribeServices",
-        "ecs:DescribeTaskDefinition",
-        "ecs:RegisterTaskDefinition"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
+Thay vì build ở local, bạn có thể build trực tiếp trên cloud environment của ACR:
+
+```bash
+# Chạy ở thư mục chứa Dockerfile của project
+az acr build \
+  --registry lexivocabacr \
+  --image lexivocab-api:latest \
+  --image lexivocab-api:v1.0.0 \
+  --file Dockerfile \
+  .
 ```
 
-### 6.4 Quy trình CD tự động
+### 7.3 Deploy Azure Container Apps lần đầu tiên
 
+> Chú ý: Ở lần đầu deploy, ta bật `RUN_MIGRATIONS=true` để tự động tạo schema + seed database. Nhớ đổi thành `<...>` bằng các secrets thật từ file `.env.production`.
+
+```bash
+# Lấy Password của PostgreSQL (Thiết lập ở bước 4)
+PG_HOST="lexivocab-pg.postgres.database.azure.com"
+PG_PASSWORD="<STRONG_PASSWORD>"
+
+# Lấy Primary Key của Redis bằng lệnh:
+# az redis list-keys --name lexivocab-redis --resource-group rg-lexivocab --query primaryKey -o tsv
+REDIS_HOST="lexivocab-redis.redis.cache.windows.net"
+REDIS_KEY="<PRIMARY_KEY>"
+
+# Deploy App
+az containerapp create \
+  --name lexivocab-api \
+  --resource-group rg-lexivocab \
+  --environment lexivocab-env \
+  --image lexivocabacr.azurecr.io/lexivocab-api:latest \
+  --registry-server lexivocabacr.azurecr.io \
+  --target-port 8080 \
+  --ingress external \
+  --min-replicas 0 \
+  --max-replicas 3 \
+  --cpu 1 \
+  --memory 2Gi \
+  --env-vars \
+    ASPNETCORE_ENVIRONMENT=Production \
+    ASPNETCORE_URLS=http://+:8080 \
+    RUN_MIGRATIONS=true \
+    "ConnectionStrings__DefaultConnection=Host=$PG_HOST;Port=5432;Database=lexivocab_prod;Username=lexivocab_admin;Password=$PG_PASSWORD;SslMode=Require;Trust Server Certificate=true;Maximum Pool Size=100;Pooling=true" \
+    "ConnectionStrings__Redis=$REDIS_HOST:6380,password=$REDIS_KEY,ssl=True,abortConnect=False" \
+    "Jwt__Secret=<JWT_SECRET_TU_ENV_PRODUCTION>" \
+    "Jwt__Issuer=LexiVocab.API" \
+    "Jwt__Audience=LexiVocab.Clients" \
+    "Jwt__AccessTokenExpiryMinutes=120" \
+    "Jwt__RefreshTokenExpiryDays=30" \
+    "Jwt__RefreshTokenGracePeriodSeconds=60" \
+    "Jwt__ClockSkewSeconds=0" \
+    "Google__ClientId=<GOOGLE_CLIENT_ID>" \
+    "Google__ClientSecret=<GOOGLE_CLIENT_SECRET>" \
+    "App__Url=https://lexivocab.store" \
+    "ENCRYPTION_KEY=<ENCRYPTION_KEY>" \
+    "ASPNETCORE_FORWARDEDHEADERS_ENABLED=true"
 ```
-git push → main
-    │
-    ▼
-GitHub Actions (cd.yml)
-    ├─ Configure AWS credentials (OIDC)
-    ├─ Login to ECR
-    ├─ docker build -t <ecr-uri>:<git-sha> .
-    ├─ docker push <ecr-uri>:<git-sha>
-    └─ aws ecs update-service --force-new-deployment
-           │
-           ▼
-       ECS Rolling Update
-       (giữ 1 task cũ cho đến khi task mới healthy)
+
+### 7.4 Tắt Migration để tránh làm chậm startup time các lần sau
+
+```bash
+az containerapp update \
+  --name lexivocab-api \
+  --resource-group rg-lexivocab \
+  --set-env-vars "RUN_MIGRATIONS=false"
 ```
 
-### 6.5 ECS Task Definition — biến môi trường
+### 7.5 CI/CD với GitHub Actions (Azure Container Apps)
 
-Trong ECS Task Definition, lưu secrets vào **AWS Secrets Manager** và reference:
+Pipeline OIDC đã có sẵn tại `.github/workflows/cd.yml`.
+Bạn chỉ cần lấy credentials cho Azure (Federated credentials) và tạo các secrets trong repo:
 
-```json
-{
-  "secrets": [
-    { "name": "Jwt__Secret",             "valueFrom": "arn:aws:secretsmanager:...:lexivocab/jwt-secret" },
-    { "name": "POSTGRES_PASSWORD",       "valueFrom": "arn:aws:secretsmanager:...:lexivocab/db-password" },
-    { "name": "REDIS_PASSWORD",          "valueFrom": "arn:aws:secretsmanager:...:lexivocab/redis-password" },
-    { "name": "STRIPE_SECRET_KEY",       "valueFrom": "arn:aws:secretsmanager:...:lexivocab/stripe-key" },
-    { "name": "SEPAY_API_KEY",           "valueFrom": "arn:aws:secretsmanager:...:lexivocab/sepay-key" }
-  ]
-}
-```
+- `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+- `ACR_NAME`, `CONTAINER_APP_NAME`, `AZURE_RESOURCE_GROUP`
+
+Mỗi khi code được merge vào `main`, action sẽ tự động trigger, build docker image và deploy revision mới (scale-to-zero friendly).
 
 ---
 
