@@ -131,23 +131,10 @@ try
     {
         options.AddPolicy("LexiVocabPolicy", policy =>
         {
-            if (builder.Environment.IsDevelopment())
-            {
-                policy.SetIsOriginAllowed(_ => true) // Allow any origin in dev (e.g., wikipedia.org -> localhost)
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials();
-            }
-            else
-            {
-                var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-                    ?? ["https://lexivocab.store"];
-                
-                policy.WithOrigins(origins)
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials();
-            }
+            policy.SetIsOriginAllowed(_ => true) // Allow any origin because the extension operates on all websites
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
         });
     });
 
