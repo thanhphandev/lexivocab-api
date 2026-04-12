@@ -8,6 +8,7 @@
 **/*.user
 **/*.suo
 docker-compose.yml
+docker-compose.prod.yml
 Dockerfile
 .dockerignore
 *.md
@@ -17,3 +18,10 @@ build.log
 errs.txt
 err.log
 errors.txt
+.env
+.env.*
+.env.production
+.env.example
+tests/
+ngrok-config.yml
+.agents/

@@ -26,6 +26,10 @@ WORKDIR /app
 RUN apk add --no-cache icu-libs krb5-libs
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
+# Security: Run as non-root user (prevents privilege escalation if app is compromised)
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
 COPY --from=build /out .
 
 EXPOSE 8080

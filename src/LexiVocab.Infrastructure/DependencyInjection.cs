@@ -44,7 +44,11 @@ public static class DependencyInjection
             var database = uri.AbsolutePath.TrimStart('/');
 
             // Reconstruct as standard Npgsql Key=Value string compatible with all providers (Hangfire, etc)
-            return $"Host={host};Port={port};Database={database};Username={user};Password={password};Pooling=true;Maximum Pool Size=100;SslMode=Prefer;Trust Server Certificate=true;";
+            // Dynamic pool size: Default 100 for single-instance, but when scaling out
+            // (e.g. 5 replicas × 100 = 500 connections), we can exceed Postgres max_connections.
+            // Override via env var DB_MAX_POOL_SIZE to match: floor(max_connections / replica_count).
+            var poolSize = Environment.GetEnvironmentVariable("DB_MAX_POOL_SIZE") ?? "100";
+            return $"Host={host};Port={port};Database={database};Username={user};Password={password};Pooling=true;Maximum Pool Size={poolSize};Connection Idle Lifetime=300;SslMode=Prefer;Trust Server Certificate=true;";
         }
         catch
         {
@@ -159,10 +163,15 @@ public static class DependencyInjection
             .UseRecommendedSerializerSettings()
             .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(dbConnectionString)));
 
-        // Add the processing server as IHostedService
+        // Hangfire worker count: In scaled environments, each replica runs its own workers.
+        // Keep worker count conservative to avoid overwhelming the database with concurrent jobs.
+        var hangfireWorkers = int.TryParse(Environment.GetEnvironmentVariable("HANGFIRE_WORKER_COUNT"), out var w) 
+            ? w 
+            : Math.Max(2, Environment.ProcessorCount);
         services.AddHangfireServer(options =>
         {
-            options.WorkerCount = Environment.ProcessorCount * 5; // e.g., 20+ concurrent jobs
+            options.WorkerCount = hangfireWorkers;
+            options.ServerName = $"{Environment.MachineName}:{Guid.NewGuid():N[..8]}";
         });
 
         // ─── Audit Logging ────────────────────────────────────
@@ -284,14 +293,21 @@ public static class DependencyInjection
         var redisConnection = GetRedisConnectionString(configuration);
         if (!string.IsNullOrWhiteSpace(redisConnection))
         {
+            // Configure Redis with connection resiliency for cloud environments 
+            // where transient network issues are expected.
+            var redisOptions = ConfigurationOptions.Parse(redisConnection);
+            redisOptions.AbortOnConnectFail = false;
+            redisOptions.ConnectRetry = 3;
+            redisOptions.ReconnectRetryPolicy = new ExponentialRetry(5000);
+
             services.AddStackExchangeRedisCache(options =>
             {
-                options.Configuration = redisConnection;
+                options.ConfigurationOptions = redisOptions;
                 options.InstanceName = "LexiVocab:";
             });
 
             services.AddSingleton<IConnectionMultiplexer>(_ =>
-                ConnectionMultiplexer.Connect(redisConnection));
+                ConnectionMultiplexer.Connect(redisOptions));
         }
         else
         {

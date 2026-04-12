@@ -19,13 +19,10 @@ using Asp.Versioning;
 // ────────────────────────────────────────────────────────────────
 // Bootstrap Serilog (before anything else can crash)
 // ────────────────────────────────────────────────────────────────
-Log.Logger = new LoggerConfiguration()
+var isProduction = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Production";
+
+var logConfig = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/lexivocab-.log",
-        rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 30,
-        fileSizeLimitBytes: 100_000_000,
-        rollOnFileSizeLimit: true)
     .WriteTo.OpenTelemetry(options =>
     {
         options.Endpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT") ?? "http://localhost:5341/ingest/otlp/v1/logs";
@@ -36,10 +33,27 @@ Log.Logger = new LoggerConfiguration()
         };
     })
     .Enrich.FromLogContext()
-    .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
-    .CreateLogger();
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning);
+
+if (isProduction)
+{
+    // Production: Console + OTEL only. File sink is excluded because containers are ephemeral
+    // and writing to disk increases I/O pressure + risks filling container tmp storage.
+    logConfig.MinimumLevel.Warning();
+}
+else
+{
+    // Development/Staging: Include file sink for local debugging convenience
+    logConfig.MinimumLevel.Information()
+        .WriteTo.File("logs/lexivocab-.log",
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 30,
+            fileSizeLimitBytes: 100_000_000,
+            rollOnFileSizeLimit: true);
+}
+
+Log.Logger = logConfig.CreateLogger();
 
 try
 {
@@ -137,6 +151,9 @@ try
         });
     });
 
+    // Cached options to avoid per-request GC allocation
+    var rateLimitJsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
     // ─── Rate Limiting (IP-based, PartitionedRateLimiter) ─────
     builder.Services.AddRateLimiter(options =>
     {
@@ -153,7 +170,7 @@ try
                 statusCode = 429,
                 retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
                     ? retryAfter.TotalSeconds : 60
-            }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            }, rateLimitJsonOptions);
             await context.HttpContext.Response.WriteAsync(response, cancellationToken);
         };
 
@@ -236,6 +253,13 @@ try
         options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10 MB max request body
     });
 
+    // ─── Graceful Shutdown ────────────────────────────────────
+    // Give in-flight requests and Hangfire jobs time to finish before forced termination.
+    builder.Services.Configure<HostOptions>(options =>
+    {
+        options.ShutdownTimeout = TimeSpan.FromSeconds(30);
+    });
+
     // ────────────────────────────────────────────────────────────
     var app = builder.Build();
 
@@ -260,18 +284,32 @@ try
     }
 
     // ─── Middleware Pipeline ──────────────────────────────────
-    // Order matters: Exception → Security Headers → HTTPS → CORS → RateLimit → Auth → Controllers
+    // Order matters: ForwardedHeaders → Exception → CORS → Security → RateLimit → Auth → Controllers
+
+    // CRITICAL: ForwardedHeaders MUST be first so Rate Limiting gets the real client IP
+    // (not the proxy/load balancer IP). Without this, in Azure Container Apps,
+    // ALL requests appear from the same internal IP → rate limits break.
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                           Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+    });
+
     app.UseMiddleware<GlobalExceptionMiddleware>();
 
-    // Support Chrome's Private Network Access preflight requests for localhost testing from public websites
-    app.Use(async (context, next) =>
+    // Private Network Access middleware: Only needed for local development
+    // where browser extensions on public websites access localhost API
+    if (app.Environment.IsDevelopment())
     {
-        if (context.Request.Headers.TryGetValue("Access-Control-Request-Private-Network", out var isPrivate) && isPrivate == "true")
+        app.Use(async (context, next) =>
         {
-            context.Response.Headers.Append("Access-Control-Allow-Private-Network", "true");
-        }
-        await next();
-    });
+            if (context.Request.Headers.TryGetValue("Access-Control-Request-Private-Network", out var isPrivate) && isPrivate == "true")
+            {
+                context.Response.Headers.Append("Access-Control-Allow-Private-Network", "true");
+            }
+            await next();
+        });
+    }
 
     app.UseCors("LexiVocabPolicy");
     app.UseMiddleware<SecurityHeadersMiddleware>();
@@ -288,20 +326,9 @@ try
         app.MapScalarApiReference(); // Beautiful API testing UI at /scalar/v1
     }
 
-    // Support reverse proxy (Nginx, Azure, AWS ALB) — trust X-Forwarded-For headers
-    app.UseForwardedHeaders(new ForwardedHeadersOptions
-    {
-        ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
-                           Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
-    });
-
     app.UseResponseCompression();
     app.UseSerilogRequestLogging();
-    
-    // In Docker behind a reverse proxy (or local dev), HTTPS is handled by the host/load balancer.
-    // app.UseHttpsRedirection(); 
 
-    // app.UseCors("LexiVocabPolicy"); // Moved earlier in the pipeline
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
@@ -319,16 +346,42 @@ try
     app.MapControllers();
 
     // ─── Auto-Migrate & Seed Database ──────────────────────────────
+    // Uses a PostgreSQL advisory lock to ensure only ONE instance runs migrations at a time.
+    // This prevents race conditions when multiple Container App replicas start simultaneously.
     var runMigrations = builder.Configuration.GetValue<bool>("RUN_MIGRATIONS", false);
     if (app.Environment.IsDevelopment() || runMigrations)
     {
         using var scope = app.Services.CreateScope();
-        
-        // Call the data seeder to migrate and populate default features and plans
-        var seeder = scope.ServiceProvider.GetRequiredService<LexiVocab.Infrastructure.Persistence.Seeding.DbContextSeeder>();
-        await seeder.SeedAllAsync();
-        Log.Information("✅ Database initialization and seeding completed (Mode: {Mode}).", 
-            runMigrations ? "Production-Override" : "Development");
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        const long migrationLockId = 20260412; // Arbitrary unique ID for advisory lock
+        var conn = db.Database.GetDbConnection();
+        await conn.OpenAsync();
+
+        await using var lockCmd = conn.CreateCommand();
+        lockCmd.CommandText = $"SELECT pg_try_advisory_lock({migrationLockId})";
+        var acquired = (bool)(await lockCmd.ExecuteScalarAsync())!;
+
+        if (acquired)
+        {
+            try
+            {
+                var seeder = scope.ServiceProvider.GetRequiredService<LexiVocab.Infrastructure.Persistence.Seeding.DbContextSeeder>();
+                await seeder.SeedAllAsync();
+                Log.Information("✅ Database initialization and seeding completed (Mode: {Mode}).",
+                    runMigrations ? "Production-Override" : "Development");
+            }
+            finally
+            {
+                await using var unlockCmd = conn.CreateCommand();
+                unlockCmd.CommandText = $"SELECT pg_advisory_unlock({migrationLockId})";
+                await unlockCmd.ExecuteScalarAsync();
+            }
+        }
+        else
+        {
+            Log.Information("⏳ Another instance is running migrations. Skipping on this replica.");
+        }
     }
 
     // ─── Health Check Endpoint ────────────────────────────────
@@ -352,8 +405,8 @@ try
     app.MapGet("/", () => Results.Ok(new
     {
         app = "LexiVocab API",
-        docs = "/scalar/v1",
-        version = "1.0.0"
+        version = "1.0.0",
+        status = "healthy"
     }));
 
     Log.Information("✅ LexiVocab API is running!");
