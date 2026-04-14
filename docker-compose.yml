@@ -1,7 +1,7 @@
 services:
   # ─── PostgreSQL 16 ───────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.9-alpine3.21
     container_name: lexivocab-db
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-lexivocab_dev}
@@ -20,7 +20,7 @@ services:
       - lexivocab-network
       
   ngrok:
-    image: ngrok/ngrok:latest
+    image: ngrok/ngrok:3
     container_name: lexivocab-ngrok
     command:
       - "start"
@@ -42,7 +42,7 @@ services:
 
   # ─── Redis 7 ─────────────────────────────────────────────────
   redis:
-    image: redis:7-alpine
+    image: redis:7.4-alpine3.21
     container_name: lexivocab-redis
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
@@ -52,7 +52,7 @@ services:
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a '$$REDIS_PASSWORD' ping | grep PONG || redis-cli ping | grep PONG"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -66,7 +66,7 @@ services:
 
   # ─── SEQ (Logging & Observability) ───────────────────────────
   seq:
-    image: datalust/seq:latest
+    image: datalust/seq:2024.3
     container_name: lexivocab-seq
     environment:
       - ACCEPT_EULA=Y
@@ -79,7 +79,7 @@ services:
 
   # ─── pgAdmin 4 (Database Manager) ──────────────────────────
   pgadmin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.1
     container_name: lexivocab-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@lexivocab.store}

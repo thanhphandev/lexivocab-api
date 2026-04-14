@@ -1,0 +1,67 @@
+name: CD — Azure Container Apps
+
+on:
+  push:
+    branches: ["main"]
+
+env:
+  IMAGE_NAME: lexivocab-api
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: production  # Requires approval gate in GitHub repo Settings → Environments
+    permissions:
+      id-token: write  # Required for OIDC login
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Authenticate to Azure via OIDC (no stored client secret) ──────────
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── Save current image for rollback ────────────────────────────────────
+      - name: Capture current image tag (for rollback)
+        run: |
+          CURRENT_IMAGE=$(az containerapp show \
+            --name ${{ secrets.CONTAINER_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --query properties.template.containers[0].image -o tsv 2>/dev/null || echo "none")
+          echo "PREVIOUS_IMAGE=$CURRENT_IMAGE" >> $GITHUB_ENV
+          echo "Previous image: $CURRENT_IMAGE"
+
+      # ── Build image on ACR (no local Docker daemon required) ──────────────
+      - name: Build & push image to ACR
+        run: |
+          az acr build \
+            --registry ${{ secrets.ACR_NAME }} \
+            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --image ${{ env.IMAGE_NAME }}:latest \
+            --file Dockerfile \
+            .
+
+      # ── Deploy the new revision to Container Apps ─────────────────────────
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          acrName: ${{ secrets.ACR_NAME }}
+          containerAppName: ${{ secrets.CONTAINER_APP_NAME }}
+          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          imageToDeploy: ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # ── Rollback on failure ────────────────────────────────────────────────
+      - name: Rollback on failure
+        if: failure() && env.PREVIOUS_IMAGE != 'none'
+        run: |
+          echo "⚠️ Deployment failed — rolling back to previous image: ${{ env.PREVIOUS_IMAGE }}"
+          az containerapp update \
+            --name ${{ secrets.CONTAINER_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.PREVIOUS_IMAGE }}

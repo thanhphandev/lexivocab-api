@@ -50,6 +50,12 @@ public interface IVocabularyRepository : IRepository<UserVocabulary>
     Task<(int Total, int Active, int Archived, int DueToday)> GetStatsAsync(
         Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Get in-depth advanced vocabulary stats for a user.
+    /// </summary>
+    Task<(double RetentionRate, double LearningProgress, int WordsLearnedThisWeek, List<string> MostDifficultWords, Dictionary<string, int> CefrSpread)> GetInDepthStatsAsync(
+        Guid userId, CancellationToken ct = default);
+
     Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>

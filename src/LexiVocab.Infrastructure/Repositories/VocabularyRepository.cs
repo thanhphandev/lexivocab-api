@@ -124,6 +124,72 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
         return stats is null ? (0, 0, 0, 0) : (stats.Total, stats.Active, stats.Archived, stats.DueToday);
     }
 
+    public async Task<(double RetentionRate, double LearningProgress, int WordsLearnedThisWeek, List<string> MostDifficultWords, Dictionary<string, int> CefrSpread)> GetInDepthStatsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        // 1. Basic Progress & This Week
+        var weekAgo = DateTime.UtcNow.AddDays(-7);
+        var baseStats = await _dbSet
+            .Where(v => v.UserId == userId)
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Mastered = g.Count(v => v.IsArchived),
+                LearnedThisWeek = g.Count(v => v.CreatedAt >= weekAgo)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        int total = baseStats?.Total ?? 0;
+        int learnedThisWeek = baseStats?.LearnedThisWeek ?? 0;
+        double learningProgress = total > 0 ? (baseStats!.Mastered * 100.0 / total) : 0.0;
+
+        // 2. Retention Rate (Correct Reviews / Total Reviews) -> EF Core optimized count
+        var reviewStats = await _context.Set<ReviewLog>()
+            .Where(r => r.UserId == userId)
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalReviews = g.Count(),
+                CorrectReviews = g.Count(r => (int)r.QualityScore >= 3)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        double retentionRate = reviewStats?.TotalReviews > 0 
+            ? (reviewStats.CorrectReviews * 100.0 / reviewStats.TotalReviews) 
+            : 0.0;
+
+        // 3. Most Difficult Words (Lowest Easiness Factor)
+        var difficultWords = await _dbSet
+            .Where(v => v.UserId == userId && !v.IsArchived && v.RepetitionCount > 0)
+            .OrderBy(v => v.EasinessFactor)
+            .Select(v => v.WordText)
+            .Take(6)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        // 4. CEFR Spread
+        var cefrList = await _dbSet
+            .Where(v => v.UserId == userId && v.MasterVocabularyId != null && v.MasterVocabulary!.CefrLevel != null)
+            .GroupBy(v => v.MasterVocabulary!.CefrLevel)
+            .Select(g => new { Level = g.Key, Count = g.Count() })
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        var cefrDict = cefrList.ToDictionary(k => k.Level!, v => v.Count);
+
+        // Fill out empty standard CEFR levels so UI doesn't break
+        var standardLevels = new[] { "A1", "A2", "B1", "B2", "C1", "C2" };
+        foreach (var level in standardLevels)
+        {
+            if (!cefrDict.ContainsKey(level)) cefrDict[level] = 0;
+        }
+
+        return (Math.Round(retentionRate, 1), Math.Round(learningProgress, 1), learnedThisWeek, difficultWords, cefrDict);
+    }
+
     public async Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct)
         => await _dbSet.CountAsync(v => v.UserId == userId, ct);
 

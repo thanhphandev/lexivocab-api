@@ -225,12 +225,22 @@ public class VocabulariesController : BaseApiController
     /// <remarks>
     /// Returns counts for total, active, archived, and due today words.
     /// </remarks>
-    /// <response code="200">Returns statistics.</response>
     [HttpGet("stats")]
     [ProducesResponseType(typeof(VocabularyStatsDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetStats(CancellationToken ct)
     {
         var result = await _mediator.Send(new GetVocabularyStatsQuery(), ct);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Get advanced analytical stats (Retention, Learning Progress, CEFR Spread).
+    /// </summary>
+    [HttpGet("stats/in-depth")]
+    [ProducesResponseType(typeof(VocabularyInDepthStatsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetInDepthStats(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetVocabularyInDepthStatsQuery(), ct);
         return ToActionResult(result);
     }
 

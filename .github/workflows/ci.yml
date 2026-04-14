@@ -1,0 +1,151 @@
+name: CI — Build & Test
+
+on:
+  push:
+    branches-ignore: ["main"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  # ── Job 1: Build + Unit Tests (no external services needed) ─────────────
+  unit-tests:
+    name: Build & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore LexiVocabAPI.slnx
+
+      - name: Build
+        run: dotnet build LexiVocabAPI.slnx --no-restore -c Release
+
+      - name: Unit Tests — Domain
+        run: |
+          dotnet test tests/LexiVocab.Domain.UnitTests/LexiVocab.Domain.UnitTests.csproj \
+            --no-build -c Release \
+            --logger "trx;LogFileName=domain.trx" \
+            --results-directory ./TestResults
+
+      - name: Unit Tests — Application
+        run: |
+          dotnet test tests/LexiVocab.Application.UnitTests/LexiVocab.Application.UnitTests.csproj \
+            --no-build -c Release \
+            --logger "trx;LogFileName=application.trx" \
+            --results-directory ./TestResults
+
+      - name: Unit Tests — Infrastructure
+        run: |
+          dotnet test tests/LexiVocab.Infrastructure.UnitTests/LexiVocab.Infrastructure.UnitTests.csproj \
+            --no-build -c Release \
+            --logger "trx;LogFileName=infrastructure.trx" \
+            --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-${{ github.run_id }}
+          path: ./TestResults/*.trx
+
+      - name: Vulnerability scan (SCA)
+        run: dotnet list LexiVocabAPI.slnx package --vulnerable --include-transitive
+        continue-on-error: true
+
+  # ── Job 2: Integration Tests (requires Postgres + Redis) ────────────────
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci
+          POSTGRES_DB: LexiVocabDB_Test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore LexiVocabAPI.slnx
+
+      - name: Build
+        run: dotnet build LexiVocabAPI.slnx --no-restore -c Release
+
+      - name: Integration Tests — Infrastructure
+        run: |
+          dotnet test tests/LexiVocab.Infrastructure.IntegrationTests/LexiVocab.Infrastructure.IntegrationTests.csproj \
+            --no-build -c Release \
+            --logger "trx;LogFileName=infra-integration.trx" \
+            --results-directory ./TestResults
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=LexiVocabDB_Test;Username=postgres;Password=postgres_ci"
+          ConnectionStrings__Redis: "localhost:6379"
+          Jwt__Secret: ${{ secrets.CI_JWT_SECRET }}
+
+      - name: Integration Tests — API
+        run: |
+          dotnet test tests/LexiVocab.API.IntegrationTests/LexiVocab.API.IntegrationTests.csproj \
+            --no-build -c Release \
+            --logger "trx;LogFileName=api-integration.trx" \
+            --results-directory ./TestResults
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=LexiVocabDB_Test;Username=postgres;Password=postgres_ci"
+          ConnectionStrings__Redis: "localhost:6379"
+          Jwt__Secret: ${{ secrets.CI_JWT_SECRET }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results-${{ github.run_id }}
+          path: ./TestResults/*.trx
+
+

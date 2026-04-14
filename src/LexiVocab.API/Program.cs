@@ -142,6 +142,10 @@ try
     var rateLimitJsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     // ─── Rate Limiting (IP-based, PartitionedRateLimiter) ─────
+    // ⚠️ NOTE: This uses in-memory state — each replica tracks its own counters.
+    // In Azure Container Apps with multiple replicas, effective limit = limit × replica_count.
+    // For production with >1 replica, consider Redis-backed distributed rate limiting
+    // (e.g. RedisRateLimitingMiddleware or AspNetCoreRateLimit with Redis store).
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

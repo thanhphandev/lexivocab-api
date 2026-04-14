@@ -66,7 +66,9 @@ public class ImpersonateUserHandler : IRequestHandler<ImpersonateUserCommand, Re
             tokenResult.Token,
             null, 
             tokenResult.ExpiresAt,
-            targetUser.AvatarUrl
+            targetUser.AvatarUrl,
+            targetUser.EmailConfirmed,
+            targetUser.IsActive
         );
 
         return Result<AuthResponse>.Success(response);
