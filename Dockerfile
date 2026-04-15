@@ -3,7 +3,7 @@
 # ──────────────────────────────────────────────────────────────────
 
 # Stage 1: Build
-FROM mcr.microsoft.com/dotnet/sdk:10.0.100-alpine3.21 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /app
 
 # Copy project files first for layer caching (restore only reruns when .csproj changes)
@@ -19,7 +19,7 @@ COPY . .
 RUN dotnet publish src/LexiVocab.API/LexiVocab.API.csproj -c Release -o /out --no-restore
 
 # Stage 2: Runtime (minimal image ~80MB)
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.100-alpine3.21
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
 WORKDIR /app
 
 # Install ICU for globalization + Kerberos libs for PostgreSQL GSSAPI
