@@ -171,7 +171,7 @@ public static class DependencyInjection
         services.AddHangfireServer(options =>
         {
             options.WorkerCount = hangfireWorkers;
-            options.ServerName = $"{Environment.MachineName}:{Guid.NewGuid():N[..8]}";
+            options.ServerName = $"{Environment.MachineName}:{Guid.NewGuid().ToString("N")[..8]}";
         });
 
         // ─── Audit Logging ────────────────────────────────────
