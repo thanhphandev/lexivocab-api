@@ -23,67 +23,18 @@ namespace LexiVocab.Infrastructure;
 /// </summary>
 public static class DependencyInjection
 {
-    private static string NormalizePostgresConnectionString(string connectionString)
-    {
-        if (string.IsNullOrWhiteSpace(connectionString)) return connectionString;
-        
-        if (!connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) && 
-            !connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
-        {
-            return connectionString;
-        }
+    private static string GetDbConnectionString(IConfiguration configuration) =>
+        configuration.GetConnectionString("DefaultConnection") 
+        ?? configuration["DATABASE_URL"] 
+        ?? throw new InvalidOperationException("Database connection string not found.");
 
-        try
-        {
-            var uri = new Uri(connectionString);
-            var userInfo = uri.UserInfo.Split(':');
-            var user = userInfo[0];
-            var password = userInfo.Length > 1 ? userInfo[1] : string.Empty;
-            var host = uri.Host;
-            var port = uri.Port > 0 ? uri.Port : 5432;
-            var database = uri.AbsolutePath.TrimStart('/');
-
-            // Reconstruct as standard Npgsql Key=Value string compatible with all providers (Hangfire, etc)
-            // Dynamic pool size: Default 100 for single-instance, but when scaling out
-            // (e.g. 5 replicas × 100 = 500 connections), we can exceed Postgres max_connections.
-            // Override via env var DB_MAX_POOL_SIZE to match: floor(max_connections / replica_count).
-            var poolSize = Environment.GetEnvironmentVariable("DB_MAX_POOL_SIZE") ?? "100";
-            return $"Host={host};Port={port};Database={database};Username={user};Password={password};Pooling=true;Maximum Pool Size={poolSize};Connection Idle Lifetime=300;SslMode=Prefer;Trust Server Certificate=true;";
-        }
-        catch
-        {
-            return connectionString;
-        }
-    }
-
-    private static string GetDbConnectionString(IConfiguration configuration)
-    {
-        // 1. Try direct DATABASE_URL (Railway/Heroku default)
-        var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-        if (!string.IsNullOrWhiteSpace(dbUrl)) return NormalizePostgresConnectionString(dbUrl);
-
-        // 2. Try ConnectionStrings:DefaultConnection
-        var connStr = configuration.GetConnectionString("DefaultConnection") 
-               ?? throw new InvalidOperationException("Database connection string not found.");
-        
-        return NormalizePostgresConnectionString(connStr);
-    }
-
-    private static string? GetRedisConnectionString(IConfiguration configuration)
-    {
-        // 1. Try direct REDIS_URL
-        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-        if (!string.IsNullOrWhiteSpace(redisUrl)) return redisUrl;
-
-        // 2. Try ConnectionStrings:Redis
-        return configuration.GetConnectionString("Redis");
-    }
+    private static string? GetRedisConnectionString(IConfiguration configuration) =>
+        configuration.GetConnectionString("Redis") ?? configuration["REDIS_URL"];
 
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // ─── EF Core + PostgreSQL ─────────────────────────────
         var dbConnectionString = GetDbConnectionString(configuration);
         services.AddDbContext<AppDbContext>(options =>
         {

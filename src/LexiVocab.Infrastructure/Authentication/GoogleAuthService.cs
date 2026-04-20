@@ -31,9 +31,14 @@ public class GoogleAuthService : IGoogleAuthService
                 return null;
             }
 
+            var allowedAudiences = _expectedClientId
+                .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(id => id.Trim())
+                .ToArray();
+
             var settings = new GoogleJsonWebSignature.ValidationSettings
             {
-                Audience = new[] { _expectedClientId }
+                Audience = allowedAudiences
             };
 
             var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
