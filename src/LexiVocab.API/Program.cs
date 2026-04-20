@@ -69,32 +69,22 @@ try
     builder.Services.AddInfrastructure(builder.Configuration);
 
     // ─── Health Checks ────────────────────────────────────────
+    var dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+                             ?? builder.Configuration["DATABASE_URL"];
     var healthChecks = builder.Services.AddHealthChecks();
     
-    // Diagnostic log for Cloud Deployment
-    var rawDbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? builder.Configuration.GetConnectionString("DefaultConnection");
-    if (!string.IsNullOrEmpty(rawDbUrl))
+    if (!string.IsNullOrEmpty(dbConnectionString))
     {
-        var displayHost = "Unknown/URI";
-        if (rawDbUrl.Contains("Host=", StringComparison.OrdinalIgnoreCase))
-        {
-            var parts = rawDbUrl.Split(';');
-            var hostPart = parts.FirstOrDefault(p => p.StartsWith("Host=", StringComparison.OrdinalIgnoreCase));
-            displayHost = hostPart?.Split('=')[1] ?? displayHost;
-        }
-        else if (rawDbUrl.Contains("@"))
-        {
-            displayHost = rawDbUrl.Split('@')[1].Split('/')[0].Split(':')[0];
-        }
-        Log.Information("🏗️ Database resolved. Host: {Host}, Environment: {Env}", displayHost, builder.Environment.EnvironmentName);
-        healthChecks.AddNpgSql(rawDbUrl);
+        Log.Information("🏗️ Database health check registered.");
+        healthChecks.AddNpgSql(dbConnectionString);
     }
         
-    var rawRedisUrl = Environment.GetEnvironmentVariable("REDIS_URL") ?? builder.Configuration.GetConnectionString("Redis");
-    if (!string.IsNullOrWhiteSpace(rawRedisUrl))
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
+                                ?? builder.Configuration["REDIS_URL"];
+    if (!string.IsNullOrWhiteSpace(redisConnectionString))
     {
-        Log.Information("🏗️ Redis resolved (Source: {Source})", Environment.GetEnvironmentVariable("REDIS_URL") != null ? "REDIS_URL" : "Config");
-        healthChecks.AddRedis(rawRedisUrl);
+        Log.Information("🏗️ Redis health check registered.");
+        healthChecks.AddRedis(redisConnectionString);
     }
 
     // ─── Controllers ──────────────────────────────────────────
