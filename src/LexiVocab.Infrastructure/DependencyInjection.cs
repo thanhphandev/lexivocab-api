@@ -25,34 +25,19 @@ public static class DependencyInjection
 {
     private static string GetDbConnectionString(IConfiguration configuration)
     {
-        // Priority 1: Environment variable DATABASE_URL (common in Railway/Docker)
-        var connectionString = configuration["DATABASE_URL"];
-
-        // Priority 2: Standard ConnectionStrings:DefaultConnection
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            connectionString = configuration.GetConnectionString("DefaultConnection");
-        }
-
-        connectionString = connectionString?.Trim('"');
+        var connectionString = (configuration.GetConnectionString("DefaultConnection") 
+            ?? configuration["DATABASE_URL"])?.Trim('"');
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new InvalidOperationException("Database connection string not found. Please set DATABASE_URL or ConnectionStrings:DefaultConnection.");
+            throw new InvalidOperationException("Database connection string not found in Configuration or DATABASE_URL environment variable.");
         }
 
         return ParseDatabaseUrl(connectionString);
     }
 
-    private static string? GetRedisConnectionString(IConfiguration configuration)
-    {
-        var redisUrl = configuration["REDIS_URL"];
-        if (string.IsNullOrWhiteSpace(redisUrl))
-        {
-            redisUrl = configuration.GetConnectionString("Redis");
-        }
-        return redisUrl?.Trim('"');
-    }
+    private static string? GetRedisConnectionString(IConfiguration configuration) =>
+        configuration.GetConnectionString("Redis") ?? configuration["REDIS_URL"];
 
     private static string ParseDatabaseUrl(string url)
     {

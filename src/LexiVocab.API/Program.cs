@@ -90,12 +90,9 @@ try
         catch { return url; }
     }
 
-    var dbConnectionString = builder.Configuration["DATABASE_URL"];
-    if (string.IsNullOrWhiteSpace(dbConnectionString))
-    {
-        dbConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-    }
-    dbConnectionString = ParseDatabaseUrl(dbConnectionString?.Trim('"') ?? "");
+    var rawDbConnectionString = (builder.Configuration.GetConnectionString("DefaultConnection") 
+                                 ?? builder.Configuration["DATABASE_URL"])?.Trim('"');
+    var dbConnectionString = ParseDatabaseUrl(rawDbConnectionString ?? "");
     
     var healthChecks = builder.Services.AddHealthChecks();
     
@@ -105,13 +102,8 @@ try
         healthChecks.AddNpgSql(dbConnectionString);
     }
         
-    var redisConnectionString = builder.Configuration["REDIS_URL"];
-    if (string.IsNullOrWhiteSpace(redisConnectionString))
-    {
-        redisConnectionString = builder.Configuration.GetConnectionString("Redis");
-    }
-    redisConnectionString = redisConnectionString?.Trim('"');
-
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis") 
+                                ?? builder.Configuration["REDIS_URL"];
     if (!string.IsNullOrWhiteSpace(redisConnectionString))
     {
         Log.Information("🏗️ Redis health check registered.");
