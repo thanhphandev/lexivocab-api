@@ -9,12 +9,14 @@ resource "azurerm_postgresql_flexible_server" "main" {
   administrator_password = var.db_password
   zone                   = "1"
 
+  public_network_access_enabled = false
+
   storage_mb = 32768
   sku_name   = "B_Standard_B1ms" # Burstable SKU để tiết kiệm chi phí
 
-  # Production backup: 35 days retention, geo-redundant for disaster recovery
-  backup_retention_days        = 35
-  geo_redundant_backup_enabled = true
+  # Development/Demo backup: 7 days retention (minimum), no geo-redundancy to save costs
+  backup_retention_days        = 7
+  geo_redundant_backup_enabled = false
 
   depends_on = [azurerm_private_dns_zone_virtual_network_link.database]
 }

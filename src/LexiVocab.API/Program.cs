@@ -15,7 +15,8 @@ using System.Threading.RateLimiting;
 using Hangfire;
 using Hangfire.Dashboard;
 using Asp.Versioning;
-
+using StackExchange.Redis;
+using RedisRateLimiting;
 // ────────────────────────────────────────────────────────────────
 // Bootstrap Serilog (before anything else can crash)
 // ────────────────────────────────────────────────────────────────
@@ -131,11 +132,7 @@ try
     // Cached options to avoid per-request GC allocation
     var rateLimitJsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    // ─── Rate Limiting (IP-based, PartitionedRateLimiter) ─────
-    // ⚠️ NOTE: This uses in-memory state — each replica tracks its own counters.
-    // In Azure Container Apps with multiple replicas, effective limit = limit × replica_count.
-    // For production with >1 replica, consider Redis-backed distributed rate limiting
-    // (e.g. RedisRateLimitingMiddleware or AspNetCoreRateLimit with Redis store).
+    // ─── Rate Limiting (IP-based, Distributed via Redis) ─────
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -155,65 +152,50 @@ try
             await context.HttpContext.Response.WriteAsync(response, cancellationToken);
         };
 
+        RateLimitPartition<string> CreatePartition(HttpContext context, string policyName, int permitLimit, TimeSpan window)
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+            var partitionKey = $"RateLimit:{policyName}:{ip}";
+            var multiplexer = context.RequestServices.GetService<IConnectionMultiplexer>();
+
+            if (multiplexer != null)
+            {
+                return RedisRateLimitPartition.GetFixedWindowRateLimiter(
+                    partitionKey,
+                    _ => new RedisFixedWindowRateLimiterOptions
+                    {
+                        ConnectionMultiplexerFactory = () => multiplexer,
+                        PermitLimit = permitLimit,
+                        Window = window
+                    });
+            }
+            
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey,
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = permitLimit,
+                    Window = window,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                });
+        }
+
         // Global: 100 requests per minute per IP
-        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 100,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 10
-                }));
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context => 
+            CreatePartition(context, "Global", 100, TimeSpan.FromMinutes(1)));
 
-        // Strict: login/register/forgot-password — chống brute-force (5 req/min)
-        options.AddPolicy("AuthStrictLimit", context =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 5,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0 // Reject immediately
-                }));
+        // Strict: login/register/forgot-password (5 req/min)
+        options.AddPolicy("AuthStrictLimit", context => CreatePartition(context, "AuthStrict", 5, TimeSpan.FromMinutes(1)));
 
-        // Lenient: /me, /permissions, profile reads — nhiều tab/client gọi liên tục (60 req/min)
-        options.AddPolicy("UserReadLimit", context =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 60,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 5
-                }));
+        // Lenient: /me, profile reads (60 req/min)
+        options.AddPolicy("UserReadLimit", context => CreatePartition(context, "UserRead", 60, TimeSpan.FromMinutes(1)));
 
-        // Refresh token: multi-tab bursting, nhưng vẫn có giới hạn (30 req/min)
-        options.AddPolicy("RefreshLimit", context =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 30,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0
-                }));
+        // Refresh token: multi-tab bursting (30 req/min)
+        options.AddPolicy("RefreshLimit", context => CreatePartition(context, "Refresh", 30, TimeSpan.FromMinutes(1)));
 
-        // Sensitive writes: đổi password, đổi email, xóa tài khoản (10 req/min)
-        options.AddPolicy("SensitiveWriteLimit", context =>
-            RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 10,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                    QueueLimit = 0
-                }));
+        // Sensitive writes: đổi password, email, xóa tài khoản (10 req/min)
+        options.AddPolicy("SensitiveWriteLimit", context => CreatePartition(context, "SensitiveWrite", 10, TimeSpan.FromMinutes(1)));
     });
 
     // ─── Response Compression ─────────────────────────────────
@@ -270,11 +252,18 @@ try
     // CRITICAL: ForwardedHeaders MUST be first so Rate Limiting gets the real client IP
     // (not the proxy/load balancer IP). Without this, in Azure Container Apps,
     // ALL requests appear from the same internal IP → rate limits break.
-    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    var forwardedHeadersOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
                            Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
-    });
+    };
+    
+    // Clear KnownNetworks and KnownProxies so we trust the headers from any internal Envoy/Proxy
+    // typical in distributed environments like Azure Container Apps.
+    forwardedHeadersOptions.KnownIPNetworks.Clear();
+    forwardedHeadersOptions.KnownProxies.Clear();
+
+    app.UseForwardedHeaders(forwardedHeadersOptions);
 
     app.UseMiddleware<GlobalExceptionMiddleware>();
 

@@ -37,3 +37,10 @@ resource "azurerm_key_vault_access_policy" "api" {
     "List"
   ]
 }
+
+# Grant Container App Managed Identity access to pull from ACR
+resource "azurerm_role_assignment" "container_app_acr_pull" {
+  scope                = azurerm_container_registry.main.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_container_app.api.identity[0].principal_id
+}

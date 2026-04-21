@@ -488,3 +488,14 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 .gitnexus
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform/
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+.terraform.lock.hcl

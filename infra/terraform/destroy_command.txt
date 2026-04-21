@@ -1,0 +1,72 @@
+az group delete --name rg-lexivocab-prodv2 --yes --no-wait
+terraform destroy -var-file="prod.tfvars" -var="environment=prodv2" -auto-approve
+chỉ cho phép deploy tài nguyên ở đúng 5 khu vực sau:
+
+malaysiawest
+koreacentral
+japanwest
+indonesiacentral
+centralindia
+
+
+Ran command: `cd lexivocabapi`
+Ran command: `az acr login --name acrlexivocabprodveju`
+Listed directory .github
+Listed directory workflows
+Viewed cd.yml:1-68
+Viewed ci.yml:1-152
+
+🤖 **Applying knowledge of `@[orchestrator]`...**
+
+Mình đã kiểm tra hệ thống và thấy bạn đã có sẵn file `cd.yml` và `ci.yml` rất xịn sò trong thư mục `.github/workflows`. 
+
+### Tin vui cho bạn:
+Bạn **không cần cài đặt Docker** hay chạy Docker Desktop trên máy local nữa! File `cd.yml` mình viết đã sử dụng lệnh **`az acr build`**. Lệnh này sẽ đẩy code của bạn lên "mây" và Azure sẽ tự build Docker giúp bạn. Điều này giúp máy bạn nhẹ hơn và tránh được lỗi `DOCKER_COMMAND_ERROR` bạn vừa gặp.
+
+Để hệ thống Automation này hoạt động, bạn chỉ cần thực hiện 2 việc sau:
+
+---
+
+### Bước 1: Cấu hình GitHub Secrets
+Bạn vào Repo GitHub của mình -> **Settings** -> **Secrets and variables** -> **Actions** -> **New repository secret** và thêm các biến sau:
+
+| Tên Secret | Giá trị (Dựa trên hạ tầng của bạn) |
+| :--- | :--- |
+| `ACR_NAME` | `acrlexivocabprodveju` |
+| `CONTAINER_APP_NAME` | `ca-lexivocab-api` |
+| `AZURE_RESOURCE_GROUP` | `rg-lexivocab-prod` |
+| `AZURE_SUBSCRIPTION_ID` | `fd0844e4-0dce-4350-9ec0-0642233c3451` |
+| `AZURE_TENANT_ID` | `2e9cd779-c2a0-4d60-a611-64b0602a79dd` |
+| `AZURE_CLIENT_ID` | *(Xem bước 2 bên dưới để lấy)* |
+
+---
+
+### Bước 2: Cấp quyền cho GitHub truy cập Azure (OIDC)
+Vì chúng ta dùng phương pháp bảo mật cao nhất (OIDC - không cần mật khẩu), bạn cần chạy lệnh này trong Terminal để tạo một "chứng minh thư" cho GitHub:
+
+```powershell
+# 1. Tạo một Service Principal cho GitHub
+az ad sp create-for-rbac --name "github-actions-lexivocab" --role contributor --scopes /subscriptions/fd0844e4-0dce-4350-9ec0-0642233c3451/resourceGroups/rg-lexivocab-prod --sdk-auth
+```
+
+**Sau khi App chạy xong, nó sẽ trả về một đoạn JSON. Bạn hãy lưu:**
+*   `clientId`: Copy vào secret `AZURE_CLIENT_ID` trên GitHub.
+*   Sau đó, bạn cần vào [Azure Portal](https://portal.azure.com), tìm đến **App Registrations** -> Chọn cái tên "github-actions-lexivocab" -> **Certificates & secrets** -> **Federated credentials** -> Thêm mới để cho phép GitHub Repo của bạn được phép "đăng nhập".
+
+---
+
+### 🚀 Cách kích hoạt Deploy lần đầu:
+Sau khi xong 2 bước trên, bạn chỉ cần thực hiện lệnh Git thần thánh này:
+
+```powershell
+git add .
+git commit -m "feat: setup automated deployment"
+git push origin main
+```
+
+**Mọi thứ sẽ tự động chạy:**
+1.  GitHub sẽ tự Build .NET 10.
+2.  Tự tạo Docker Image trên Azure Cloud.
+3.  Tự cập nhật trang web của bạn.
+
+Bạn có gặp khó khăn ở đoạn tạo **Federated credentials** không? Nếu có mình sẽ hướng dẫn chi tiết từng click chuột trên giao diện Azure!
