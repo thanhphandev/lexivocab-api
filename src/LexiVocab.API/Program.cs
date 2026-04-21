@@ -16,6 +16,7 @@ using Hangfire;
 using Hangfire.Dashboard;
 using Asp.Versioning;
 using StackExchange.Redis;
+using Microsoft.AspNetCore.DataProtection;
 using RedisRateLimiting;
 // ────────────────────────────────────────────────────────────────
 // Bootstrap Serilog (before anything else can crash)
@@ -197,6 +198,24 @@ try
         // Sensitive writes: đổi password, email, xóa tài khoản (10 req/min)
         options.AddPolicy("SensitiveWriteLimit", context => CreatePartition(context, "SensitiveWrite", 10, TimeSpan.FromMinutes(1)));
     });
+
+    // ─── Data Protection (Distributed via Redis) ─────────────
+    // Resolves: "Storing keys in a directory that may not be persisted"
+    if (!string.IsNullOrWhiteSpace(redisConnectionString))
+    {
+        try 
+        {
+            var redis = ConnectionMultiplexer.Connect(redisConnectionString);
+            builder.Services.AddDataProtection()
+                .SetApplicationName("lexivocab")
+                .PersistKeysToStackExchangeRedis(redis, "DataProtection-Keys");
+            Log.Information("✅ DataProtection keys are being persisted to Redis.");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ Could not connect to Redis for DataProtection. Falling back to ephemeral storage.");
+        }
+    }
 
     // ─── Response Compression ─────────────────────────────────
     builder.Services.AddResponseCompression(options =>

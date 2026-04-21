@@ -33,3 +33,5 @@ public record StreakDto(
     int CurrentStreak,
     int LongestStreak,
     DateOnly? LastActiveDate);
+
+public record DueCountDto(int DueCount);

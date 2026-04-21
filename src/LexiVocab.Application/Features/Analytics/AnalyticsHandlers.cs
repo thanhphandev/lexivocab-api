@@ -189,3 +189,43 @@ public class GetStreakHandler : IRequestHandler<GetStreakQuery, Result<StreakDto
         return Result<StreakDto>.Success(streakDto);
     }
 }
+
+// ─── Due Count ──────────────────────────────────────────────────
+public record GetDueCountQuery : IRequest<Result<DueCountDto>>;
+
+public class GetDueCountHandler : IRequestHandler<GetDueCountQuery, Result<DueCountDto>>
+{
+    private readonly IUnitOfWork _uow;
+    private readonly ICurrentUserService _currentUser;
+    private readonly IDistributedCache _cache;
+
+    public GetDueCountHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
+    {
+        _uow = uow;
+        _currentUser = currentUser;
+        _cache = cache;
+    }
+
+    public async Task<Result<DueCountDto>> Handle(GetDueCountQuery request, CancellationToken ct)
+    {
+        var userId = _currentUser.UserId!.Value;
+
+        var version = await _cache.GetStringAsync($"vocab-v:{userId}", ct) ?? "0";
+        var cacheKey = $"analytics-due-count:{userId}:v{version}";
+
+        var cachedData = await _cache.GetStringAsync(cacheKey, ct);
+        if (!string.IsNullOrEmpty(cachedData))
+        {
+            var result = JsonSerializer.Deserialize<DueCountDto>(cachedData);
+            if (result != null) return Result<DueCountDto>.Success(result);
+        }
+
+        var (_, _, _, dueToday) = await _uow.Vocabularies.GetStatsAsync(userId, ct);
+        var dueCountDto = new DueCountDto(dueToday);
+
+        var options = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) };
+        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(dueCountDto), options, ct);
+
+        return Result<DueCountDto>.Success(dueCountDto);
+    }
+}

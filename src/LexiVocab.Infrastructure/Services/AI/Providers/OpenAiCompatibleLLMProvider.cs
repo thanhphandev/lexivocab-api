@@ -73,7 +73,11 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         }
 
         // 2. Initialize compatible OpenAI Client
-        var options = new OpenAI.OpenAIClientOptions { Endpoint = new Uri(baseUrl) };
+        var options = new OpenAI.OpenAIClientOptions 
+        { 
+            Endpoint = new Uri(baseUrl),
+            NetworkTimeout = TimeSpan.FromSeconds(300) // Increase timeout to 5 minutes
+        };
         var client = new ChatClient(modelId, new ApiKeyCredential(apiKey), options);
 
         // 3. Map messages

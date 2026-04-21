@@ -65,5 +65,18 @@ public class AnalyticsController : BaseApiController
         var result = await _mediator.Send(new GetStreakQuery(), ct);
         return ToActionResult(result);
     }
+    
+    /// <summary>
+    /// Get count of words due for review today.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <response code="200">Returns due count.</response>
+    [HttpGet("due-count")]
+    [ProducesResponseType(typeof(DueCountDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDueCount(CancellationToken ct)
+    {
+        var result = await _mediator.Send(new GetDueCountQuery(), ct);
+        return ToActionResult(result);
+    }
 
 }
