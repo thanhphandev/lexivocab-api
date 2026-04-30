@@ -11,11 +11,11 @@ public class FeatureGatingBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<FeatureGatingBehavior<TRequest, TResponse>> _logger;
 
-    public FeatureGatingBehavior(IFeatureGatingService featureGating, ICurrentUserService currentUser, ILogger<FeatureGatingBehavior<TRequest, TResponse>> _logger)
+    public FeatureGatingBehavior(IFeatureGatingService featureGating, ICurrentUserService currentUser, ILogger<FeatureGatingBehavior<TRequest, TResponse>> logger)
     {
         _featureGating = featureGating;
         _currentUser = currentUser;
-        this._logger = _logger;
+        _logger = logger;
     }
 
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)

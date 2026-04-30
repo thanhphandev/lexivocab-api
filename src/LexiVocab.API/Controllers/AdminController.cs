@@ -9,7 +9,6 @@ using LexiVocab.Application.Features.Admin.Plans.Queries;
 using LexiVocab.Application.Features.Admin.Vocabularies.Commands;
 using LexiVocab.Application.Features.Admin.Vocabularies.Queries;
 using LexiVocab.Domain.Enums;
-using LexiVocab.Domain.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,12 +26,10 @@ namespace LexiVocab.API.Controllers;
 public class AdminController : BaseApiController
 {
     private readonly IMediator _mediator;
-    private readonly IAuditLogRepository _auditLogRepository;
 
-    public AdminController(IMediator mediator, IAuditLogRepository auditLogRepository)
+    public AdminController(IMediator mediator)
     {
         _mediator = mediator;
-        _auditLogRepository = auditLogRepository;
     }
 
     /// <summary>
@@ -180,7 +177,7 @@ public class AdminController : BaseApiController
     /// <param name="ct">Cancellation token.</param>
     /// <response code="200">Returns paginated audit logs.</response>
     [HttpGet("audit-logs")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResult<AuditLogDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAuditLogs(
         [FromQuery] Guid? userId = null,
         [FromQuery] AuditAction? action = null,
@@ -196,39 +193,9 @@ public class AdminController : BaseApiController
         pageSize = Math.Clamp(pageSize, 1, 200);
         page = Math.Max(1, page);
 
-        var (items, totalCount) = await _auditLogRepository.GetPagedAsync(
-            userId, action, entityType, fromDate, toDate, search, page, pageSize, ct);
-
-        return Ok(new
-        {
-            success = true,
-            data = new
-            {
-                items = items.Select(a => new
-                {
-                    a.Id,
-                    a.UserId,
-                    a.UserEmail,
-                    action = a.Action.ToString(),
-                    a.EntityType,
-                    a.EntityId,
-                    oldValues = a.OldValues,
-                    newValues = a.NewValues,
-                    a.IpAddress,
-                    a.UserAgent,
-                    a.RequestName,
-                    a.TraceId,
-                    a.AdditionalInfo,
-                    a.IsSuccess,
-                    a.DurationMs,
-                    a.Timestamp
-                }),
-                totalCount,
-                page,
-                pageSize,
-                totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-            }
-        });
+        var result = await _mediator.Send(new GetAuditLogsQuery(
+            userId, action, entityType, fromDate, toDate, search, page, pageSize), ct);
+        return ToActionResult(result);
     }
 
     // ─── Feature Definitions ────────────────────────────────

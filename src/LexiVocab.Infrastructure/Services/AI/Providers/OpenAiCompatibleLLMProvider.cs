@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Models.AI;
 using Microsoft.Extensions.Configuration;
@@ -17,7 +11,6 @@ namespace LexiVocab.Infrastructure.Services.AI.Providers;
 
 public class OpenAiCompatibleLLMProvider : ILLMProvider
 {
-    private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OpenAiCompatibleLLMProvider> _logger;
 
@@ -26,7 +19,6 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         IConfiguration configuration, 
         ILogger<OpenAiCompatibleLLMProvider> logger)
     {
-        _httpClient = httpClient;
         _configuration = configuration;
         _logger = logger;
     }

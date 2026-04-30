@@ -1,6 +1,5 @@
 using FluentAssertions;
 using LexiVocab.Domain.Entities;
-using Xunit;
 
 namespace LexiVocab.Domain.UnitTests.Entities;
 

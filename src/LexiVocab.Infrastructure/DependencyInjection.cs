@@ -142,7 +142,7 @@ public static class DependencyInjection
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
-            .UsePostgreSqlStorage(dbConnectionString));
+            .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(dbConnectionString)));
 
         // Hangfire worker count: In scaled environments, each replica runs its own workers.
         // Keep worker count conservative to avoid overwhelming the database with concurrent jobs.
