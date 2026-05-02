@@ -187,6 +187,12 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
             if (!cefrDict.ContainsKey(level)) cefrDict[level] = 0;
         }
 
+        // Uncategorized count (Custom words or missing CEFR)
+        var uncategorizedCount = await _dbSet
+            .CountAsync(v => v.UserId == userId && (v.MasterVocabularyId == null || v.MasterVocabulary!.CefrLevel == null), ct);
+        
+        cefrDict["Uncategorized"] = uncategorizedCount;
+
         return (Math.Round(retentionRate, 1), Math.Round(learningProgress, 1), learnedThisWeek, difficultWords, cefrDict);
     }
 
