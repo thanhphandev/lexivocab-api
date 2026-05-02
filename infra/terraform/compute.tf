@@ -11,6 +11,7 @@ resource "azurerm_container_app_environment" "main" {
   location                   = azurerm_resource_group.main.location
   resource_group_name        = azurerm_resource_group.main.name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+  infrastructure_subnet_id   = azurerm_subnet.apps.id # Gắn vào mạng nội bộ
 }
 
 resource "azurerm_container_app" "api" {
@@ -24,10 +25,11 @@ resource "azurerm_container_app" "api" {
     type = "SystemAssigned"
   }
 
-  # ACR pull credentials — allows Container App to pull images from private registry
+  # ACR pull credentials — using Admin password for immediate access
   registry {
-    identity = "system"
-    server   = azurerm_container_registry.main.login_server
+    server               = azurerm_container_registry.main.login_server
+    username             = azurerm_container_registry.main.admin_username
+    password_secret_name = "acr-password"
   }
 
   # ─── Secrets Configuration ──────────────────────────────────────────
@@ -63,12 +65,16 @@ resource "azurerm_container_app" "api" {
     name  = "encryption-key"
     value = var.encryption_key
   }
+  secret {
+    name  = "acr-password"
+    value = azurerm_container_registry.main.admin_password
+  }
 
   template {
     container {
       name   = "lexivocab-api"
       # image  = "${azurerm_container_registry.main.login_server}/lexivocab-api:latest" # CI/CD sẽ update tag
-      image  = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" 
+      image  = "acrlexivocabprodoxvf.azurecr.io/lexivocab-api:latest" 
       cpu    = var.container_cpu
       memory = var.container_memory
 
@@ -94,7 +100,7 @@ resource "azurerm_container_app" "api" {
       # ─── Migration Flag ─────────────────────────────────────────────
       env {
         name  = "RUN_MIGRATIONS"
-        value = "true"
+        value = "false"
       }
 
       # ─── Hangfire Workers (conservative for scaled environment) ─────
@@ -262,35 +268,35 @@ resource "azurerm_container_app" "api" {
       }
 
       # Liveness probe: Tells Azure when to RESTART a broken container
-      # liveness_probe {
-      #   transport               = "HTTP"
-      #   port                    = 8080
-      #   path                    = "/health"
-      #   initial_delay           = 10
-      #   interval_seconds        = 30
-      #   timeout                 = 5
-      #   failure_count_threshold = 3
-      # }
+      liveness_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/health"
+        initial_delay           = 30
+        interval_seconds        = 30
+        timeout                 = 5
+        failure_count_threshold = 3
+      }
 
       # Readiness probe: Tells Azure when this replica is ready to receive traffic
-      # readiness_probe {
-      #   transport               = "HTTP"
-      #   port                    = 8080
-      #   path                    = "/health"
-      #   interval_seconds        = 10
-      #   timeout                 = 3
-      #   failure_count_threshold = 3
-      #   success_count_threshold = 1
-      # }
+      readiness_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/health"
+        interval_seconds        = 10
+        timeout                 = 3
+        failure_count_threshold = 3
+        success_count_threshold = 1
+      }
 
-      # startup_probe {
-      #   transport               = "HTTP"
-      #   port                    = 8080
-      #   path                    = "/health"
-      #   interval_seconds        = 15
-      #   timeout                 = 3
-      #   failure_count_threshold = 10 # 10 × 15s = 150s tolerance for startup
-      # }
+      startup_probe {
+        transport               = "HTTP"
+        port                    = 8080
+        path                    = "/health"
+        interval_seconds        = 30
+        timeout                 = 5
+        failure_count_threshold = 10 # 10 × 30s = 300s (5 phút) cho startup
+      }
     }
 
     # ─── Auto-scaling: Scale based on concurrent HTTP requests ─────────
@@ -307,7 +313,7 @@ resource "azurerm_container_app" "api" {
   ingress {
     allow_insecure_connections = false
     external_enabled           = true
-    target_port                = 80 # Cổng 80 cho image 'helloworld' mồi. Sau này CI/CD tự update lên 8080.
+    target_port                = 8080 
     traffic_weight {
       percentage      = 100
       latest_revision = true

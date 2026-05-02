@@ -10,6 +10,22 @@ resource "azurerm_virtual_network" "main" {
   address_space       = ["10.0.0.0/16"]
 }
 
+# Subnet cho Container App Environment
+resource "azurerm_subnet" "apps" {
+  name                 = "snet-apps"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["10.0.2.0/23"] # Tăng lên /23 theo yêu cầu của Azure cho ACA
+
+  delegation {
+    name = "containerapps-delegation"
+    service_delegation {
+      name    = "Microsoft.App/environments"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
+    }
+  }
+}
+
 # Subnet cho PostgreSQL Flexible Server
 resource "azurerm_subnet" "database" {
   name                 = "snet-database"
