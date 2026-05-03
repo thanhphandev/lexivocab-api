@@ -5,6 +5,7 @@ using LexiVocab.Domain.Models.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
+using System.ClientModel;
 
 namespace LexiVocab.Infrastructure.Services.AI.Providers;
 
