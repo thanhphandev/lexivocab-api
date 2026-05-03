@@ -76,7 +76,8 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         var options = new OpenAI.OpenAIClientOptions 
         { 
             Endpoint = new Uri(baseUrl),
-            NetworkTimeout = TimeSpan.FromSeconds(300) // Increase timeout to 5 minutes
+            NetworkTimeout = TimeSpan.FromSeconds(300), // Increase timeout to 5 minutes
+            Transport = PipelineTransport.Create(_httpClient)
         };
         
         var client = new ChatClient(modelId, new ApiKeyCredential(apiKey), options);
