@@ -77,9 +77,11 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         var options = new OpenAI.OpenAIClientOptions 
         { 
             Endpoint = new Uri(baseUrl),
-            NetworkTimeout = TimeSpan.FromSeconds(300), // Increase timeout to 5 minutes
-            Transport = PipelineTransport.Create(_httpClient)
+            NetworkTimeout = TimeSpan.FromSeconds(300) // Increase timeout to 5 minutes
         };
+
+        // Bypass Cloudflare/WAF by setting a browser-like User-Agent via a custom policy
+        options.AddPolicy(new UserAgentPolicy(), System.ClientModel.Primitives.PipelinePosition.PerCall);
         
         var client = new ChatClient(modelId, new ApiKeyCredential(apiKey), options);
 
@@ -188,5 +190,21 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
                 await enumerator.DisposeAsync();
             }
         }
+    }
+}
+
+// Custom policy to inject browser-like User-Agent to bypass WAF/Cloudflare
+public class UserAgentPolicy : System.ClientModel.Primitives.PipelinePolicy
+{
+    public override void Process(System.ClientModel.Primitives.PipelineMessage message, System.Collections.Generic.IReadOnlyList<System.ClientModel.Primitives.PipelinePolicy> pipeline, int currentIndex)
+    {
+        message.Request.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+        ProcessNext(message, pipeline, currentIndex);
+    }
+
+    public override async System.Threading.Tasks.ValueTask ProcessAsync(System.ClientModel.Primitives.PipelineMessage message, System.Collections.Generic.IReadOnlyList<System.ClientModel.Primitives.PipelinePolicy> pipeline, int currentIndex)
+    {
+        message.Request.Headers.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+        await ProcessNextAsync(message, pipeline, currentIndex).ConfigureAwait(false);
     }
 }
