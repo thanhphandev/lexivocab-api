@@ -5,7 +5,6 @@ using LexiVocab.Domain.Models.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
-using System.ClientModel;
 
 namespace LexiVocab.Infrastructure.Services.AI.Providers;
 
@@ -73,8 +72,7 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         var options = new OpenAI.OpenAIClientOptions 
         { 
             Endpoint = new Uri(baseUrl),
-            NetworkTimeout = TimeSpan.FromSeconds(300), // Increase timeout to 5 minutes
-            Transport = new HttpClientPipelineTransport(_httpClient)
+            NetworkTimeout = TimeSpan.FromSeconds(300) // Increase timeout to 5 minutes
         };
         
         var client = new ChatClient(modelId, new ApiKeyCredential(apiKey), options);
