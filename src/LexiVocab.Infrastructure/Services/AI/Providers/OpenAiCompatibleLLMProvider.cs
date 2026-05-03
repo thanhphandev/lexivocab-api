@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
 using System.ClientModel;
+using System.ClientModel.Primitives;
 
 namespace LexiVocab.Infrastructure.Services.AI.Providers;
 
