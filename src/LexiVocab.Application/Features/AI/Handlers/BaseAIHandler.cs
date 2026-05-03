@@ -26,11 +26,11 @@ public abstract class BaseAIHandler
                     if (element.TryGetProperty("id", out var idProp) && idProp.GetString() == originalProvider)
                     {
                         resolvedProvider = "custom";
-                        if (element.TryGetProperty("baseUrl", out var baseUrlProp)) resolvedBaseUrl = baseUrlProp.GetString();
-                        if (element.TryGetProperty("apiKey", out var apiKeyProp)) resolvedApiKey = apiKeyProp.GetString();
+                        if (element.TryGetProperty("baseUrl", out var baseUrlProp)) resolvedBaseUrl = baseUrlProp.GetString()?.Trim('"', ' ');
+                        if (element.TryGetProperty("apiKey", out var apiKeyProp)) resolvedApiKey = apiKeyProp.GetString()?.Trim('"', ' ');
                         if (element.TryGetProperty("model", out var modelProp)) {
-                            resolvedModel = modelProp.GetString();
-                            resolvedModelId = modelProp.GetString();
+                            resolvedModel = modelProp.GetString()?.Trim('"', ' ');
+                            resolvedModelId = modelProp.GetString()?.Trim('"', ' ');
                         }
                         break;
                     }

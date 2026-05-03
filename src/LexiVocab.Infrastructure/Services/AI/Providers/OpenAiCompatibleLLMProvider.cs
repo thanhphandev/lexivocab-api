@@ -11,6 +11,7 @@ namespace LexiVocab.Infrastructure.Services.AI.Providers;
 
 public class OpenAiCompatibleLLMProvider : ILLMProvider
 {
+    private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
     private readonly ILogger<OpenAiCompatibleLLMProvider> _logger;
 
@@ -19,6 +20,7 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         IConfiguration configuration, 
         ILogger<OpenAiCompatibleLLMProvider> logger)
     {
+        _httpClient = httpClient;
         _configuration = configuration;
         _logger = logger;
     }
@@ -50,26 +52,31 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         [EnumeratorCancellation] CancellationToken ct = default)
     {
         // 1. Determine Provider to get config
-        string pName = request.ProviderName ?? _configuration["AIProviders:DefaultProvider"] ?? "openai";
+        string pName = request.ProviderName ?? _configuration["AIProviders:DefaultProvider"] ?? "custom";
         var configSection = _configuration.GetSection($"AIProviders:{pName}");
 
-        string? baseUrl = customBaseUrl ?? configSection["BaseUrl"];
-        string? apiKey = customApiKey ?? configSection["ApiKey"];
+        string? baseUrl = (customBaseUrl ?? configSection["BaseUrl"])?.Trim('"', ' ');
+        string? apiKey = (customApiKey ?? configSection["ApiKey"])?.Trim('"', ' ');
         string modelId = string.IsNullOrWhiteSpace(request.ModelId) ? (configSection["DefaultModel"] ?? "gpt-4o-mini") : request.ModelId;
 
         if (string.IsNullOrEmpty(baseUrl) || string.IsNullOrEmpty(apiKey))
         {
-            _logger.LogError("OpenAI provider configuration is missing BaseUrl or ApiKey for provider '{Provider}'", pName);
-            yield return JsonSerializer.Serialize(new { error = $"Configuration missing for AI Provider '{pName}'. Please check Base URL and API Key." });
+            _logger.LogError("OpenAI provider configuration is missing BaseUrl or ApiKey for provider '{Provider}'. BaseUrl: {BaseUrl}, ApiKey present: {ApiKeyPresent}", 
+                pName, baseUrl ?? "null", !string.IsNullOrEmpty(apiKey));
+            yield return JsonSerializer.Serialize(new { error = $"Configuration missing for AI Provider '{pName}'. Please check Base URL and API Key in appsettings or environment variables." });
             yield break;
         }
 
         // 2. Initialize compatible OpenAI Client
+        if (!baseUrl.EndsWith("/")) baseUrl += "/";
+
         var options = new OpenAI.OpenAIClientOptions 
         { 
             Endpoint = new Uri(baseUrl),
-            NetworkTimeout = TimeSpan.FromSeconds(300) // Increase timeout to 5 minutes
+            NetworkTimeout = TimeSpan.FromSeconds(300), // Increase timeout to 5 minutes
+            Transport = new HttpClientPipelineTransport(_httpClient)
         };
+        
         var client = new ChatClient(modelId, new ApiKeyCredential(apiKey), options);
 
         // 3. Map messages

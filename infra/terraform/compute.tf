@@ -74,7 +74,8 @@ resource "azurerm_container_app" "api" {
     container {
       name   = "lexivocab-api"
       # image  = "${azurerm_container_registry.main.login_server}/lexivocab-api:latest" # CI/CD sẽ update tag
-      image  = "acrlexivocabprodoxvf.azurecr.io/lexivocab-api:latest" 
+      # image  = "${azurerm_container_registry.main.login_server}/lexivocab-api:latest"
+      image  = "mcr.microsoft.com/azuredocs/containerapps-helloworld:mcr-helloworld-latest"
       cpu    = var.container_cpu
       memory = var.container_memory
 
@@ -268,35 +269,36 @@ resource "azurerm_container_app" "api" {
       }
 
       # Liveness probe: Tells Azure when to RESTART a broken container
-      liveness_probe {
-        transport               = "HTTP"
-        port                    = 8080
-        path                    = "/health"
-        initial_delay           = 30
-        interval_seconds        = 30
-        timeout                 = 5
-        failure_count_threshold = 3
-      }
+      # Liveness probe: Tells Azure when to RESTART a broken container
+      # liveness_probe {
+      #   transport               = "HTTP"
+      #   port                    = 8080
+      #   path                    = "/health"
+      #   initial_delay           = 30
+      #   interval_seconds        = 30
+      #   timeout                 = 5
+      #   failure_count_threshold = 3
+      # }
 
       # Readiness probe: Tells Azure when this replica is ready to receive traffic
-      readiness_probe {
-        transport               = "HTTP"
-        port                    = 8080
-        path                    = "/health"
-        interval_seconds        = 10
-        timeout                 = 3
-        failure_count_threshold = 3
-        success_count_threshold = 1
-      }
+      # readiness_probe {
+      #   transport               = "HTTP"
+      #   port                    = 8080
+      #   path                    = "/health"
+      #   interval_seconds        = 10
+      #   timeout                 = 3
+      #   failure_count_threshold = 3
+      #   success_count_threshold = 1
+      # }
 
-      startup_probe {
-        transport               = "HTTP"
-        port                    = 8080
-        path                    = "/health"
-        interval_seconds        = 30
-        timeout                 = 5
-        failure_count_threshold = 10 # 10 × 30s = 300s (5 phút) cho startup
-      }
+      # startup_probe {
+      #   transport               = "HTTP"
+      #   port                    = 8080
+      #   path                    = "/health"
+      #   interval_seconds        = 30
+      #   timeout                 = 5
+      #   failure_count_threshold = 10 # 10 × 30s = 300s (5 phút) cho startup
+      # }
     }
 
     # ─── Auto-scaling: Scale based on concurrent HTTP requests ─────────
@@ -313,19 +315,19 @@ resource "azurerm_container_app" "api" {
   ingress {
     allow_insecure_connections = false
     external_enabled           = true
-    target_port                = 8080 
+    target_port                = 80 
     traffic_weight {
       percentage      = 100
       latest_revision = true
     }
   }
 
-  # lifecycle {
-  #   ignore_changes = [
-  #     template[0].container[0].image,
-  #     ingress[0].target_port # Target port might change between helloworld (80) and real app (8080)
-  #   ]
-  # }
+  lifecycle {
+    ignore_changes = [
+      template[0].container[0].image,
+      ingress[0].target_port
+    ]
+  }
 }
 
 output "api_url" {

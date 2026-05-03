@@ -143,7 +143,12 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
 
         int total = baseStats?.Total ?? 0;
         int learnedThisWeek = baseStats?.LearnedThisWeek ?? 0;
-        double learningProgress = total > 0 ? (baseStats!.Mastered * 100.0 / total) : 0.0;
+        // Calculate weighted mastery progress based on SRS state (consistent with frontend formula)
+        double learningProgress = await _dbSet
+            .Where(v => v.UserId == userId)
+            .AsNoTracking()
+            .Select(v => Math.Min(100.0, Math.Max(0.0, v.RepetitionCount * 15.0 + (v.EasinessFactor - 1.3) * 20.0)))
+            .AverageAsync(ct) ?? 0.0;
 
         // 2. Retention Rate (Correct Reviews / Total Reviews) -> EF Core optimized count
         var reviewStats = await _context.Set<ReviewLog>()

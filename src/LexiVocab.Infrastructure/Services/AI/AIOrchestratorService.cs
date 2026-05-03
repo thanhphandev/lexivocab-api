@@ -28,7 +28,7 @@ public class AIOrchestratorService : IAIOrchestratorService
 
     private ILLMProvider GetProvider(string? providerName)
     {
-        string pName = providerName?.ToLowerInvariant() ?? "openrouter";
+        string pName = providerName?.ToLowerInvariant() ?? "custom";
         var selectedProvider = _providers.FirstOrDefault(p => p.CanHandle(pName));
 
         if (selectedProvider == null)

@@ -75,11 +75,11 @@ public class TranslationStreamService : ITranslationStreamService
         {
             await foreach (var chunk in selectedProvider.StreamTranslateAsync(word, context, providerType, modelId, from, to, customBaseUrl, customApiKey, customModel, cancellationToken))
             {
-                yield return chunk;
+                    yield return chunk;
+                }
             }
-        }
-        else
-        {
+            else
+            {
             yield return $"{{\"error\": \"No translation provider available for {providerType}\"}}";
         }
     }
