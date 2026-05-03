@@ -70,6 +70,9 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         // 2. Initialize compatible OpenAI Client
         if (!baseUrl.EndsWith("/")) baseUrl += "/";
 
+        _logger.LogInformation("AI Debug: Provider={Provider}, Model={Model}, BaseUrl={BaseUrl}, KeyPrefix={KeyPrefix}..., KeyLength={KeyLen}", 
+            pName, modelId, baseUrl, apiKey.Length > 5 ? apiKey[..5] : "***", apiKey.Length);
+
         var options = new OpenAI.OpenAIClientOptions 
         { 
             Endpoint = new Uri(baseUrl),
@@ -114,6 +117,13 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
         if (initException != null || enumerator == null)
         {
             _logger.LogError(initException, "Error creating stream with OpenAI SDK.");
+            
+            if (initException is System.ClientModel.ClientResultException crex && crex.Status == 403)
+            {
+                var responseBody = crex.GetRawResponse()?.Content?.ToString();
+                _logger.LogCritical("403 Forbidden Initial Body: {Body}", responseBody ?? "Empty Body");
+            }
+
             yield return JsonSerializer.Serialize(new { error = $"Request Error: {initException?.Message ?? "Unknown initialization error"}" });
             yield break;
         }
@@ -146,6 +156,13 @@ public class OpenAiCompatibleLLMProvider : ILLMProvider
                 if (caughtException != null)
                 {
                     _logger.LogError(caughtException, "Error during streaming with OpenAI SDK.");
+                    
+                    if (caughtException is System.ClientModel.ClientResultException crex && crex.Status == 403)
+                    {
+                        var responseBody = crex.GetRawResponse()?.Content?.ToString();
+                        _logger.LogCritical("403 Forbidden Body: {Body}", responseBody ?? "Empty Body");
+                    }
+
                     yield return JsonSerializer.Serialize(new { error = $"Stream Error: {caughtException.Message}" });
                     break;
                 }
