@@ -147,7 +147,7 @@ public class VocabularyRepository : GenericRepository<UserVocabulary>, IVocabula
         double learningProgress = await _dbSet
             .Where(v => v.UserId == userId)
             .AsNoTracking()
-            .Select(v => Math.Min(100.0, Math.Max(0.0, v.RepetitionCount * 15.0 + (v.EasinessFactor - 1.3) * 20.0)))
+            .Select(v => (double?)(Math.Min(100.0, Math.Max(0.0, v.RepetitionCount * 15.0 + (v.EasinessFactor - 1.3) * 20.0))))
             .AverageAsync(ct) ?? 0.0;
 
         // 2. Retention Rate (Correct Reviews / Total Reviews) -> EF Core optimized count
