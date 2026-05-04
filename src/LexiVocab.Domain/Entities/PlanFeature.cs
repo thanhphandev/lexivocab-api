@@ -14,7 +14,7 @@ public class PlanFeature
     public FeatureDefinition Feature { get; set; } = null!;
 
     /// <summary>
-    /// The value of the feature for this plan (e.g., "50", "true", "Unlimited").
+    /// The value of the feature for this plan (e.g., "50", "true", "-1").
     /// </summary>
     public string Value { get; set; } = string.Empty;
 }

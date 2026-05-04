@@ -2,21 +2,16 @@
   <Folder Name="/src/">
     <File Path=".dockerignore" />
     <File Path=".gitignore" />
-    <File Path="ARCHITECTURE.md" />
     <File Path="docker-compose.yml" />
-    <File Path="docker-compose.override.yml" />
     <File Path="docker-compose.prod.yml" />
     <File Path="Dockerfile" />
-    <File Path="ngrok-config.yml" />
     <Project Path="src/LexiVocab.API/LexiVocab.API.csproj" />
     <Project Path="src/LexiVocab.Application/LexiVocab.Application.csproj" />
     <Project Path="src/LexiVocab.Domain/LexiVocab.Domain.csproj" />
     <Project Path="src/LexiVocab.Infrastructure/LexiVocab.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/LexiVocab.API.IntegrationTests/LexiVocab.API.IntegrationTests.csproj" />
-    <Project Path="tests/LexiVocab.Application.UnitTests/LexiVocab.Application.UnitTests.csproj" />
-    <Project Path="tests/LexiVocab.Domain.UnitTests/LexiVocab.Domain.UnitTests.csproj" />
-    <Project Path="tests/LexiVocab.Infrastructure.IntegrationTests/LexiVocab.Infrastructure.IntegrationTests.csproj" />
+    <Project Path="tests/LexiVocab.IntegrationTests/LexiVocab.IntegrationTests.csproj" />
+    <Project Path="tests/LexiVocab.UnitTests/LexiVocab.UnitTests.csproj" />
   </Folder>
 </Solution>

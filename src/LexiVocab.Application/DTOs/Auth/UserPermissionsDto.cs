@@ -19,9 +19,10 @@ public record UserPermissionsDto(
 
     public int GetLimit(string code, int defaultValue = 0)
     {
-        if (FeatureFlags.TryGetValue(code, out var val) && int.TryParse(val, out var limit))
+        if (FeatureFlags.TryGetValue(code, out var val))
         {
-            return limit;
+            if (val.Equals("Unlimited", StringComparison.OrdinalIgnoreCase)) return -1;
+            if (int.TryParse(val, out var limit)) return limit;
         }
         return defaultValue;
     }

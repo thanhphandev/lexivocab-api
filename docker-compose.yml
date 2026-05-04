@@ -19,25 +19,6 @@ services:
     networks:
       - lexivocab-network
       
-  ngrok:
-    image: ngrok/ngrok:3
-    container_name: lexivocab-ngrok
-    command:
-      - "start"
-      - "api"
-      - "--config"
-      - "/etc/ngrok.yml"
-    environment:
-      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
-    ports:
-      - "4040:4040"  # Ngrok inspect UI: http://localhost:4040
-    volumes:
-      - ./ngrok-config.yml:/etc/ngrok.yml:ro
-    depends_on:
-      api:
-        condition: service_started
-    restart: unless-stopped
-    networks:
       - lexivocab-network
 
   # ─── Redis 7 ─────────────────────────────────────────────────
@@ -52,7 +33,7 @@ services:
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a '$$REDIS_PASSWORD' ping | grep PONG || redis-cli ping | grep PONG"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG || redis-cli ping | grep PONG"]
       interval: 5s
       timeout: 3s
       retries: 5

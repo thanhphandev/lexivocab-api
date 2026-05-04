@@ -226,10 +226,13 @@ try
     {
         try 
         {
-            var redis = ConnectionMultiplexer.Connect(redisConnectionString);
-            builder.Services.AddDataProtection()
-                .SetApplicationName("lexivocab")
-                .PersistKeysToStackExchangeRedis(redis, "DataProtection-Keys");
+            // Skip Redis DataProtection in Testing environment
+            if (!builder.Environment.IsEnvironment("Testing"))
+            {
+                var redisConn = builder.Configuration.GetValue<string>("REDIS_URL") ?? "localhost:6379";
+                builder.Services.AddDataProtection()
+                    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisConn), "LexiVocab-DataProtection-Keys");
+            }
             Log.Information("✅ DataProtection keys are being persisted to Redis.");
         }
         catch (Exception ex)
@@ -359,38 +362,50 @@ try
     // Uses a PostgreSQL advisory lock to ensure only ONE instance runs migrations at a time.
     // This prevents race conditions when multiple Container App replicas start simultaneously.
     var runMigrations = builder.Configuration.GetValue<bool>("RUN_MIGRATIONS", false);
-    if (app.Environment.IsDevelopment() || runMigrations)
+    var isTesting = app.Environment.IsEnvironment("Testing");
+    if ((app.Environment.IsDevelopment() || runMigrations) && !isTesting)
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         const long migrationLockId = 20260412; // Arbitrary unique ID for advisory lock
-        var conn = db.Database.GetDbConnection();
-        await conn.OpenAsync();
-
-        await using var lockCmd = conn.CreateCommand();
-        lockCmd.CommandText = $"SELECT pg_try_advisory_lock({migrationLockId})";
-        var acquired = (bool)(await lockCmd.ExecuteScalarAsync())!;
-
-        if (acquired)
+        
+        if (db.Database.IsRelational())
         {
-            try
+            var conn = db.Database.GetDbConnection();
+            await conn.OpenAsync();
+
+            await using var lockCmd = conn.CreateCommand();
+            lockCmd.CommandText = $"SELECT pg_try_advisory_lock({migrationLockId})";
+            var acquired = (bool)(await lockCmd.ExecuteScalarAsync())!;
+
+            if (acquired)
             {
-                var seeder = scope.ServiceProvider.GetRequiredService<LexiVocab.Infrastructure.Persistence.Seeding.DbContextSeeder>();
-                await seeder.SeedAllAsync();
-                Log.Information("✅ Database initialization and seeding completed (Mode: {Mode}).",
-                    runMigrations ? "Production-Override" : "Development");
+                try
+                {
+                    var seeder = scope.ServiceProvider.GetRequiredService<LexiVocab.Infrastructure.Persistence.Seeding.DbContextSeeder>();
+                    await seeder.SeedAllAsync();
+                    Log.Information("✅ Database initialization and seeding completed (Mode: {Mode}).",
+                        runMigrations ? "Production-Override" : "Development");
+                }
+                finally
+                {
+                    await using var unlockCmd = conn.CreateCommand();
+                    unlockCmd.CommandText = $"SELECT pg_advisory_unlock({migrationLockId})";
+                    await unlockCmd.ExecuteScalarAsync();
+                }
             }
-            finally
+            else
             {
-                await using var unlockCmd = conn.CreateCommand();
-                unlockCmd.CommandText = $"SELECT pg_advisory_unlock({migrationLockId})";
-                await unlockCmd.ExecuteScalarAsync();
+                Log.Information("⏳ Another instance is running migrations. Skipping on this replica.");
             }
         }
-        else
+        else 
         {
-            Log.Information("⏳ Another instance is running migrations. Skipping on this replica.");
+            // For non-relational providers (like SQLite in-memory in tests), just seed directly
+            var seeder = scope.ServiceProvider.GetRequiredService<LexiVocab.Infrastructure.Persistence.Seeding.DbContextSeeder>();
+            await seeder.SeedAllAsync();
+            Log.Information("✅ Database seeded (Non-relational provider).");
         }
     }
 
