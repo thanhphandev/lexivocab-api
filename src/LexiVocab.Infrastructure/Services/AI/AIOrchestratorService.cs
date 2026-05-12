@@ -54,7 +54,7 @@ public class AIOrchestratorService : IAIOrchestratorService
         string? customApiKey = null,
         CancellationToken ct = default)
     {
-        string pName = providerName?.ToLowerInvariant() ?? "openrouter";
+        string pName = providerName?.ToLowerInvariant() ?? "custom";
         var request = await _promptTemplateService.BuildRequestAsync(useCase, parameters, modelId, asJson);
         request.ProviderName = pName;
         var provider = GetProvider(pName);
@@ -71,7 +71,7 @@ public class AIOrchestratorService : IAIOrchestratorService
         string? customApiKey = null,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        string pName = providerName?.ToLowerInvariant() ?? "openrouter";
+        string pName = providerName?.ToLowerInvariant() ?? "custom";
         var request = await _promptTemplateService.BuildRequestAsync(useCase, parameters, modelId, asJson);
         request.ProviderName = pName;
         var provider = GetProvider(pName);
