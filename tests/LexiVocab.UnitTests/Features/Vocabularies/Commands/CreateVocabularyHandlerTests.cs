@@ -17,6 +17,7 @@ public class CreateVocabularyHandlerTests
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<IFeatureGatingService> _mockFeatureGating;
     private readonly Mock<IDistributedCache> _mockCache;
+    private readonly Mock<IDateTimeProvider> _mockDateTime;
     private readonly CreateVocabularyHandler _handler;
 
     private readonly Guid _userId = Guid.NewGuid();
@@ -27,6 +28,8 @@ public class CreateVocabularyHandlerTests
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockFeatureGating = new Mock<IFeatureGatingService>();
         _mockCache = new Mock<IDistributedCache>();
+        _mockDateTime = new Mock<IDateTimeProvider>();
+        _mockDateTime.Setup(x => x.UtcNow).Returns(DateTime.UtcNow);
 
         _mockCurrentUser.Setup(x => x.UserId).Returns(_userId);
 
@@ -34,7 +37,8 @@ public class CreateVocabularyHandlerTests
             _mockUow.Object,
             _mockCurrentUser.Object,
             _mockFeatureGating.Object,
-            _mockCache.Object);
+            _mockCache.Object,
+            _mockDateTime.Object);
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Helpers;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Enums;
@@ -31,7 +32,7 @@ public record RegisterCommand(
 public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<AuthResponse>>
 {
     private readonly IUnitOfWork _uow;
-    private readonly IJwtTokenService _jwt;
+    private readonly IAuthTokenService _authTokenService;
     private readonly IPasswordHasher _hasher;
     private readonly IDistributedCache _cache;
     private readonly IEmailQueueService _emailQueue;
@@ -42,7 +43,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 
     public RegisterCommandHandler(
         IUnitOfWork uow, 
-        IJwtTokenService jwt, 
+        IAuthTokenService authTokenService,
         IPasswordHasher hasher, 
         IDistributedCache cache, 
         IEmailQueueService emailQueue, 
@@ -51,7 +52,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         ILogger<RegisterCommandHandler> logger)
     {
         _uow = uow;
-        _jwt = jwt;
+        _authTokenService = authTokenService;
         _hasher = hasher;
         _cache = cache;
         _emailQueue = emailQueue;
@@ -68,12 +69,11 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 
         var requireVerification = _configuration["Auth:RequireEmailVerification"]?.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
 
-        var user = new Domain.Entities.User
+        var user = new User
         {
             Email = request.Email.ToLowerInvariant().Trim(),
             PasswordHash = _hasher.Hash(request.Password),
             FullName = request.FullName.Trim(),
-            LastLogin = DateTime.UtcNow,
             AvatarUrl = $"https://api.dicebear.com/9.x/thumbs/svg?seed={Uri.EscapeDataString(request.Email.ToLowerInvariant().Trim())}",
             EmailConfirmed = !requireVerification
         };
@@ -87,7 +87,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
 
         if (requireVerification)
         {
-            // Enqueue verification email (returns immediately, processed in background)
+            // Enqueue verification email
             var verifyCode = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
             await _cache.SetStringAsync($"email-verify:{user.Email}", verifyCode, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) }, ct);
 
@@ -128,22 +128,8 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
             }
         }
 
-        var accessTokenResult = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
-        var accessToken = accessTokenResult.Token;
-        var accessTokenExpiry = accessTokenResult.ExpiresAt;
-        var refreshToken = _jwt.GenerateRefreshToken();
+        var authResponse = await _authTokenService.IssueTokenPairAsync(user, request.DeviceInfo, request.IpAddress, ct);
 
-        var refreshTokenExpiryDays = int.Parse(_configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
-        user.RefreshTokenHash = _hasher.Hash(refreshToken);
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
-        await _uow.SaveChangesAsync(ct);
-
-        var metadata = JsonSerializer.Serialize(new RefreshTokenMetadata(user.Id, request.DeviceInfo, request.IpAddress, DateTime.UtcNow));
-        await _cache.SetStringAsync($"rf_token:{refreshToken}", metadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(refreshTokenExpiryDays) }, ct);
-
-        return Result<AuthResponse>.Created(new AuthResponse(
-            user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, refreshToken, accessTokenExpiry, user.AvatarUrl,
-            user.EmailConfirmed, user.IsActive));
+        return Result<AuthResponse>.Created(authResponse);
     }
 }

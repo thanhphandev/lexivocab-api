@@ -1,7 +1,8 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
+using LexiVocab.Application.Common.Mappings;
 using LexiVocab.Application.DTOs.Vocabulary;
-using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
@@ -25,36 +26,32 @@ public class UpdateVocabularyHandler : IRequestHandler<UpdateVocabularyCommand, 
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IDistributedCache _cache;
+    private readonly IDateTimeProvider _dateTime;
 
-    public UpdateVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
+    public UpdateVocabularyHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<VocabularyDto>> Handle(UpdateVocabularyCommand request, CancellationToken ct)
     {
+        var userId = _currentUser.GetRequiredUserId();
+
         var entity = await _uow.Vocabularies.GetByIdAsync(request.Id, ct);
-        if (entity is null || entity.UserId != _currentUser.UserId)
+        if (entity is null || entity.UserId != userId)
             return Result<VocabularyDto>.NotFound("Vocabulary not found.", ErrorCode.VOCAB_NOT_FOUND);
 
         if (request.CustomMeaning is not null) entity.CustomMeaning = request.CustomMeaning.Trim();
         if (request.ContextSentence is not null) entity.ContextSentence = request.ContextSentence.Trim();
-        entity.UpdatedAt = DateTime.UtcNow;
+        entity.UpdatedAt = _dateTime.UtcNow;
 
         _uow.Vocabularies.Update(entity);
         await _uow.SaveChangesAsync(ct);
-        await _cache.SetStringAsync($"vocab-v:{_currentUser.UserId}", Guid.NewGuid().ToString(), ct);
+        await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
 
-        return Result<VocabularyDto>.Success(MapToDto(entity));
+        return Result<VocabularyDto>.Success(entity.MapToDto());
     }
-
-    private static VocabularyDto MapToDto(UserVocabulary v) => new(
-        v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
-        v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
-        v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
-        v.MasterVocabulary?.PhoneticUk, v.MasterVocabulary?.PhoneticUs,
-        v.MasterVocabulary?.AudioUrl, v.MasterVocabulary?.PartOfSpeech,
-        v.MasterVocabulary?.IsApproved);
 }

@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Tag;
 using LexiVocab.Domain.Entities;
@@ -27,7 +28,7 @@ public class CreateTagHandler : IRequestHandler<CreateTagCommand, Result<TagDto>
 
     public async Task<Result<TagDto>> Handle(CreateTagCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var slug = request.Name.Trim().ToLowerInvariant().Replace(" ", "-");
 
         // Check for duplicate slug per user

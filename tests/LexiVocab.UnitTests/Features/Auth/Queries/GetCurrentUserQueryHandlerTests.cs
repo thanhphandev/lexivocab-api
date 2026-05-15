@@ -26,17 +26,14 @@ public class GetCurrentUserQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenNotAuthenticated_ShouldReturnUnauthorized()
+    public async Task Handle_WhenNotAuthenticated_ShouldThrowInvalidOperationException()
     {
         // Arrange
         _mockCurrentUser.Setup(c => c.UserId).Returns((Guid?)null);
 
-        // Act
-        var result = await _handler.Handle(new GetCurrentUserQuery(), CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.StatusCode.Should().Be(401);
+        // Act & Assert — GetRequiredUserId() should throw before any DB access
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _handler.Handle(new GetCurrentUserQuery(), CancellationToken.None));
     }
 
     [Fact]

@@ -50,6 +50,7 @@ public enum ErrorCode
     REVIEW_SESSION_NOT_FOUND,
     REVIEW_INVALID_QUALITY_SCORE,
     REVIEW_NO_CARDS_DUE,
+    REVIEW_DUPLICATE_SUBMISSION,
     
     // ─── Payment Errors (PAYMENT_*) ──────────────────────────
     PAYMENT_DECLINED,

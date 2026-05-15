@@ -1,5 +1,7 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
+using LexiVocab.Application.Common.Mappings;
 using LexiVocab.Application.DTOs.Tag;
 using LexiVocab.Application.DTOs.Vocabulary;
 using LexiVocab.Domain.Interfaces;
@@ -27,21 +29,16 @@ public class GetTagVocabulariesHandler : IRequestHandler<GetTagVocabulariesQuery
 
     public async Task<Result<PagedResult<VocabularyDto>>> Handle(GetTagVocabulariesQuery request, CancellationToken ct)
     {
+        var userId = _currentUser.GetRequiredUserId();
+
         var tag = await _uow.Tags.GetByIdAsync(request.TagId, ct);
-        if (tag is null || tag.UserId != _currentUser.UserId)
+        if (tag is null || tag.UserId != userId)
             return Result<PagedResult<VocabularyDto>>.NotFound("Tag not found.", ErrorCode.TAG_NOT_FOUND);
 
         var (items, totalCount) = await _uow.Vocabularies.GetByTagIdAsync(
-            _currentUser.UserId.Value, request.TagId, request.Page, request.PageSize, ct);
+            userId, request.TagId, request.Page, request.PageSize, ct);
 
-        var dtos = items.Select(v => new VocabularyDto(
-            v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
-            v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
-            v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
-            v.MasterVocabulary?.PhoneticUk, v.MasterVocabulary?.PhoneticUs, 
-            v.MasterVocabulary?.AudioUrl, v.MasterVocabulary?.PartOfSpeech,
-            v.MasterVocabulary?.IsApproved ?? false
-        )).ToList();
+        var dtos = items.Select(v => v.MapToDto()).ToList();
 
         var result = new PagedResult<VocabularyDto>
         {

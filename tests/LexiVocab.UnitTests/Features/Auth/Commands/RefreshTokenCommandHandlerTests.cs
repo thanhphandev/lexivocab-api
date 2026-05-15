@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using LexiVocab.Application.Common.Helpers;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.Features.Auth.Commands;
 using LexiVocab.Domain.Entities;
@@ -18,6 +19,7 @@ public class RefreshTokenCommandHandlerTests
     private readonly Mock<IJwtTokenService> _mockJwt;
     private readonly Mock<IPasswordHasher> _mockHasher;
     private readonly Mock<IDistributedCache> _mockCache;
+    private readonly Mock<IDateTimeProvider> _mockDateTime;
     private readonly RefreshTokenCommandHandler _handler;
 
     private readonly Guid _userId = Guid.NewGuid();
@@ -28,6 +30,8 @@ public class RefreshTokenCommandHandlerTests
         _mockJwt = new Mock<IJwtTokenService>();
         _mockHasher = new Mock<IPasswordHasher>();
         _mockCache = new Mock<IDistributedCache>();
+        _mockDateTime = new Mock<IDateTimeProvider>();
+        _mockDateTime.Setup(d => d.UtcNow).Returns(DateTime.UtcNow);
 
         _mockJwt.Setup(j => j.GenerateAccessToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()))
             .Returns(new TokenResult("new_access_token", DateTime.UtcNow.AddMinutes(15)));
@@ -38,14 +42,14 @@ public class RefreshTokenCommandHandlerTests
         mockConfig.Setup(c => c["Jwt:RefreshTokenExpiryDays"]).Returns("7");
         mockConfig.Setup(c => c["Jwt:RefreshTokenGracePeriodSeconds"]).Returns("60");
 
-        _handler = new RefreshTokenCommandHandler(_mockUow.Object, _mockJwt.Object, _mockHasher.Object, _mockCache.Object, mockConfig.Object);
+        _handler = new RefreshTokenCommandHandler(_mockUow.Object, _mockJwt.Object, _mockHasher.Object, _mockCache.Object, mockConfig.Object, _mockDateTime.Object);
     }
 
     private void SetupCachedToken(string refreshToken, Guid userId)
     {
-        var metadata = JsonSerializer.Serialize(new RefreshTokenMetadata(userId, "Chrome", "127.0.0.1", DateTime.UtcNow));
+        var metadata = JsonSerializer.Serialize(new LexiVocab.Application.Common.Helpers.RefreshTokenMetadata(userId, "Chrome", "127.0.0.1", DateTime.UtcNow));
         var bytes = Encoding.UTF8.GetBytes(metadata);
-        _mockCache.Setup(c => c.GetAsync($"rf_token:{refreshToken}", It.IsAny<CancellationToken>()))
+        _mockCache.Setup(c => c.GetAsync(RefreshTokenCacheHelper.GetCacheKey(refreshToken), It.IsAny<CancellationToken>()))
             .ReturnsAsync(bytes);
     }
 
@@ -54,7 +58,7 @@ public class RefreshTokenCommandHandlerTests
     {
         // Arrange
         var command = new RefreshTokenCommand("old_at", "expired_rt", "Chrome", "127.0.0.1");
-        _mockCache.Setup(c => c.GetAsync("rf_token:expired_rt", It.IsAny<CancellationToken>()))
+        _mockCache.Setup(c => c.GetAsync(RefreshTokenCacheHelper.GetCacheKey("expired_rt"), It.IsAny<CancellationToken>()))
             .ReturnsAsync((byte[]?)null);
 
         // Act
@@ -114,11 +118,11 @@ public class RefreshTokenCommandHandlerTests
         result.Data.RefreshToken.Should().Be("new_refresh_token");
 
         // Verify old token removed (rotation)
-        _mockCache.Verify(c => c.RemoveAsync("rf_token:old_rt", It.IsAny<CancellationToken>()), Times.Once);
+        _mockCache.Verify(c => c.RemoveAsync(RefreshTokenCacheHelper.GetCacheKey("old_rt"), It.IsAny<CancellationToken>()), Times.Once);
 
         // Verify new token stored
         _mockCache.Verify(c => c.SetAsync(
-            "rf_token:new_refresh_token",
+            RefreshTokenCacheHelper.GetCacheKey("new_refresh_token"),
             It.IsAny<byte[]>(),
             It.IsAny<DistributedCacheEntryOptions>(),
             It.IsAny<CancellationToken>()), Times.Once);

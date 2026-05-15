@@ -1,4 +1,5 @@
 using FluentAssertions;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
@@ -15,6 +16,7 @@ public class FeatureGatingServiceTests
 {
     private readonly Mock<IUnitOfWork> _mockUow;
     private readonly Mock<IDistributedCache> _mockCache;
+    private readonly Mock<IDateTimeProvider> _mockDateTime;
     private readonly FeatureGatingService _service;
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -22,7 +24,9 @@ public class FeatureGatingServiceTests
     {
         _mockUow = new Mock<IUnitOfWork>();
         _mockCache = new Mock<IDistributedCache>();
-        _service = new FeatureGatingService(_mockUow.Object, _mockCache.Object);
+        _mockDateTime = new Mock<IDateTimeProvider>();
+        _mockDateTime.Setup(x => x.UtcNow).Returns(DateTime.UtcNow);
+        _service = new FeatureGatingService(_mockUow.Object, _mockCache.Object, _mockDateTime.Object);
     }
 
     [Fact]
@@ -156,7 +160,7 @@ public class FeatureGatingServiceTests
                 return Task.FromResult(RedisResult.Create(-1));
             });
 
-        var service = new FeatureGatingService(_mockUow.Object, _mockCache.Object, mockRedis.Object);
+        var service = new FeatureGatingService(_mockUow.Object, _mockCache.Object, _mockDateTime.Object, mockRedis.Object);
 
         // Act
         var tasks = Enumerable.Range(0, totalRequests)

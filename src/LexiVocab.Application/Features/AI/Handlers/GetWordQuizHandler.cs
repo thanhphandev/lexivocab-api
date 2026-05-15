@@ -1,11 +1,13 @@
 using System.Text.Json;
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.Common.Helpers;
 using LexiVocab.Application.DTOs.AI;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Application.Features.AI;
 
@@ -22,7 +24,8 @@ public class GetWordQuizHandler : BaseAIHandler, IRequestHandler<GetWordQuizQuer
     private readonly ICurrentUserService _currentUser;
     private readonly IUnitOfWork _unitOfWork;
 
-    public GetWordQuizHandler(IAIOrchestratorService aiService, ICurrentUserService currentUser, IUnitOfWork unitOfWork)
+    public GetWordQuizHandler(IAIOrchestratorService aiService, ICurrentUserService currentUser, IUnitOfWork unitOfWork, ILogger<GetWordQuizHandler> logger)
+        : base(logger)
     {
         _aiService = aiService;
         _currentUser = currentUser;
@@ -31,7 +34,7 @@ public class GetWordQuizHandler : BaseAIHandler, IRequestHandler<GetWordQuizQuer
 
     public async Task<Result<QuizDto>> Handle(GetWordQuizQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var user = await _unitOfWork.Users.GetByIdAsync(userId, ct);
 
         string tl = string.IsNullOrWhiteSpace(request.TargetLanguage) ? (user?.UserSetting?.TargetLanguage ?? "English") : request.TargetLanguage;
@@ -69,7 +72,8 @@ public class GetWordQuizHandler : BaseAIHandler, IRequestHandler<GetWordQuizQuer
             try {
                 var dto = System.Text.Json.JsonSerializer.Deserialize<QuizDto>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 return dto != null ? Result<QuizDto>.Success(dto) : Result<QuizDto>.Failure("AI failed to generate valid quiz", 400, LexiVocab.Domain.Enums.ErrorCode.AI_INVALID_REQUEST);
-            } catch {
+            } catch (JsonException ex) {
+                _logger?.LogWarning(ex, "AI quiz response deserialization failed for word '{Word}'", request.Word);
                 return Result<QuizDto>.Failure("AI response was malformed", 400, LexiVocab.Domain.Enums.ErrorCode.AI_INVALID_REQUEST);
             }
         }

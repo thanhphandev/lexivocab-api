@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -26,7 +27,7 @@ public class CreatePaymentOrderHandler : IRequestHandler<CreatePaymentOrderComma
 
     public async Task<Result<string>> Handle(CreatePaymentOrderCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
 
         var activeSub = await _uow.Subscriptions.GetActiveByUserIdAsync(userId, ct);
         if (activeSub != null)

@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Tag;
 using LexiVocab.Domain.Interfaces;
@@ -21,7 +22,7 @@ public class GetTagListHandler : IRequestHandler<GetTagListQuery, Result<IEnumer
 
     public async Task<Result<IEnumerable<TagDto>>> Handle(GetTagListQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var tags = await _uow.Tags.GetByUserIdAsync(userId, ct);
 
         var dtos = tags.Select(t => new TagDto(

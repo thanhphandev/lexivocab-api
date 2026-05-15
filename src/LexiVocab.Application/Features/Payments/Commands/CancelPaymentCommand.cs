@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -20,24 +21,27 @@ public class CancelPaymentHandler : IRequestHandler<CancelPaymentCommand, Result
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
     private readonly ILogger<CancelPaymentHandler> _logger;
+    private readonly IDateTimeProvider _dateTime;
 
     public CancelPaymentHandler(
         IUnitOfWork uow,
         ICurrentUserService currentUser,
         IEmailQueueService emailQueue,
         IEmailTemplateService templateService,
-        ILogger<CancelPaymentHandler> logger)
+        ILogger<CancelPaymentHandler> logger,
+        IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _emailQueue = emailQueue;
         _templateService = templateService;
         _logger = logger;
+        _dateTime = dateTime;
     }
 
     public async Task<Result> Handle(CancelPaymentCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
 
         var tx = await _uow.PaymentTransactions
             .GetByExternalOrderIdWithDetailsAsync(request.Reference, ct);
@@ -55,7 +59,7 @@ public class CancelPaymentHandler : IRequestHandler<CancelPaymentCommand, Result
 
         // Update transaction status
         tx.Status = PaymentStatus.Cancelled;
-        tx.CancelledAt = DateTime.UtcNow;
+        tx.CancelledAt = _dateTime.UtcNow;
         tx.CancelReason = "Cancelled by user.";
 
         // Cancel the associated subscription if it's still pending

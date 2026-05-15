@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Enums;
@@ -30,9 +31,7 @@ public class ImpersonateUserHandler : IRequestHandler<ImpersonateUserCommand, Re
 
     public async Task<Result<AuthResponse>> Handle(ImpersonateUserCommand request, CancellationToken ct)
     {
-        var adminId = _currentUser.UserId;
-        if (adminId == null) 
-            return Result<AuthResponse>.Unauthorized();
+        var adminId = _currentUser.GetRequiredUserId();
 
         var targetUser = await _uow.Users.GetByIdAsync(request.TargetUserId, ct);
         if (targetUser == null)
@@ -46,12 +45,12 @@ public class ImpersonateUserHandler : IRequestHandler<ImpersonateUserCommand, Re
             targetUser.Id, 
             targetUser.Email, 
             targetUser.Role.ToString(), 
-            adminId.Value);
+            adminId);
 
         // Record Audit Log
         await _auditLogService.LogAsync(
             action: AuditAction.ImpersonateUser,
-            userId: adminId.Value,
+            userId: adminId,
             entityType: "User",
             entityId: targetUser.Id.ToString(),
             additionalInfo: $"Admin impersonated user {targetUser.Email}",

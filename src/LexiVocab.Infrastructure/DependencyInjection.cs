@@ -5,6 +5,7 @@ using LexiVocab.Infrastructure.Authentication;
 using LexiVocab.Infrastructure.Persistence;
 using LexiVocab.Infrastructure.Persistence.Seeding;
 using LexiVocab.Infrastructure.Repositories;
+using LexiVocab.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -160,6 +161,8 @@ public static class DependencyInjection
 
         // ─── Authentication (JWT Bearer) ──────────────────────
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+        services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddHttpContextAccessor();

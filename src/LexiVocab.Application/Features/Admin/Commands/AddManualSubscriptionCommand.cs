@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -11,10 +12,12 @@ public record AddManualSubscriptionCommand(Guid UserId, string PlanName, int Dur
 public class AddManualSubscriptionHandler : IRequestHandler<AddManualSubscriptionCommand, Result<string>>
 {
     private readonly IUnitOfWork _uow;
+    private readonly IDateTimeProvider _dateTime;
 
-    public AddManualSubscriptionHandler(IUnitOfWork uow)
+    public AddManualSubscriptionHandler(IUnitOfWork uow, IDateTimeProvider dateTime)
     {
         _uow = uow;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<string>> Handle(AddManualSubscriptionCommand request, CancellationToken ct)
@@ -31,25 +34,26 @@ public class AddManualSubscriptionHandler : IRequestHandler<AddManualSubscriptio
         if (currentSub != null)
         {
             currentSub.Status = SubscriptionStatus.Cancelled;
-            currentSub.EndDate = DateTime.UtcNow;
-            currentSub.UpdatedAt = DateTime.UtcNow;
+            currentSub.EndDate = _dateTime.UtcNow;
+            currentSub.UpdatedAt = _dateTime.UtcNow;
             _uow.Subscriptions.Update(currentSub);
         }
 
-        var endDate = DateTime.UtcNow.AddDays(request.DurationDays);
+        var now = _dateTime.UtcNow;
+        var endDate = now.AddDays(request.DurationDays);
 
         var newSub = new Subscription
         {
             UserId = user.Id,
             PlanDefinitionId = plan.Id,
             Status = SubscriptionStatus.Active,
-            StartDate = DateTime.UtcNow,
+            StartDate = now,
             EndDate = endDate,
             Provider = PaymentProvider.Mock,
             ExternalSubscriptionId = $"MANUAL-{Guid.NewGuid().ToString()[..8]}"
         };
 
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = now;
 
         await _uow.Subscriptions.AddAsync(newSub, ct);
         _uow.Users.Update(user);

@@ -17,6 +17,7 @@ public class AnalyticsQueriesTests
     private readonly Mock<IUnitOfWork> _mockUow;
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<IDistributedCache> _mockCache;
+    private readonly Mock<IDateTimeProvider> _mockDateTime;
     private readonly Guid _userId = Guid.NewGuid();
 
     public AnalyticsQueriesTests()
@@ -24,6 +25,8 @@ public class AnalyticsQueriesTests
         _mockUow = new Mock<IUnitOfWork> { DefaultValue = DefaultValue.Mock };
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockCache = new Mock<IDistributedCache>();
+        _mockDateTime = new Mock<IDateTimeProvider>();
+        _mockDateTime.Setup(d => d.UtcNow).Returns(DateTime.UtcNow);
 
         _mockCurrentUser.Setup(x => x.UserId).Returns(_userId);
 
@@ -36,7 +39,7 @@ public class AnalyticsQueriesTests
     public async Task GetDashboard_CacheMiss_ShouldAggregateAndReturnData()
     {
         // Arrange
-        var handler = new GetDashboardHandler(_mockUow.Object, _mockCurrentUser.Object, _mockCache.Object);
+        var handler = new GetDashboardHandler(_mockUow.Object, _mockCurrentUser.Object, _mockCache.Object, _mockDateTime.Object);
         var query = new GetDashboardQuery();
 
         _mockUow.Setup(x => x.Vocabularies.GetStatsAsync(_userId, It.IsAny<CancellationToken>()))
@@ -82,7 +85,7 @@ public class AnalyticsQueriesTests
     public async Task GetHeatmap_CacheMiss_ShouldReturnHeatmapData()
     {
         // Arrange
-        var handler = new GetHeatmapHandler(_mockUow.Object, _mockCurrentUser.Object, _mockCache.Object);
+        var handler = new GetHeatmapHandler(_mockUow.Object, _mockCurrentUser.Object, _mockCache.Object, _mockDateTime.Object);
         var query = new GetHeatmapQuery(2023);
 
         var dbData = new List<(DateOnly Date, int Count)>
@@ -114,7 +117,7 @@ public class AnalyticsQueriesTests
     public async Task GetStreak_CacheMiss_ShouldReturnStreakInfo()
     {
         // Arrange
-        var handler = new GetStreakHandler(_mockUow.Object, _mockCurrentUser.Object, _mockCache.Object);
+        var handler = new GetStreakHandler(_mockUow.Object, _mockCurrentUser.Object, _mockCache.Object, _mockDateTime.Object);
         var query = new GetStreakQuery();
 
         _mockUow.Setup(x => x.ReviewLogs.GetCurrentStreakAsync(_userId, It.IsAny<CancellationToken>()))

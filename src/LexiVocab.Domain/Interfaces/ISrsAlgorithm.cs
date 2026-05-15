@@ -1,6 +1,6 @@
 using LexiVocab.Domain.Enums;
 
-namespace LexiVocab.Application.Common.Interfaces;
+namespace LexiVocab.Domain.Interfaces;
 
 /// <summary>
 /// SuperMemo-2 algorithm service interface.
@@ -15,7 +15,8 @@ public interface ISrsAlgorithm
         int currentRepetitionCount,
         double currentEasinessFactor,
         int currentIntervalDays,
-        QualityScore quality);
+        QualityScore quality,
+        DateTime now);
 }
 
 /// <summary>

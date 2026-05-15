@@ -99,6 +99,9 @@ public class PaymentCommandsTests
         var handler = new CapturePaymentOrderHandler(_mockPaymentFactory.Object, _mockCurrentUser.Object, _mockUow.Object);
         var command = new CapturePaymentOrderCommand("ORDER123");
 
+        _mockTxRepo.Setup(x => x.GetByExternalOrderIdAsync("ORDER123", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PaymentTransaction { ExternalOrderId = "ORDER123", Provider = PaymentProvider.PayPal, UserId = _userId });
+
         _mockPaymentService.Setup(x => x.CaptureOrderAsync("ORDER123", _userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 

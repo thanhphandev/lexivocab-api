@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Enums;
@@ -21,12 +22,14 @@ public class AssignVocabToTagHandler : IRequestHandler<AssignVocabToTagCommand, 
 
     public async Task<Result> Handle(AssignVocabToTagCommand request, CancellationToken ct)
     {
+        var userId = _currentUser.GetRequiredUserId();
+
         var vocab = await _uow.Vocabularies.GetByIdAsync(request.VocabularyId, ct);
-        if (vocab is null || vocab.UserId != _currentUser.UserId)
+        if (vocab is null || vocab.UserId != userId)
             return Result.NotFound("Vocabulary not found.", ErrorCode.VOCAB_NOT_FOUND);
             
         var tag = await _uow.Tags.GetByIdAsync(request.TagId, ct);
-        if (tag is null || tag.UserId != _currentUser.UserId)
+        if (tag is null || tag.UserId != userId)
             return Result.NotFound("Tag not found.", ErrorCode.TAG_NOT_FOUND);
 
         vocab.TagId = request.TagId;

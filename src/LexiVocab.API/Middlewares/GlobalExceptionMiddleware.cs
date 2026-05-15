@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using FluentValidation;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Models;
 
@@ -14,6 +15,7 @@ public class GlobalExceptionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionMiddleware> _logger;
+    private readonly IDateTimeProvider _dateTime;
 
     private static readonly JsonSerializerOptions s_jsonOptions = new()
     {
@@ -21,10 +23,11 @@ public class GlobalExceptionMiddleware
         DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
     };
 
-    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger, IDateTimeProvider dateTime)
     {
         _next = next;
         _logger = logger;
+        _dateTime = dateTime;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -94,7 +97,7 @@ public class GlobalExceptionMiddleware
             errorCode = errorCode.ToString(),
             statusCode = (int)statusCode,
             traceId = context.TraceIdentifier,
-            timestamp = DateTime.UtcNow,
+            timestamp = _dateTime.UtcNow,
             details = exception is ValidationException vex ? new ErrorDetails 
             {
                 ValidationErrors = vex.Errors.Select(e => new ValidationError 

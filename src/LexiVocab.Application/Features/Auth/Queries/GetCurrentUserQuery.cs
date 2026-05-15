@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Interfaces;
@@ -21,10 +22,9 @@ public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, R
 
     public async Task<Result<UserProfileDto>> Handle(GetCurrentUserQuery request, CancellationToken ct)
     {
-        if (_currentUser.UserId is null)
-            return Result<UserProfileDto>.Unauthorized();
+        var userId = _currentUser.GetRequiredUserId();
 
-        var user = await _uow.Users.GetByIdAsync(_currentUser.UserId.Value, ct);
+        var user = await _uow.Users.GetByIdAsync(userId, ct);
         if (user is null)
             return Result<UserProfileDto>.NotFound("User not found.");
 

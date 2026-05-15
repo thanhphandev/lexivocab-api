@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
@@ -10,10 +11,12 @@ public record CancelCurrentSubscriptionCommand(Guid UserId) : IRequest<Result<st
 public class CancelCurrentSubscriptionHandler : IRequestHandler<CancelCurrentSubscriptionCommand, Result<string>>
 {
     private readonly IUnitOfWork _uow;
+    private readonly IDateTimeProvider _dateTime;
 
-    public CancelCurrentSubscriptionHandler(IUnitOfWork uow)
+    public CancelCurrentSubscriptionHandler(IUnitOfWork uow, IDateTimeProvider dateTime)
     {
         _uow = uow;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<string>> Handle(CancelCurrentSubscriptionCommand request, CancellationToken ct)
@@ -25,11 +28,11 @@ public class CancelCurrentSubscriptionHandler : IRequestHandler<CancelCurrentSub
         if (currentSub == null) return Result<string>.Failure("User has no active subscriptions", 400);
 
         currentSub.Status = SubscriptionStatus.Cancelled;
-        currentSub.EndDate = DateTime.UtcNow;
-        currentSub.UpdatedAt = DateTime.UtcNow;
+        currentSub.EndDate = _dateTime.UtcNow;
+        currentSub.UpdatedAt = _dateTime.UtcNow;
         _uow.Subscriptions.Update(currentSub);
 
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = _dateTime.UtcNow;
 
         _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);

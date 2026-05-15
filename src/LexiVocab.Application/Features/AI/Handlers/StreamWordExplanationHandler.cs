@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.Common.Helpers;
 using LexiVocab.Domain.Interfaces;
@@ -26,7 +27,7 @@ public class StreamWordExplanationHandler : BaseAIHandler, IRequestHandler<Strea
 
     public async Task<Result<IAsyncEnumerable<string>>> Handle(StreamWordExplanationQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var user = await _unitOfWork.Users.GetByIdAsync(userId, ct);
         
         string tl = string.IsNullOrWhiteSpace(request.TargetLanguage) ? (user?.UserSetting?.TargetLanguage ?? "English") : request.TargetLanguage;

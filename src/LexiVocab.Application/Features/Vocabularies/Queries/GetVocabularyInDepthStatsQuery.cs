@@ -6,6 +6,8 @@ using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
 
+using LexiVocab.Application.Common.Extensions;
+
 namespace LexiVocab.Application.Features.Vocabularies.Queries;
 
 public record GetVocabularyInDepthStatsQuery : IRequest<Result<VocabularyInDepthStatsDto>>;
@@ -25,7 +27,7 @@ public class GetVocabularyInDepthStatsHandler : IRequestHandler<GetVocabularyInD
 
     public async Task<Result<VocabularyInDepthStatsDto>> Handle(GetVocabularyInDepthStatsQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         
         var version = await _cache.GetStringAsync($"vocab-v:{userId}", ct) ?? "0";
         var cacheKey = $"vocab-stats-indepth:{userId}:v{version}";

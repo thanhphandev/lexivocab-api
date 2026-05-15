@@ -16,6 +16,7 @@ public class ReviewCommandsTests
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<ISrsAlgorithm> _mockSrs;
     private readonly Mock<IDistributedCache> _mockCache;
+    private readonly Mock<IDateTimeProvider> _mockDateTime;
     private readonly SubmitReviewHandler _handler;
 
     private readonly Guid _userId = Guid.NewGuid();
@@ -27,6 +28,8 @@ public class ReviewCommandsTests
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockSrs = new Mock<ISrsAlgorithm>();
         _mockCache = new Mock<IDistributedCache>();
+        _mockDateTime = new Mock<IDateTimeProvider>();
+        _mockDateTime.Setup(x => x.UtcNow).Returns(DateTime.UtcNow);
 
         _mockCurrentUser.Setup(x => x.UserId).Returns(_userId);
 
@@ -34,7 +37,8 @@ public class ReviewCommandsTests
             _mockUow.Object,
             _mockCurrentUser.Object,
             _mockSrs.Object,
-            _mockCache.Object);
+            _mockCache.Object,
+            _mockDateTime.Object);
     }
 
     [Fact]
@@ -48,14 +52,15 @@ public class ReviewCommandsTests
             UserId = _userId,
             RepetitionCount = 0,
             EasinessFactor = 2.5,
-            IntervalDays = 0
+            IntervalDays = 0,
+            NextReviewDate = DateTime.MinValue
         };
         
         _mockUow.Setup(x => x.Vocabularies.GetByIdAsync(_vocabId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingVocab);
 
         var sm2Result = new SrsCalculationResult(1, 2.6, 1, DateTime.UtcNow.AddDays(1));
-        _mockSrs.Setup(x => x.Calculate(0, 2.5, 0, QualityScore.Perfect))
+        _mockSrs.Setup(x => x.Calculate(0, 2.5, 0, QualityScore.Perfect, It.IsAny<DateTime>()))
             .Returns(sm2Result);
 
         // Act

@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.Common.Helpers;
 using LexiVocab.Domain.Enums;
@@ -30,7 +31,7 @@ public class StreamInputTranslateHandler : BaseAIHandler, IRequestHandler<Stream
 
     public async Task<Result<IAsyncEnumerable<string>>> Handle(StreamInputTranslateQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var user = await _unitOfWork.Users.GetByIdAsync(userId, ct);
         
         string? targetLang = request.TargetLanguage;

@@ -1,4 +1,4 @@
-namespace LexiVocab.Application.Features.Auth.Commands;
+namespace LexiVocab.Application.Common.Helpers;
 
 public record RefreshTokenMetadata(
     Guid UserId,

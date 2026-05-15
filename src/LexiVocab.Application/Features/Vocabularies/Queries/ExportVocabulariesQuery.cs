@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -20,19 +21,21 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IFeatureGatingService _featureGating;
+    private readonly IDateTimeProvider _dateTime;
 
-    public ExportVocabulariesHandler(IUnitOfWork uow, ICurrentUserService currentUser, IFeatureGatingService featureGating)
+    public ExportVocabulariesHandler(IUnitOfWork uow, ICurrentUserService currentUser, IFeatureGatingService featureGating, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _featureGating = featureGating;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<ExportDataDto>> Handle(ExportVocabulariesQuery request, CancellationToken ct)
     {
         try
         {
-            var userId = _currentUser.UserId!.Value;
+            var userId = _currentUser.GetRequiredUserId();
             
             var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
             if (!permissions.HasFeature(request.FeatureCode))
@@ -59,6 +62,7 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
 
             var formatLower = request.Format.ToLowerInvariant();
             var utf8Bom = new byte[] { 0xEF, 0xBB, 0xBF };
+            var dateStamp = _dateTime.UtcNow.ToString("yyyyMMdd");
 
             if (formatLower == "csv")
             {
@@ -78,7 +82,7 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
                           }));
                               
                 var bytes = utf8Bom.Concat(System.Text.Encoding.UTF8.GetBytes(csv)).ToArray();
-                return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "text/csv", $"lexivocab_export_{DateTime.UtcNow:yyyyMMdd}.csv"));
+                return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "text/csv", $"lexivocab_export_{dateStamp}.csv"));
             }
             else if (formatLower == "quizlet")
             {
@@ -89,7 +93,7 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
                     return word + "\t" + meaning;
                 }));
                 var bytes = utf8Bom.Concat(System.Text.Encoding.UTF8.GetBytes(quizlet)).ToArray();
-                return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "text/plain", $"lexivocab_quizlet_{DateTime.UtcNow:yyyyMMdd}.txt"));
+                return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "text/plain", $"lexivocab_quizlet_{dateStamp}.txt"));
             }
             else if (formatLower == "txt")
             {
@@ -101,13 +105,13 @@ public class ExportVocabulariesHandler : IRequestHandler<ExportVocabulariesQuery
                     return (i + 1).ToString() + ". " + word + meaningPart;
                 }));
                 var bytes = utf8Bom.Concat(System.Text.Encoding.UTF8.GetBytes(txt)).ToArray();
-                return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "text/plain", $"lexivocab_export_{DateTime.UtcNow:yyyyMMdd}.txt"));
+                return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "text/plain", $"lexivocab_export_{dateStamp}.txt"));
             }
             else // default to json
             {
                 var json = JsonSerializer.Serialize(exportList, new JsonSerializerOptions { WriteIndented = true });
                 var bytes = System.Text.Encoding.UTF8.GetBytes(json); // JSON doesn't strictly need BOM
-                return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "application/json", $"lexivocab_export_{DateTime.UtcNow:yyyyMMdd}.json"));
+                return Result<ExportDataDto>.Success(new ExportDataDto(bytes, "application/json", $"lexivocab_export_{dateStamp}.json"));
             }
         }
         catch (Exception)

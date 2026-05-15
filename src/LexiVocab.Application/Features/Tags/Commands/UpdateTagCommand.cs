@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Tag;
 using LexiVocab.Domain.Interfaces;
@@ -19,17 +20,21 @@ public class UpdateTagHandler : IRequestHandler<UpdateTagCommand, Result<TagDto>
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDateTimeProvider _dateTime;
 
-    public UpdateTagHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public UpdateTagHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<TagDto>> Handle(UpdateTagCommand request, CancellationToken ct)
     {
+        var userId = _currentUser.GetRequiredUserId();
+
         var entity = await _uow.Tags.GetByIdAsync(request.Id, ct);
-        if (entity is null || entity.UserId != _currentUser.UserId)
+        if (entity is null || entity.UserId != userId)
             return Result<TagDto>.NotFound("Tag not found.", ErrorCode.TAG_NOT_FOUND);
 
         entity.Name = request.Name.Trim();
@@ -37,7 +42,7 @@ public class UpdateTagHandler : IRequestHandler<UpdateTagCommand, Result<TagDto>
         entity.Color = request.Color;
         entity.Icon = request.Icon;
         entity.DisplayOrder = request.DisplayOrder;
-        entity.UpdatedAt = DateTime.UtcNow;
+        entity.UpdatedAt = _dateTime.UtcNow;
 
         _uow.Tags.Update(entity);
         await _uow.SaveChangesAsync(ct);

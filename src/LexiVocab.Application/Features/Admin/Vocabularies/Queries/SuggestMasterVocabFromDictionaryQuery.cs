@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Admin;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
@@ -10,10 +11,12 @@ public record SuggestMasterVocabFromDictionaryQuery(string Word) : IRequest<Resu
 public class SuggestMasterVocabFromDictionaryHandler : IRequestHandler<SuggestMasterVocabFromDictionaryQuery, Result<MasterVocabularyDto>>
 {
     private readonly IDictionaryService _dictService;
+    private readonly IDateTimeProvider _dateTime;
 
-    public SuggestMasterVocabFromDictionaryHandler(IDictionaryService dictService)
+    public SuggestMasterVocabFromDictionaryHandler(IDictionaryService dictService, IDateTimeProvider dateTime)
     {
         _dictService = dictService;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<MasterVocabularyDto>> Handle(SuggestMasterVocabFromDictionaryQuery request, CancellationToken ct)
@@ -39,7 +42,7 @@ public class SuggestMasterVocabFromDictionaryHandler : IRequestHandler<SuggestMa
             null, // PopularityRank
             dictionaryResult.Meaning,
             dictionaryResult.CefrLevel,
-            DateTime.UtcNow,
+            _dateTime.UtcNow,
             null
         );
 

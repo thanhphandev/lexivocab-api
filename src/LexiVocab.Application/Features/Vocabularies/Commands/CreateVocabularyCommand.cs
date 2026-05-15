@@ -1,6 +1,8 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Vocabulary;
+using LexiVocab.Application.Common.Mappings;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -27,22 +29,25 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
     private readonly ICurrentUserService _currentUser;
     private readonly IFeatureGatingService _featureGating;
     private readonly IDistributedCache _cache;
+    private readonly IDateTimeProvider _dateTime;
 
     public CreateVocabularyHandler(
         IUnitOfWork uow, 
         ICurrentUserService currentUser, 
         IFeatureGatingService featureGating,
-        IDistributedCache cache)
+        IDistributedCache cache,
+        IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _featureGating = featureGating;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<VocabularyDto>> Handle(CreateVocabularyCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
 
         var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
         var maxWords = permissions.GetLimit("MAX_WORDS");
@@ -85,7 +90,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
             CustomMeaning = request.CustomMeaning?.Trim(),
             ContextSentence = request.ContextSentence?.Trim(),
             SourceUrl = request.SourceUrl?.Trim(),
-            NextReviewDate = DateTime.UtcNow,
+            NextReviewDate = _dateTime.UtcNow,
             MasterVocabularyId = masterVocab?.Id,
             MasterVocabulary = masterVocab
         };
@@ -100,12 +105,7 @@ public class CreateVocabularyHandler : IRequestHandler<CreateVocabularyCommand, 
 
         await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
 
-        return Result<VocabularyDto>.Created(MapToDto(entity, null));
+        return Result<VocabularyDto>.Created(entity.MapToDto());
     }
 
-    private static VocabularyDto MapToDto(UserVocabulary v, MasterVocabulary? m) => new(
-        v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
-        v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
-        v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
-        m?.PhoneticUk, m?.PhoneticUs, m?.AudioUrl, m?.PartOfSpeech, m?.IsApproved);
 }

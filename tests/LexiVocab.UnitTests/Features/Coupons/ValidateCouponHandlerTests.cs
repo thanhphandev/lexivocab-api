@@ -1,5 +1,6 @@
 using FluentAssertions;
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.Features.Coupons.Queries;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
@@ -13,16 +14,19 @@ public class ValidateCouponHandlerTests
 {
     private readonly Mock<IUnitOfWork> _mockUow;
     private readonly Mock<ICouponRepository> _mockCouponRepo;
+    private readonly Mock<IDateTimeProvider> _mockDateTime;
     private readonly ValidateCouponHandler _handler;
 
     public ValidateCouponHandlerTests()
     {
         _mockUow = new Mock<IUnitOfWork>();
         _mockCouponRepo = new Mock<ICouponRepository>();
+        _mockDateTime = new Mock<IDateTimeProvider>();
+        _mockDateTime.Setup(x => x.UtcNow).Returns(DateTime.UtcNow);
         
         _mockUow.Setup(u => u.Coupons).Returns(_mockCouponRepo.Object);
         
-        _handler = new ValidateCouponHandler(_mockUow.Object);
+        _handler = new ValidateCouponHandler(_mockUow.Object, _mockDateTime.Object);
     }
 
     [Fact]

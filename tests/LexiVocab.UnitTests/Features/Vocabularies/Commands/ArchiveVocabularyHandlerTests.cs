@@ -14,6 +14,7 @@ public class ArchiveVocabularyHandlerTests
     private readonly Mock<IUnitOfWork> _mockUow;
     private readonly Mock<ICurrentUserService> _mockCurrentUser;
     private readonly Mock<IDistributedCache> _mockCache;
+    private readonly Mock<IDateTimeProvider> _mockDateTime;
     private readonly ArchiveVocabularyHandler _handler;
 
     private readonly Guid _userId = Guid.NewGuid();
@@ -24,13 +25,16 @@ public class ArchiveVocabularyHandlerTests
         _mockUow = new Mock<IUnitOfWork> { DefaultValue = DefaultValue.Mock };
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockCache = new Mock<IDistributedCache>();
+        _mockDateTime = new Mock<IDateTimeProvider>();
+        _mockDateTime.Setup(x => x.UtcNow).Returns(DateTime.UtcNow);
 
         _mockCurrentUser.Setup(x => x.UserId).Returns(_userId);
 
         _handler = new ArchiveVocabularyHandler(
             _mockUow.Object,
             _mockCurrentUser.Object,
-            _mockCache.Object);
+            _mockCache.Object,
+            _mockDateTime.Object);
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-using LexiVocab.Application.Common.Interfaces;
+using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Enums;
 
 namespace LexiVocab.Application.Services;
@@ -27,7 +27,8 @@ public class SrsAlgorithmService : ISrsAlgorithm
         int currentRepetitionCount,
         double currentEasinessFactor,
         int currentIntervalDays,
-        QualityScore quality)
+        QualityScore quality,
+        DateTime now)
     {
         var q = (int)quality;
 
@@ -83,7 +84,7 @@ public class SrsAlgorithmService : ISrsAlgorithm
             }
         }
 
-        var nextReviewDate = DateTime.UtcNow.AddDays(newInterval);
+        var nextReviewDate = now.AddDays(newInterval);
 
         return new SrsCalculationResult(
             newRepCount,

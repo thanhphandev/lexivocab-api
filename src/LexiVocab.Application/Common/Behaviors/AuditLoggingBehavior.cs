@@ -140,14 +140,9 @@ public class AuditLoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequ
     /// </summary>
     private static bool IsSuccessResult(TResponse? response)
     {
-        if (response is null) return true;
-
-        // Use reflection to check IsSuccess property on Result<T> / Result
-        var type = response.GetType();
-        var isSuccessProp = type.GetProperty("IsSuccess");
-        if (isSuccessProp?.GetValue(response) is bool success)
+        if (response is LexiVocab.Application.Common.IResult result)
         {
-            return success;
+            return result.IsSuccess;
         }
 
         return true; // Non-Result types are assumed successful if no exception was thrown

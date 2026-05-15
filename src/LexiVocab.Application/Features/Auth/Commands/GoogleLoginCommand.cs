@@ -1,13 +1,16 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Helpers;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Domain.Entities;
 using MediatR;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Application.Features.Auth.Commands;
 
@@ -24,26 +27,30 @@ public record GoogleLoginCommand(
 public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Result<AuthResponse>>
 {
     private readonly IUnitOfWork _uow;
-    private readonly IJwtTokenService _jwt;
-    private readonly IPasswordHasher _hasher;
+    private readonly IAuthTokenService _authTokenService;
     private readonly IGoogleAuthService _googleAuth;
-    private readonly IDistributedCache _cache;
     private readonly IEmailQueueService _emailQueue;
     private readonly IEmailTemplateService _templateService;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<GoogleLoginCommandHandler> _logger;
     private readonly string _appUrl;
 
     public GoogleLoginCommandHandler(
-        IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IGoogleAuthService googleAuth, IDistributedCache cache, IEmailQueueService emailQueue, IEmailTemplateService templateService, IConfiguration configuration)
+        IUnitOfWork uow, 
+        IAuthTokenService authTokenService,
+        IGoogleAuthService googleAuth, 
+        IEmailQueueService emailQueue, 
+        IEmailTemplateService templateService, 
+        IConfiguration configuration, 
+        ILogger<GoogleLoginCommandHandler> logger)
     {
         _uow = uow;
-        _jwt = jwt;
-        _hasher = hasher;
+        _authTokenService = authTokenService;
         _googleAuth = googleAuth;
-        _cache = cache;
         _emailQueue = emailQueue;
         _templateService = templateService;
         _configuration = configuration;
+        _logger = logger;
         _appUrl = configuration["App:Url"] ?? "https://lexivocab.store";
     }
 
@@ -70,18 +77,17 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
             }
             else
             {
-                user = new Domain.Entities.User
+                user = new User
                 {
                     Email = googleUser.Email.ToLowerInvariant(),
                     FullName = googleUser.FullName,
-                    AvatarUrl = googleUser.PictureUrl, // Set avatar for new user
+                    AvatarUrl = googleUser.PictureUrl,
                     AuthProvider = "Google",
                     AuthProviderId = googleUser.Subject,
-                    EmailConfirmed = true,
-                    LastLogin = DateTime.UtcNow
+                    EmailConfirmed = true
                 };
                 await _uow.Users.AddAsync(user, ct);
-                user.UserSetting = new Domain.Entities.UserSetting { UserId = user.Id };
+                user.UserSetting = new UserSetting { UserId = user.Id };
 
                 try
                 {
@@ -92,12 +98,11 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
                     });
                     _emailQueue.EnqueueEmail(user.Email, "Welcome to LexiVocab! 🚀", html);
                 }
-                catch { /* Non-critical */ }
+                catch (Exception ex) { _logger.LogWarning(ex, "Failed to send welcome email for new Google user {Email}", user.Email); }
             }
         }
         else
         {
-            // Update avatar if currently empty for returning Google users
             if (string.IsNullOrEmpty(user.AvatarUrl) && !string.IsNullOrEmpty(googleUser.PictureUrl))
             {
                 user.AvatarUrl = googleUser.PictureUrl;
@@ -107,24 +112,8 @@ public class GoogleLoginCommandHandler : IRequestHandler<GoogleLoginCommand, Res
         if (!user.IsActive)
             return Result<AuthResponse>.Forbidden("Account is deactivated.", ErrorCode.AUTH_ACCOUNT_DISABLED);
 
-        user.LastLogin = DateTime.UtcNow;
+        var authResponse = await _authTokenService.IssueTokenPairAsync(user, request.DeviceInfo, request.IpAddress, ct);
 
-        var accessTokenResult = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
-        var accessToken = accessTokenResult.Token;
-        var accessTokenExpiry = accessTokenResult.ExpiresAt;
-        var refreshToken = _jwt.GenerateRefreshToken();
-
-        var refreshTokenExpiryDays = int.Parse(_configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
-        user.RefreshTokenHash = _hasher.Hash(refreshToken);
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
-        await _uow.SaveChangesAsync(ct);
-
-        var metadata = JsonSerializer.Serialize(new RefreshTokenMetadata(user.Id, request.DeviceInfo, request.IpAddress, DateTime.UtcNow));
-        await _cache.SetStringAsync($"rf_token:{refreshToken}", metadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(refreshTokenExpiryDays) }, ct);
-
-        return Result<AuthResponse>.Success(new AuthResponse(
-            user.Id, user.Email, user.FullName, user.Role.ToString(),
-            accessToken, refreshToken, accessTokenExpiry, user.AvatarUrl,
-            user.EmailConfirmed, user.IsActive));
+        return Result<AuthResponse>.Success(authResponse);
     }
 }

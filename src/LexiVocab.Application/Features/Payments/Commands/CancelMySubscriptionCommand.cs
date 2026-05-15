@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -17,26 +18,27 @@ public class CancelMySubscriptionHandler : IRequestHandler<CancelMySubscriptionC
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
 
-    public CancelMySubscriptionHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    private readonly IDateTimeProvider _dateTime;
+
+    public CancelMySubscriptionHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _dateTime = dateTime;
     }
 
     public async Task<Result> Handle(CancelMySubscriptionCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId;
-        if (userId == null)
-            return Result.NotFound("User not found in context.", ErrorCode.RESOURCE_NOT_FOUND);
+        var userId = _currentUser.GetRequiredUserId();
 
-        var activeSub = await _uow.Subscriptions.GetActiveByUserIdAsync(userId.Value, ct);
+        var activeSub = await _uow.Subscriptions.GetActiveByUserIdAsync(userId, ct);
         if (activeSub == null)
         {
-            var subs = await _uow.Subscriptions.GetByUserIdAsync(userId.Value, ct);
+            var subs = await _uow.Subscriptions.GetByUserIdAsync(userId, ct);
             if (subs.Any())
             {
                 var latest = subs.OrderByDescending(s => s.CreatedAt).First();
-                if (latest.Status == SubscriptionStatus.Expired || (latest.EndDate.HasValue && latest.EndDate < DateTime.UtcNow))
+                if (latest.Status == SubscriptionStatus.Expired || (latest.EndDate.HasValue && latest.EndDate < _dateTime.UtcNow))
                     return Result.Failure("Subscription is already expired.", 400, ErrorCode.SUB_EXPIRED);
                 if (latest.Status == SubscriptionStatus.Cancelled)
                     return Result.Failure("Subscription is already cancelled.", 400, ErrorCode.SUB_CANCELLED);
@@ -45,8 +47,8 @@ public class CancelMySubscriptionHandler : IRequestHandler<CancelMySubscriptionC
         }
 
         activeSub.Status = SubscriptionStatus.Cancelled;
-        activeSub.EndDate = DateTime.UtcNow;
-        activeSub.UpdatedAt = DateTime.UtcNow;
+        activeSub.EndDate = _dateTime.UtcNow;
+        activeSub.UpdatedAt = _dateTime.UtcNow;
         _uow.Subscriptions.Update(activeSub);
 
         await _uow.SaveChangesAsync(ct);

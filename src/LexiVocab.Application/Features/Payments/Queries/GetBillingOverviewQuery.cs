@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Payment;
 using LexiVocab.Application.DTOs.Auth;
@@ -25,7 +26,7 @@ public class GetBillingOverviewHandler : IRequestHandler<GetBillingOverviewQuery
 
     public async Task<Result<BillingOverviewDto>> Handle(GetBillingOverviewQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         
         var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
 

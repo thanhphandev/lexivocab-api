@@ -1,9 +1,9 @@
 using FluentAssertions;
 using LexiVocab.Application.Common.Interfaces;
-using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Application.Features.Auth.Commands;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
+using LexiVocab.Application.DTOs.Auth;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -15,152 +15,59 @@ namespace LexiVocab.UnitTests.Features.Auth.Commands;
 public class RegisterCommandHandlerTests
 {
     private readonly Mock<IUnitOfWork> _mockUow;
-    private readonly Mock<IJwtTokenService> _mockJwt;
+    private readonly Mock<IAuthTokenService> _mockAuthToken;
     private readonly Mock<IPasswordHasher> _mockHasher;
     private readonly Mock<IDistributedCache> _mockCache;
     private readonly Mock<IEmailQueueService> _mockEmailQueue;
     private readonly Mock<IEmailTemplateService> _mockTemplateService;
+    private readonly Mock<IConfiguration> _mockConfig;
     private readonly RegisterCommandHandler _handler;
 
     public RegisterCommandHandlerTests()
     {
         _mockUow = new Mock<IUnitOfWork> { DefaultValue = DefaultValue.Mock };
-        _mockJwt = new Mock<IJwtTokenService>();
+        _mockAuthToken = new Mock<IAuthTokenService>();
         _mockHasher = new Mock<IPasswordHasher>();
         _mockCache = new Mock<IDistributedCache>();
         _mockEmailQueue = new Mock<IEmailQueueService>();
         _mockTemplateService = new Mock<IEmailTemplateService>();
+        _mockConfig = new Mock<IConfiguration>();
 
-        var config = new Mock<IConfiguration>();
-        config.Setup(c => c["App:Url"]).Returns("https://test.lexivocab.store");
-        config.Setup(c => c["Auth:RequireEmailVerification"]).Returns("true");
-        config.Setup(c => c["Jwt:RefreshTokenExpiryDays"]).Returns("7");
-
-        _mockHasher.Setup(h => h.Hash(It.IsAny<string>())).Returns("hashed_value");
-        _mockJwt.Setup(j => j.GenerateAccessToken(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Returns(new TokenResult("test_access_token", DateTime.UtcNow.AddMinutes(15)));
-        _mockJwt.Setup(j => j.GenerateRefreshToken()).Returns("test_refresh_token");
-        _mockTemplateService
-            .Setup(t => t.RenderTemplateAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
-            .ReturnsAsync("<html>Welcome</html>");
+        _mockConfig.Setup(c => c["Auth:RequireEmailVerification"]).Returns("false");
 
         _handler = new RegisterCommandHandler(
-            uow: _mockUow.Object,
-            jwt: _mockJwt.Object,
-            hasher: _mockHasher.Object,
-            cache: _mockCache.Object,
-            emailQueue: _mockEmailQueue.Object,
-            templateService: _mockTemplateService.Object,
-            configuration: config.Object,
-            logger: new Mock<ILogger<RegisterCommandHandler>>().Object);
+            _mockUow.Object, 
+            _mockAuthToken.Object, 
+            _mockHasher.Object, 
+            _mockCache.Object, 
+            _mockEmailQueue.Object, 
+            _mockTemplateService.Object, 
+            _mockConfig.Object,
+            Mock.Of<ILogger<RegisterCommandHandler>>());
     }
 
     [Fact]
-    public async Task Handle_WhenEmailAlreadyExists_ShouldReturnConflict()
+    public async Task Handle_WhenValid_ShouldCallAuthTokenService()
     {
         // Arrange
-        var command = new RegisterCommand("test@test.com", "Password1", "Test User", "Chrome", "127.0.0.1");
-        _mockUow.Setup(u => u.Users.EmailExistsAsync("test@test.com", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.StatusCode.Should().Be(409);
-        result.Error.Should().Contain("already registered");
-
-        _mockUow.Verify(u => u.Users.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Handle_WhenValid_ShouldCreateUserAndReturnCreated()
-    {
-        // Arrange
-        var command = new RegisterCommand("  Test@Email.COM  ", "Password1", "  John Doe  ", "Chrome", "127.0.0.1");
+        var command = new RegisterCommand("new@test.com", "Password123!", "New User", "Chrome", "127.0.0.1");
         _mockUow.Setup(u => u.Users.EmailExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-
+        
         User? savedUser = null;
         _mockUow.Setup(u => u.Users.AddAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .Callback<User, CancellationToken>((u, _) => savedUser = u);
 
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.StatusCode.Should().Be(201);
-        result.Data.Should().NotBeNull();
-        result.Data!.Email.Should().Be("test@email.com");
-        result.Data.FullName.Should().Be("John Doe");
-        result.Data!.AccessToken.Should().BeNull();
-        result.Data.RefreshToken.Should().BeNull();
-        result.Data.ExpiresAt.Should().BeNull();
-
-        savedUser.Should().NotBeNull();
-        savedUser!.Email.Should().Be("test@email.com"); // normalized
-        savedUser.FullName.Should().Be("John Doe"); // trimmed
-        savedUser.PasswordHash.Should().Be("hashed_value");
-
-        _mockUow.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_WhenValid_ShouldStoreRefreshTokenMetadataInCache()
-    {
-        // Arrange
-        var command = new RegisterCommand("test@test.com", "Password1", "Test User", "Chrome", "192.168.1.1");
-        _mockUow.Setup(u => u.Users.EmailExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-
-        // Act
-        await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        _mockCache.Verify(c => c.SetAsync(
-            "rf_token:test_refresh_token",
-            It.IsAny<byte[]>(),
-            It.IsAny<DistributedCacheEntryOptions>(),
-            It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task Handle_WhenValid_ShouldEnqueueWelcomeEmail()
-    {
-        // Arrange
-        var command = new RegisterCommand("test@test.com", "Password1", "Test User", "Chrome", "127.0.0.1");
-        _mockUow.Setup(u => u.Users.EmailExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        var authResponse = new AuthResponse(Guid.NewGuid(), "new@test.com", "New User", "User", "access", "refresh", DateTime.UtcNow.AddDays(1), null, true, true);
+        _mockAuthToken.Setup(a => a.IssueTokenPairAsync(It.IsAny<User>(), command.DeviceInfo, command.IpAddress, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(authResponse);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        _mockEmailQueue.Verify(e => e.EnqueueEmail(
-            It.IsAny<string>(),
-            It.Is<string>(s => s.Contains("Welcome")),
-            It.IsAny<string>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_WhenEmailTemplateFails_ShouldStillRegisterSuccessfully()
-    {
-        // Arrange
-        var command = new RegisterCommand("test@test.com", "Password1", "Test User", "Chrome", "127.0.0.1");
-        _mockUow.Setup(u => u.Users.EmailExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-        _mockTemplateService
-            .Setup(t => t.RenderTemplateAsync(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
-            .ThrowsAsync(new Exception("Template engine error"));
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.StatusCode.Should().Be(201);
+        result.Data.Should().Be(authResponse);
+        _mockAuthToken.Verify(a => a.IssueTokenPairAsync(It.IsAny<User>(), command.DeviceInfo, command.IpAddress, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

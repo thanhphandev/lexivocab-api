@@ -6,6 +6,7 @@ namespace LexiVocab.Application.Common.Behaviors;
 
 public class FeatureGatingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IFeatureGatedRequest
+    where TResponse : LexiVocab.Application.Common.IResult<TResponse>
 {
     private readonly IFeatureGatingService _featureGating;
     private readonly ICurrentUserService _currentUser;
@@ -47,26 +48,11 @@ public class FeatureGatingBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             }
         }
 
-        return await next();
+        return await next(cancellationToken);
     }
 
     private TResponse CreateFailureResponse(string message, LexiVocab.Domain.Enums.ErrorCode errorCode)
     {
-        // Result<T> is the standard response type in this project
-        var responseType = typeof(TResponse);
-        if (responseType.IsGenericType && responseType.GetGenericTypeDefinition() == typeof(Result<>))
-        {
-            var dataPropertyName = responseType.GetGenericArguments()[0];
-            var failureMethod = typeof(Result<>).MakeGenericType(dataPropertyName)
-                .GetMethod("Failure");
-            return (TResponse)failureMethod!.Invoke(null, [message, 403, errorCode, null])!;
-        }
-        
-        if (responseType == typeof(Result))
-        {
-            return (TResponse)(object)Result.Failure(message, 403, errorCode);
-        }
-
-        throw new InvalidOperationException($"FeatureGatingBehavior requires a response of type Result or Result<T>, but got {responseType.Name}.");
+        return TResponse.Failure(message, 403, errorCode);
     }
 }

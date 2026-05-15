@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -28,11 +29,9 @@ public class DeleteAccountHandler : IRequestHandler<DeleteAccountCommand, Result
 
     public async Task<Result> Handle(DeleteAccountCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId;
-        if (userId == null)
-            return Result.NotFound("User not found in context.", ErrorCode.RESOURCE_NOT_FOUND);
+        var userId = _currentUser.GetRequiredUserId();
 
-        var user = await _uow.Users.GetByIdAsync(userId.Value, ct);
+        var user = await _uow.Users.GetByIdAsync(userId, ct);
         if (user == null)
             return Result.NotFound("User account no longer exists.", ErrorCode.RESOURCE_NOT_FOUND);
 
@@ -40,7 +39,7 @@ public class DeleteAccountHandler : IRequestHandler<DeleteAccountCommand, Result
         await _uow.SaveChangesAsync(ct);
 
         // Revoke active JWT tokens
-        await _cache.SetStringAsync($"user:deactivated:{userId.Value}", "true", 
+        await _cache.SetStringAsync($"user:deactivated:{userId}", "true", 
             new Microsoft.Extensions.Caching.Distributed.DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) }, ct);
 
         return Result.Success();

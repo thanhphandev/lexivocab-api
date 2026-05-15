@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
@@ -22,22 +23,25 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
     private readonly ICurrentUserService _currentUser;
     private readonly IFeatureGatingService _featureGating;
     private readonly IDistributedCache _cache;
+    private readonly IDateTimeProvider _dateTime;
 
     public BatchImportHandler(
         IUnitOfWork uow, 
         ICurrentUserService currentUser,
         IFeatureGatingService featureGating,
-        IDistributedCache cache)
+        IDistributedCache cache,
+        IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _featureGating = featureGating;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<int>> Handle(BatchImportCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         
         var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
         if (!permissions.HasFeature(request.FeatureCode))
@@ -76,7 +80,7 @@ public class BatchImportHandler : IRequestHandler<BatchImportCommand, Result<int
                 ContextSentence = word.ContextSentence?.Trim(),
                 SourceUrl = word.SourceUrl?.Trim(),
                 MasterVocabularyId = masterVocab?.Id,
-                NextReviewDate = DateTime.UtcNow
+                NextReviewDate = _dateTime.UtcNow
             });
         }
 

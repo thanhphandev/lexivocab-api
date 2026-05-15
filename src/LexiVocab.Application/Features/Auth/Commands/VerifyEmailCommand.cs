@@ -18,11 +18,13 @@ public class VerifyEmailHandler : IRequestHandler<VerifyEmailCommand, Result>
 {
     private readonly IUnitOfWork _uow;
     private readonly IDistributedCache _cache;
+    private readonly IDateTimeProvider _dateTime;
 
-    public VerifyEmailHandler(IUnitOfWork uow, IDistributedCache cache)
+    public VerifyEmailHandler(IUnitOfWork uow, IDistributedCache cache, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result> Handle(VerifyEmailCommand request, CancellationToken ct)
@@ -39,7 +41,7 @@ public class VerifyEmailHandler : IRequestHandler<VerifyEmailCommand, Result>
         if (savedCode != request.Code)
         {
             var attemptsStr = await _cache.GetStringAsync(attemptsKey, ct);
-            int attempts = string.IsNullOrEmpty(attemptsStr) ? 0 : int.Parse(attemptsStr);
+            int attempts = int.TryParse(attemptsStr, out var parsed) ? parsed : 0;
             attempts++;
 
             if (attempts >= 5)
@@ -61,7 +63,7 @@ public class VerifyEmailHandler : IRequestHandler<VerifyEmailCommand, Result>
             return Result.Success();
 
         user.EmailConfirmed = true;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = _dateTime.UtcNow;
 
         _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);

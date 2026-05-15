@@ -19,12 +19,14 @@ public class ResetPasswordHandler : IRequestHandler<ResetPasswordCommand, Result
     private readonly IUnitOfWork _uow;
     private readonly IPasswordHasher _hasher;
     private readonly IDistributedCache _cache;
+    private readonly IDateTimeProvider _dateTime;
 
-    public ResetPasswordHandler(IUnitOfWork uow, IPasswordHasher hasher, IDistributedCache cache)
+    public ResetPasswordHandler(IUnitOfWork uow, IPasswordHasher hasher, IDistributedCache cache, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _hasher = hasher;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result> Handle(ResetPasswordCommand request, CancellationToken ct)
@@ -43,7 +45,7 @@ public class ResetPasswordHandler : IRequestHandler<ResetPasswordCommand, Result
         user.PasswordHash = _hasher.Hash(request.NewPassword);
         user.RefreshTokenHash = null; // Force logout on all devices
         user.RefreshTokenExpiryTime = null;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = _dateTime.UtcNow;
 
         _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);

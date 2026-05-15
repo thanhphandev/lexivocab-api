@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Payment;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Enums;
@@ -11,10 +12,12 @@ public record GetPaymentStatusQuery(string Reference) : IRequest<Result<PaymentS
 public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Result<PaymentStatusDto>>
 {
     private readonly IUnitOfWork _uow;
+    private readonly IDateTimeProvider _dateTime;
 
-    public GetPaymentStatusHandler(IUnitOfWork uow)
+    public GetPaymentStatusHandler(IUnitOfWork uow, IDateTimeProvider dateTime)
     {
         _uow = uow;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<PaymentStatusDto>> Handle(GetPaymentStatusQuery request, CancellationToken ct)
@@ -25,7 +28,7 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Re
         if (tx == null) return Result<PaymentStatusDto>.NotFound("Transaction not found.", ErrorCode.PAYMENT_ORDER_NOT_FOUND);
 
         // If still pending but already expired, flip it server-side immediately.
-        var now = DateTime.UtcNow;
+        var now = _dateTime.UtcNow;
         if (PaymentExpirationHelper.ExpireIfNeeded(tx, now))
         {
             await _uow.SaveChangesAsync(ct);

@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
@@ -25,7 +26,7 @@ public class TranslateHandler : BaseAIHandler, IRequestHandler<TranslateQuery, R
 
     public async Task<Result<string>> Handle(TranslateQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var user = await _unitOfWork.Users.GetByIdAsync(userId, ct);
 
         string? targetLang = request.To;

@@ -2,6 +2,7 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
 namespace LexiVocab.Infrastructure.Services;
@@ -11,19 +12,21 @@ public class FeatureGatingService : IFeatureGatingService
     private readonly IUnitOfWork _uow;
     private readonly IDistributedCache _cache;
     private readonly IConnectionMultiplexer? _redis;
+    private readonly IDateTimeProvider _dateTime;
 
     private const string RedisKeyPrefix = "LexiVocab:";
     private const int QuotaCacheTtlDays = 2;
 
-    public FeatureGatingService(IUnitOfWork uow, IDistributedCache cache)
-        : this(uow, cache, null)
+    public FeatureGatingService(IUnitOfWork uow, IDistributedCache cache, IDateTimeProvider dateTime)
+        : this(uow, cache, dateTime, null)
     {
     }
 
-    public FeatureGatingService(IUnitOfWork uow, IDistributedCache cache, IConnectionMultiplexer? redis)
+    public FeatureGatingService(IUnitOfWork uow, IDistributedCache cache, IDateTimeProvider dateTime, IConnectionMultiplexer? redis)
     {
         _uow = uow;
         _cache = cache;
+        _dateTime = dateTime;
         _redis = redis;
     }
 
@@ -36,7 +39,7 @@ public class FeatureGatingService : IFeatureGatingService
         var activeSub = await _uow.Subscriptions.GetActiveWithFeaturesAsync(userId, ct);
 
         // Fetch AI Quota usages
-        var dateKey = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var dateKey = _dateTime.UtcNow.ToString("yyyy-MM-dd");
         var aiKey = $"quota:{userId}:AI_DAILY_LIMIT:{dateKey}";
         var transKey = $"quota:{userId}:LLM_TRANSLATION_LIMIT:{dateKey}";
         var quizKey = $"quota:{userId}:MAX_QUIZ_PER_DAY:{dateKey}";
@@ -69,7 +72,7 @@ public class FeatureGatingService : IFeatureGatingService
         };
 
         // If no active sub (or expired), fall back to Free tier
-        if (activeSub == null || (activeSub.EndDate.HasValue && activeSub.EndDate.Value < DateTime.UtcNow))
+        if (activeSub == null || (activeSub.EndDate.HasValue && activeSub.EndDate.Value < _dateTime.UtcNow))
         {
             var freePlan = await GetPlanByCodeAsync("Free", ct);
             return CreatePermissionsDto(freePlan, currentCount, null, usages);
@@ -87,18 +90,22 @@ public class FeatureGatingService : IFeatureGatingService
 
     public async Task<bool> ConsumeQuotaAsync(Guid userId, string featureCode, string quotaLimitCode, CancellationToken ct)
     {
+        // Single call to get full permissions (avoids N+1 double-call via HasFeatureAsync)
+        var permissions = await GetPermissionsAsync(userId, ct);
+
         // 1. Check if user has basic access to the feature
-        if (!await HasFeatureAsync(userId, featureCode, ct)) return false;
+        if (!permissions.FeatureFlags.TryGetValue(featureCode, out var value) ||
+            !(value.Equals("true", StringComparison.OrdinalIgnoreCase) || value.Equals("1")))
+            return false;
 
         // 2. Get the limit from plan
-        var permissions = await GetPermissionsAsync(userId, ct);
         var limit = permissions.GetLimit(quotaLimitCode, 0);
 
         if (limit == -1) return true; // Unlimited
         if (limit == 0) return false; // Strictly blocked
 
         // 3. Consume quota atomically in Redis if available
-        var dateKey = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var dateKey = _dateTime.UtcNow.ToString("yyyy-MM-dd");
         var cacheKey = $"quota:{userId}:{quotaLimitCode}:{dateKey}";
 
         if (_redis is not null)
@@ -139,7 +146,9 @@ return current
             return result != -1;
         }
 
-        // 4. Fallback for non-Redis environments (development) using distributed cache APIs.
+        // 4. ⚠️ Dev-only fallback using distributed cache APIs.
+        //    WARNING: This path is NOT atomic (read-then-write TOCTOU race condition).
+        //    In production, Redis is REQUIRED for correct quota enforcement under concurrency.
         var currentStr = await _cache.GetStringAsync(cacheKey, ct);
         var current = string.IsNullOrEmpty(currentStr) ? 0 : int.Parse(currentStr);
         if (current >= limit) return false;

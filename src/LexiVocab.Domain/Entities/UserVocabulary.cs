@@ -1,4 +1,5 @@
 using LexiVocab.Domain.Common;
+using LexiVocab.Domain.Interfaces;
 
 namespace LexiVocab.Domain.Entities;
 
@@ -53,4 +54,17 @@ public class UserVocabulary : BaseEntity
     public MasterVocabulary? MasterVocabulary { get; set; }
     public VocabTag? Tag { get; set; }
     public ICollection<ReviewLog> ReviewLogs { get; set; } = [];
+
+    // ─── Domain Behaviors ────────────────────────────────────────
+    public void ApplyReview(SrsCalculationResult result, DateTime now)
+    {
+        RepetitionCount = result.NewRepetitionCount;
+        EasinessFactor = result.NewEasinessFactor;
+        IntervalDays = result.NewIntervalDays;
+        NextReviewDate = result.NextReviewDate;
+        LastReviewedAt = now;
+        UpdatedAt = now;
+    }
+
+    public bool IsDueForReview(DateTime now) => NextReviewDate <= now && !IsArchived;
 }

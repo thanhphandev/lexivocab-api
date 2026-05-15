@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -12,11 +13,13 @@ public class UpdateUserRoleHandler : IRequestHandler<UpdateUserRoleCommand, Resu
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDateTimeProvider _dateTime;
 
-    public UpdateUserRoleHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public UpdateUserRoleHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<string>> Handle(UpdateUserRoleCommand request, CancellationToken ct)
@@ -25,7 +28,7 @@ public class UpdateUserRoleHandler : IRequestHandler<UpdateUserRoleCommand, Resu
         if (user == null) return Result<string>.Failure("User not found", 404);
 
         // Security: Prevents an Admin from changing their own role or another Admin's role
-        if (user.Id == _currentUser.UserId)
+        if (user.Id == _currentUser.GetRequiredUserId())
             return Result<string>.Forbidden("You cannot change your own role.", LexiVocab.Domain.Enums.ErrorCode.AUTHZ_ADMIN_ONLY);
 
         if (user.Role == LexiVocab.Domain.Enums.UserRole.Admin)
@@ -37,7 +40,7 @@ public class UpdateUserRoleHandler : IRequestHandler<UpdateUserRoleCommand, Resu
         }
 
         user.Role = roleEnum;
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = _dateTime.UtcNow;
 
         _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);

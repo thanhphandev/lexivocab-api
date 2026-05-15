@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Admin;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -15,15 +16,17 @@ public record GetAdvancedSystemStatsQuery() : IRequest<Result<AdvancedSystemStat
 public class GetAdvancedSystemStatsHandler : IRequestHandler<GetAdvancedSystemStatsQuery, Result<AdvancedSystemStatsDto>>
 {
     private readonly IUnitOfWork _uow;
+    private readonly IDateTimeProvider _dateTime;
 
-    public GetAdvancedSystemStatsHandler(IUnitOfWork uow)
+    public GetAdvancedSystemStatsHandler(IUnitOfWork uow, IDateTimeProvider dateTime)
     {
         _uow = uow;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<AdvancedSystemStatsDto>> Handle(GetAdvancedSystemStatsQuery request, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
+        var now = _dateTime.UtcNow;
         var thirtyDaysAgo = now.AddDays(-30);
         var oneDayAgo = now.AddDays(-1);
 

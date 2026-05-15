@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
@@ -29,8 +30,10 @@ public class DeleteVocabularyHandler : IRequestHandler<DeleteVocabularyCommand, 
 
     public async Task<Result> Handle(DeleteVocabularyCommand request, CancellationToken ct)
     {
+        var userId = _currentUser.GetRequiredUserId();
+
         var entity = await _uow.Vocabularies.GetByIdAsync(request.Id, ct);
-        if (entity is null || entity.UserId != _currentUser.UserId)
+        if (entity is null || entity.UserId != userId)
             return Result.NotFound("Vocabulary not found.", ErrorCode.VOCAB_NOT_FOUND);
 
         var tagId = entity.TagId;
@@ -42,7 +45,7 @@ public class DeleteVocabularyHandler : IRequestHandler<DeleteVocabularyCommand, 
             await _uow.Tags.DecrementWordCountAsync(tagId.Value, 1, ct);
         }
 
-        await _cache.SetStringAsync($"vocab-v:{_currentUser.UserId}", Guid.NewGuid().ToString(), ct);
+        await _cache.SetStringAsync($"vocab-v:{userId}", Guid.NewGuid().ToString(), ct);
 
         return Result.Success();
     }

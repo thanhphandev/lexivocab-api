@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Vocabulary;
 using LexiVocab.Domain.Interfaces;
@@ -25,7 +26,7 @@ public class GetVocabularyStatsHandler : IRequestHandler<GetVocabularyStatsQuery
 
     public async Task<Result<VocabularyStatsDto>> Handle(GetVocabularyStatsQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         
         var version = await _cache.GetStringAsync($"vocab-v:{userId}", ct) ?? "0";
         var cacheKey = $"vocab-stats:{userId}:v{version}";

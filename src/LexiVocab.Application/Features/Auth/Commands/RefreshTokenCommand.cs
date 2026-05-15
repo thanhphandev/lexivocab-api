@@ -2,6 +2,7 @@ using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Helpers;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Enums;
@@ -30,22 +31,24 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
     private readonly IPasswordHasher _hasher;
     private readonly IDistributedCache _cache;
     private readonly IConfiguration _configuration;
+    private readonly IDateTimeProvider _dateTime;
 
-    public RefreshTokenCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache, IConfiguration configuration)
+    public RefreshTokenCommandHandler(IUnitOfWork uow, IJwtTokenService jwt, IPasswordHasher hasher, IDistributedCache cache, IConfiguration configuration, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _jwt = jwt;
         _hasher = hasher;
         _cache = cache;
         _configuration = configuration;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<AuthResponse>> Handle(RefreshTokenCommand request, CancellationToken ct)
     {
-        var cachedTokenData = await _cache.GetStringAsync($"rf_token:{request.RefreshToken}", ct);
+        var cachedTokenData = await _cache.GetStringAsync(RefreshTokenCacheHelper.GetCacheKey(request.RefreshToken), ct);
         if (string.IsNullOrEmpty(cachedTokenData))
         {
-            var gracefullyRotatedData = await _cache.GetStringAsync($"rf_token_grace:{request.RefreshToken}", ct);
+            var gracefullyRotatedData = await _cache.GetStringAsync(RefreshTokenCacheHelper.GetGraceCacheKey(request.RefreshToken), ct);
             if (!string.IsNullOrEmpty(gracefullyRotatedData))
             {
                 var savedResponse = JsonSerializer.Deserialize<AuthResponse>(gracefullyRotatedData);
@@ -66,7 +69,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         if (user is null || !user.IsActive)
             return Result<AuthResponse>.Unauthorized("Account is deactivated or does not exist.", ErrorCode.AUTH_ACCOUNT_DISABLED);
 
-        if (string.IsNullOrEmpty(user.RefreshTokenHash) || user.RefreshTokenExpiryTime < DateTime.UtcNow)
+        if (string.IsNullOrEmpty(user.RefreshTokenHash) || user.RefreshTokenExpiryTime < _dateTime.UtcNow)
             return Result<AuthResponse>.Unauthorized("Refresh token has been invalidated or expired.", ErrorCode.AUTH_TOKEN_EXPIRED);
 
         var accessTokenResult = _jwt.GenerateAccessToken(user.Id, user.Email, user.Role.ToString());
@@ -74,17 +77,17 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         var accessTokenExpiry = accessTokenResult.ExpiresAt;
         var newRefreshToken = _jwt.GenerateRefreshToken();
 
-        var refreshTokenExpiryDays = int.Parse(_configuration["Jwt:RefreshTokenExpiryDays"] ?? "7");
-        var gracePeriodSeconds = int.Parse(_configuration["Jwt:RefreshTokenGracePeriodSeconds"] ?? "60");
+        var refreshTokenExpiryDays = int.TryParse(_configuration["Jwt:RefreshTokenExpiryDays"], out var rtDays) ? rtDays : 7;
+        var gracePeriodSeconds = int.TryParse(_configuration["Jwt:RefreshTokenGracePeriodSeconds"], out var gpSecs) ? gpSecs : 60;
 
         user.RefreshTokenHash = _hasher.Hash(newRefreshToken);
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(refreshTokenExpiryDays);
+        user.RefreshTokenExpiryTime = _dateTime.UtcNow.AddDays(refreshTokenExpiryDays);
         
         _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);
 
-        var newMetadata = JsonSerializer.Serialize(new RefreshTokenMetadata(user.Id, request.DeviceInfo, request.IpAddress, DateTime.UtcNow));
-        await _cache.SetStringAsync($"rf_token:{newRefreshToken}", newMetadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(refreshTokenExpiryDays) }, ct);
+        var newMetadata = JsonSerializer.Serialize(new RefreshTokenMetadata(user.Id, request.DeviceInfo, request.IpAddress, _dateTime.UtcNow));
+        await _cache.SetStringAsync(RefreshTokenCacheHelper.GetCacheKey(newRefreshToken), newMetadata, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(refreshTokenExpiryDays) }, ct);
 
         var authResponse = new AuthResponse(
             user.Id, user.Email, user.FullName, user.Role.ToString(),
@@ -92,12 +95,12 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             user.EmailConfirmed, user.IsActive);
 
         await _cache.SetStringAsync(
-            $"rf_token_grace:{request.RefreshToken}", 
+            RefreshTokenCacheHelper.GetGraceCacheKey(request.RefreshToken), 
             JsonSerializer.Serialize(authResponse),
             new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(gracePeriodSeconds) }, 
             ct);
 
-        await _cache.RemoveAsync($"rf_token:{request.RefreshToken}", ct);
+        await _cache.RemoveAsync(RefreshTokenCacheHelper.GetCacheKey(request.RefreshToken), ct);
 
         return Result<AuthResponse>.Success(authResponse);
     }

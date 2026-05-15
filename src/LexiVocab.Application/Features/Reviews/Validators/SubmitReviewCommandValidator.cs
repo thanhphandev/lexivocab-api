@@ -8,13 +8,15 @@ public class SubmitReviewCommandValidator : AbstractValidator<SubmitReviewComman
     public SubmitReviewCommandValidator()
     {
         RuleFor(x => x.UserVocabularyId)
-            .NotEmpty().WithMessage("Vocabulary ID is required.");
+            .NotEmpty();
 
         RuleFor(x => x.QualityScore)
-            .IsInEnum().WithMessage("Invalid quality score.").WithErrorCode(LexiVocab.Domain.Enums.ErrorCode.REVIEW_INVALID_QUALITY_SCORE.ToString());
+            .IsInEnum()
+            .WithMessage("Invalid quality score. Must be between 0 (Blackout) and 5 (Perfect).");
 
         RuleFor(x => x.TimeSpentMs)
-            .GreaterThanOrEqualTo(0).When(x => x.TimeSpentMs.HasValue)
-            .WithMessage("Time spent must be positive.");
+            .GreaterThanOrEqualTo(0)
+            .When(x => x.TimeSpentMs.HasValue)
+            .WithMessage("Time spent cannot be negative.");
     }
 }

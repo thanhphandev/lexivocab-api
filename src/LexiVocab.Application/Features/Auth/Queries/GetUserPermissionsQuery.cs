@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using MediatR;
@@ -20,7 +21,7 @@ public class GetUserPermissionsHandler : IRequestHandler<GetUserPermissionsQuery
 
     public async Task<Result<UserPermissionsDto>> Handle(GetUserPermissionsQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var permissions = await _featureGating.GetPermissionsAsync(userId, ct);
         return Result<UserPermissionsDto>.Success(permissions);
     }

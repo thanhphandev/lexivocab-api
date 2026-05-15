@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Review;
 using LexiVocab.Domain.Interfaces;
@@ -27,7 +28,7 @@ public class GetReviewSessionHandler : IRequestHandler<GetReviewSessionQuery, Re
 
     public async Task<Result<ReviewSessionDto>> Handle(GetReviewSessionQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         
         // Fetch user settings to enforce limits
         var user = await _uow.Users.GetByIdAsync(userId, ct);

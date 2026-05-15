@@ -41,7 +41,6 @@ public class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TReques
 
         if (failures.Count != 0)
         {
-            var errorMessage = string.Join("; ", failures.Select(f => f.ErrorMessage));
             throw new ValidationException(failures);
         }
 

@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Review;
 using LexiVocab.Domain.Entities;
@@ -26,32 +27,45 @@ public class SubmitReviewHandler : IRequestHandler<SubmitReviewCommand, Result<R
     private readonly ISrsAlgorithm _srs;
     private readonly IDistributedCache _cache;
 
+    private readonly IDateTimeProvider _dateTime;
+
     public SubmitReviewHandler(
         IUnitOfWork uow, 
         ICurrentUserService currentUser, 
         ISrsAlgorithm srs,
-        IDistributedCache cache)
+        IDistributedCache cache,
+        IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _srs = srs;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<ReviewResultDto>> Handle(SubmitReviewCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var vocab = await _uow.Vocabularies.GetByIdAsync(request.UserVocabularyId, ct);
 
-        if (vocab is null || vocab.UserId != userId)
+        if (vocab is null)
             return Result<ReviewResultDto>.NotFound("Vocabulary card not found.", ErrorCode.VOCAB_NOT_FOUND);
 
+        if (vocab.UserId != userId)
+            return Result<ReviewResultDto>.Forbidden("You do not have permission to review this vocabulary.");
+
         // Treat submitting a card NOT due as a session violation
-        if (vocab.NextReviewDate > DateTime.UtcNow)
+        if (vocab.NextReviewDate > _dateTime.UtcNow)
         {
             return Result<ReviewResultDto>.Failure(
                 "Review session for this card not found. It may have already been completed.",
                 400, ErrorCode.REVIEW_SESSION_NOT_FOUND);
+        }
+
+        // S6: Idempotency guard - prevent double submissions within 5 seconds
+        if (vocab.LastReviewedAt.HasValue && (_dateTime.UtcNow - vocab.LastReviewedAt.Value).TotalSeconds < 5)
+        {
+            return Result<ReviewResultDto>.Failure("This vocabulary was just reviewed. Please wait a moment.", 409, ErrorCode.REVIEW_DUPLICATE_SUBMISSION);
         }
 
         // SM-2 Calculation
@@ -59,15 +73,11 @@ public class SubmitReviewHandler : IRequestHandler<SubmitReviewCommand, Result<R
             vocab.RepetitionCount,
             vocab.EasinessFactor,
             vocab.IntervalDays,
-            request.QualityScore);
+            request.QualityScore,
+            _dateTime.UtcNow);
 
-        // Update Vocabulary SRS State
-        vocab.RepetitionCount = result.NewRepetitionCount;
-        vocab.EasinessFactor = result.NewEasinessFactor;
-        vocab.IntervalDays = result.NewIntervalDays;
-        vocab.NextReviewDate = result.NextReviewDate;
-        vocab.LastReviewedAt = DateTime.UtcNow;
-        vocab.UpdatedAt = DateTime.UtcNow;
+        // Update Vocabulary SRS State via Domain Behavior
+        vocab.ApplyReview(result, _dateTime.UtcNow);
 
         _uow.Vocabularies.Update(vocab);
 
@@ -78,7 +88,7 @@ public class SubmitReviewHandler : IRequestHandler<SubmitReviewCommand, Result<R
             UserId = userId,
             QualityScore = request.QualityScore,
             TimeSpentMs = request.TimeSpentMs,
-            ReviewedAt = DateTime.UtcNow
+            ReviewedAt = _dateTime.UtcNow
         };
 
         await _uow.ReviewLogs.AddAsync(log, ct);

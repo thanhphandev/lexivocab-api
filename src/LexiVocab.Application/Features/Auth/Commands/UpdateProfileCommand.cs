@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Auth;
 using LexiVocab.Domain.Enums;
@@ -31,20 +32,20 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Result
 {
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
+    private readonly IDateTimeProvider _dateTime;
 
-    public UpdateProfileHandler(IUnitOfWork uow, ICurrentUserService currentUser)
+    public UpdateProfileHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<UserProfileDto>> Handle(UpdateProfileCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId;
-        if (userId == null)
-            return Result<UserProfileDto>.NotFound("User not found in context.", ErrorCode.RESOURCE_NOT_FOUND);
+        var userId = _currentUser.GetRequiredUserId();
 
-        var user = await _uow.Users.GetByIdAsync(userId.Value, ct);
+        var user = await _uow.Users.GetByIdAsync(userId, ct);
         if (user == null)
             return Result<UserProfileDto>.NotFound("User account no longer exists.", ErrorCode.RESOURCE_NOT_FOUND);
 
@@ -53,7 +54,7 @@ public class UpdateProfileHandler : IRequestHandler<UpdateProfileCommand, Result
         {
             user.AvatarUrl = request.AvatarUrl;
         }
-        user.UpdatedAt = DateTime.UtcNow;
+        user.UpdatedAt = _dateTime.UtcNow;
 
         _uow.Users.Update(user);
         await _uow.SaveChangesAsync(ct);

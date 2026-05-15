@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Enums;
@@ -23,7 +24,7 @@ public class GetInvoiceHandler : IRequestHandler<GetInvoiceQuery, Result<Invoice
 
     public async Task<Result<InvoiceFileDto>> Handle(GetInvoiceQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
 
         var tx = await _uow.PaymentTransactions.GetByIdAsync(request.TransactionId, ct);
         if (tx == null || tx.UserId != userId)

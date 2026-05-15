@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Payment;
 using LexiVocab.Domain.Enums;
@@ -15,17 +16,19 @@ public class GetPaymentHistoryHandler : IRequestHandler<GetPaymentHistoryQuery, 
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IPaymentServiceFactory _paymentFactory;
+    private readonly IDateTimeProvider _dateTime;
 
-    public GetPaymentHistoryHandler(IUnitOfWork uow, ICurrentUserService currentUser, IPaymentServiceFactory paymentFactory)
+    public GetPaymentHistoryHandler(IUnitOfWork uow, ICurrentUserService currentUser, IPaymentServiceFactory paymentFactory, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _paymentFactory = paymentFactory;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<PagedResult<PaymentHistoryDto>>> Handle(GetPaymentHistoryQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
 
         // Lazy-expire: flip expired pending transactions before fetching
         await ExpirePendingTransactionsAsync(userId, ct);
@@ -73,7 +76,7 @@ public class GetPaymentHistoryHandler : IRequestHandler<GetPaymentHistoryQuery, 
     /// </summary>
     private async Task ExpirePendingTransactionsAsync(Guid userId, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
+        var now = _dateTime.UtcNow;
 
         var expiredTransactions = await _uow.PaymentTransactions
             .GetExpiredPendingByUserAsync(userId, now, ct);

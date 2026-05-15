@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
@@ -13,12 +14,14 @@ public class UpdateUserStatusHandler : IRequestHandler<UpdateUserStatusCommand, 
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IDistributedCache _cache;
+    private readonly IDateTimeProvider _dateTime;
 
-    public UpdateUserStatusHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
+    public UpdateUserStatusHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<string>> Handle(UpdateUserStatusCommand request, CancellationToken ct)
@@ -28,8 +31,8 @@ public class UpdateUserStatusHandler : IRequestHandler<UpdateUserStatusCommand, 
         if (targetUser == null) return Result<string>.Failure("User not found", 404);
 
         // Security: Prevention of Admin-on-Admin action and self-lockout
-        var currentAdminId = _currentUser.UserId;
-        
+        var currentAdminId = _currentUser.GetRequiredUserId();
+
         if (targetUser.Id == currentAdminId)
             return Result<string>.Forbidden("You cannot change your own status.", LexiVocab.Domain.Enums.ErrorCode.AUTHZ_ADMIN_ONLY);
 
@@ -37,7 +40,7 @@ public class UpdateUserStatusHandler : IRequestHandler<UpdateUserStatusCommand, 
             return Result<string>.Forbidden("You cannot deactivate or modify another administrator.", LexiVocab.Domain.Enums.ErrorCode.AUTHZ_ADMIN_ONLY);
 
         targetUser.IsActive = request.IsActive;
-        targetUser.UpdatedAt = DateTime.UtcNow;
+        targetUser.UpdatedAt = _dateTime.UtcNow;
 
         _uow.Users.Update(targetUser);
         await _uow.SaveChangesAsync(ct);

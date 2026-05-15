@@ -52,7 +52,7 @@ public class CachingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
         _logger.LogInformation("Cache miss for {QueryName} with key {CacheKey}. Executing handler...", typeof(TRequest).Name, cacheKey);
         
         // Execute the actual handler (e.g. hitting the database)
-        var response = await next();
+        var response = await next(cancellationToken);
 
         try
         {

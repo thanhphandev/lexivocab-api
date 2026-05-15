@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
@@ -16,10 +17,12 @@ public record ValidateCouponQuery(string Code) : IRequest<Result<CouponValidatio
 public class ValidateCouponHandler : IRequestHandler<ValidateCouponQuery, Result<CouponValidationResult>>
 {
     private readonly IUnitOfWork _uow;
+    private readonly IDateTimeProvider _dateTime;
 
-    public ValidateCouponHandler(IUnitOfWork uow)
+    public ValidateCouponHandler(IUnitOfWork uow, IDateTimeProvider dateTime)
     {
         _uow = uow;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<CouponValidationResult>> Handle(ValidateCouponQuery request, CancellationToken ct)
@@ -30,7 +33,7 @@ public class ValidateCouponHandler : IRequestHandler<ValidateCouponQuery, Result
         if (coupon == null || !coupon.IsActive)
             return Result<CouponValidationResult>.NotFound("Invalid or inactive coupon code.", ErrorCode.PAYMENT_INVALID_COUPON);
 
-        var now = DateTime.UtcNow;
+        var now = _dateTime.UtcNow;
 
         if (coupon.ValidFrom.HasValue && coupon.ValidFrom.Value > now)
             return Result<CouponValidationResult>.Failure("This coupon is not yet valid.", 400, ErrorCode.PAYMENT_INVALID_COUPON);

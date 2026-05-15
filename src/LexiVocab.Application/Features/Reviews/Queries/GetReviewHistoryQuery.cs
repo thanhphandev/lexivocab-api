@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Review;
 using LexiVocab.Domain.Interfaces;
@@ -24,7 +25,7 @@ public class GetReviewHistoryHandler : IRequestHandler<GetReviewHistoryQuery, Re
 
     public async Task<Result<PagedResult<ReviewHistoryDto>>> Handle(GetReviewHistoryQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
 
         var (items, totalCount) = await _uow.ReviewLogs.GetPaginatedByUserAsync(
             userId, request.Page, request.PageSize, ct);

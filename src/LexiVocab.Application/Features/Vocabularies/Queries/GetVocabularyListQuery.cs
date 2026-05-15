@@ -1,6 +1,8 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Vocabulary;
+using LexiVocab.Application.Common.Mappings;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Interfaces;
 using MediatR;
@@ -32,10 +34,10 @@ public class GetVocabularyListHandler : IRequestHandler<GetVocabularyListQuery, 
 
     public async Task<Result<PagedResult<VocabularyDto>>> Handle(GetVocabularyListQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         
         var version = await _cache.GetStringAsync($"vocab-v:{userId}", ct) ?? "0";
-        var cacheKey = $"vocab-list:{userId}:v{version}:p{request.Page}:s{request.PageSize}:a{request.IsArchived}:q{request.SearchTerm}";
+        var cacheKey = $"vocab-list:{userId}:v{version}:p{request.Page}:s{request.PageSize}:a{request.IsArchived}:q{request.SearchTerm}:t{request.TagId}";
         
         var cachedData = await _cache.GetStringAsync(cacheKey, ct);
         if (!string.IsNullOrEmpty(cachedData))
@@ -47,7 +49,7 @@ public class GetVocabularyListHandler : IRequestHandler<GetVocabularyListQuery, 
         var (items, totalCount) = await _uow.Vocabularies.GetByUserIdAsync(
             userId, request.Page, request.PageSize, request.IsArchived, request.SearchTerm, request.TagId, ct);
 
-        var dtos = items.Select(MapToDto).ToList();
+        var dtos = items.Select(v => v.MapToDto()).ToList();
         var pagedResult = new PagedResult<VocabularyDto>
         {
             Items = dtos,
@@ -62,11 +64,4 @@ public class GetVocabularyListHandler : IRequestHandler<GetVocabularyListQuery, 
         return Result<PagedResult<VocabularyDto>>.Success(pagedResult);
     }
 
-    private static VocabularyDto MapToDto(UserVocabulary v) => new(
-        v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
-        v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
-        v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
-        v.MasterVocabulary?.PhoneticUk, v.MasterVocabulary?.PhoneticUs,
-        v.MasterVocabulary?.AudioUrl, v.MasterVocabulary?.PartOfSpeech,
-        v.MasterVocabulary?.IsApproved);
 }

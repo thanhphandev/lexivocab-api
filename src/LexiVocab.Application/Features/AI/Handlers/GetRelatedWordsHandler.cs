@@ -1,11 +1,13 @@
 using System.Text.Json;
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.Common.Helpers;
 using LexiVocab.Application.DTOs.AI;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Application.Features.AI;
 
@@ -22,7 +24,8 @@ public class GetRelatedWordsHandler : BaseAIHandler, IRequestHandler<GetRelatedW
     private readonly ICurrentUserService _currentUser;
     private readonly IUnitOfWork _unitOfWork;
 
-    public GetRelatedWordsHandler(IAIOrchestratorService aiService, ICurrentUserService currentUser, IUnitOfWork unitOfWork)
+    public GetRelatedWordsHandler(IAIOrchestratorService aiService, ICurrentUserService currentUser, IUnitOfWork unitOfWork, ILogger<GetRelatedWordsHandler> logger)
+        : base(logger)
     {
         _aiService = aiService;
         _currentUser = currentUser;
@@ -31,7 +34,7 @@ public class GetRelatedWordsHandler : BaseAIHandler, IRequestHandler<GetRelatedW
 
     public async Task<Result<RelatedWordsDto>> Handle(GetRelatedWordsQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var user = await _unitOfWork.Users.GetByIdAsync(userId, ct);
         
         string tl = string.IsNullOrWhiteSpace(request.TargetLanguage) ? (user?.UserSetting?.TargetLanguage ?? "English") : request.TargetLanguage;
@@ -69,7 +72,8 @@ public class GetRelatedWordsHandler : BaseAIHandler, IRequestHandler<GetRelatedW
             try {
                 var dto = System.Text.Json.JsonSerializer.Deserialize<RelatedWordsDto>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 return dto != null ? Result<RelatedWordsDto>.Success(dto) : Result<RelatedWordsDto>.Failure("AI failed to suggest valid related words", 400, LexiVocab.Domain.Enums.ErrorCode.AI_INVALID_REQUEST);
-            } catch {
+            } catch (JsonException ex) {
+                _logger?.LogWarning(ex, "AI related words response deserialization failed for word '{Word}'", request.Word);
                 return Result<RelatedWordsDto>.Failure("AI response was malformed", 400, LexiVocab.Domain.Enums.ErrorCode.AI_INVALID_REQUEST);
             }
         }

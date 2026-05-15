@@ -10,11 +10,16 @@ public interface IResult
     ErrorDetails? Details { get; }
 }
 
+public interface IResult<TSelf> : IResult where TSelf : IResult<TSelf>
+{
+    static abstract TSelf Failure(string error, int statusCode, ErrorCode errorCode, ErrorDetails? details = null);
+}
+
 /// <summary>
 /// Generic result wrapper for all CQRS operations.
 /// Eliminates exceptions for expected business failures — use pattern matching instead.
 /// </summary>
-public class Result<T> : IResult
+public class Result<T> : IResult<Result<T>>
 {
     public bool IsSuccess { get; }
     public T? Data { get; }
@@ -55,7 +60,7 @@ public class Result<T> : IResult
 /// <summary>
 /// Non-generic result for commands that don't return data.
 /// </summary>
-public class Result : IResult
+public class Result : IResult<Result>
 {
     public bool IsSuccess { get; }
     public string? Error { get; }

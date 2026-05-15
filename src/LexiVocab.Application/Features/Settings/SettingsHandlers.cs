@@ -1,4 +1,5 @@
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.DTOs.Settings;
 using LexiVocab.Domain.Entities;
@@ -26,7 +27,7 @@ public class GetSettingsHandler : IRequestHandler<GetSettingsQuery, Result<UserS
 
     public async Task<Result<UserSettingsDto>> Handle(GetSettingsQuery request, CancellationToken ct)
     {
-        var user = await _uow.Users.GetByIdAsync(_currentUser.UserId!.Value, ct);
+        var user = await _uow.Users.GetByIdAsync(_currentUser.GetRequiredUserId(), ct);
         if (user is null)
             return Result<UserSettingsDto>.NotFound();
 
@@ -104,17 +105,19 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IEncryptionService _encryption;
+    private readonly IDateTimeProvider _dateTime;
 
-    public UpdateSettingsHandler(IUnitOfWork uow, ICurrentUserService currentUser, IEncryptionService encryption)
+    public UpdateSettingsHandler(IUnitOfWork uow, ICurrentUserService currentUser, IEncryptionService encryption, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _encryption = encryption;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<UserSettingsDto>> Handle(UpdateSettingsCommand request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         var user = await _uow.Users.GetByIdAsync(userId, ct);
         if (user is null)
             return Result<UserSettingsDto>.NotFound();
@@ -151,7 +154,7 @@ public class UpdateSettingsHandler : IRequestHandler<UpdateSettingsCommand, Resu
                 ? null : _encryption.Encrypt(request.ZaloBotToken);
         if (request.ZaloUserId is not null) settings.ZaloUserId = request.ZaloUserId;
         
-        settings.UpdatedAt = DateTime.UtcNow;
+        settings.UpdatedAt = _dateTime.UtcNow;
 
         await _uow.SaveChangesAsync(ct);
 

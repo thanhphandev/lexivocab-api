@@ -4,11 +4,17 @@ using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Enums;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace LexiVocab.Application.Features.AI;
 
 public abstract class BaseAIHandler
 {
+    protected readonly ILogger? _logger;
+
+    protected BaseAIHandler() { }
+    protected BaseAIHandler(ILogger? logger) => _logger = logger;
+
     protected (string? Provider, string? ModelId, string? BaseUrl, string? ApiKey, string? Model) ResolveCustomProvider(LexiVocab.Domain.Entities.User? user, string? originalProvider, string? originalModelId, string? originalBaseUrl, string? originalApiKey, string? originalModel)
     {
         string? resolvedProvider = originalProvider;
@@ -35,7 +41,7 @@ public abstract class BaseAIHandler
                         break;
                     }
                 }
-            } catch { }
+            } catch (JsonException ex) { _logger?.LogDebug(ex, "Failed to parse CustomLlmsJson for provider resolution"); }
         }
         return (resolvedProvider, resolvedModelId, resolvedBaseUrl, resolvedApiKey, resolvedModel);
     }
@@ -65,7 +71,7 @@ public abstract class BaseAIHandler
                         break;
                     }
                 }
-            } catch { }
+            } catch (JsonException ex) { _logger?.LogDebug(ex, "Failed to parse AVAILABLE_LLM_MODELS feature flag"); }
         }
 
         if (isProModel && !await featureGating.HasFeatureAsync(userId, "ADVANCED_AI", ct))

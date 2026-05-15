@@ -1,6 +1,7 @@
 using FluentValidation;
 using LexiVocab.Application.Common.Behaviors;
 using LexiVocab.Application.Common.Interfaces;
+using LexiVocab.Domain.Interfaces;
 using LexiVocab.Application.Services;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;

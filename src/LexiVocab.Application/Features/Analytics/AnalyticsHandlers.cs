@@ -1,6 +1,8 @@
 using System.Text.Json;
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Application.Common.Interfaces;
+using LexiVocab.Application.Common.Mappings;
 using LexiVocab.Application.DTOs.Analytics;
 using LexiVocab.Application.DTOs.Vocabulary;
 using LexiVocab.Domain.Entities;
@@ -18,17 +20,19 @@ public class GetDashboardHandler : IRequestHandler<GetDashboardQuery, Result<Das
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IDistributedCache _cache;
+    private readonly IDateTimeProvider _dateTime;
 
-    public GetDashboardHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
+    public GetDashboardHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<DashboardDto>> Handle(GetDashboardQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
 
         // Use the same version buster as vocabulary for synchronization
         var version = await _cache.GetStringAsync($"vocab-v:{userId}", ct) ?? "0";
@@ -46,9 +50,9 @@ public class GetDashboardHandler : IRequestHandler<GetDashboardQuery, Result<Das
         // Fetch top 10 recent words for the carousel
         var (recentEntities, _) = await _uow.Vocabularies.GetByUserIdAsync(
             userId, page: 1, pageSize: 10, isArchived: false, ct: ct);
-        var recentWords = recentEntities.Select(MapToDto).ToList();
+        var recentWords = recentEntities.Select(v => v.MapToDto()).ToList();
 
-        var today = DateTime.UtcNow.Date;
+        var today = _dateTime.UtcNow.Date;
         var weekStart = today.AddDays(-(int)today.DayOfWeek);
 
         var (reviewsToday, avgQualityToday, _) = await _uow.ReviewLogs.GetPeriodStatsAsync(
@@ -76,14 +80,6 @@ public class GetDashboardHandler : IRequestHandler<GetDashboardQuery, Result<Das
 
         return Result<DashboardDto>.Success(dashboardDto);
     }
-
-    private static VocabularyDto MapToDto(UserVocabulary v) => new(
-        v.Id, v.TagId, v.WordText, v.CustomMeaning, v.ContextSentence, v.SourceUrl,
-        v.RepetitionCount, v.EasinessFactor, v.IntervalDays,
-        v.NextReviewDate, v.LastReviewedAt, v.IsArchived, v.CreatedAt,
-        v.MasterVocabulary?.PhoneticUk, v.MasterVocabulary?.PhoneticUs,
-        v.MasterVocabulary?.AudioUrl, v.MasterVocabulary?.PartOfSpeech,
-        v.MasterVocabulary?.IsApproved);
 }
 
 // ─── Heatmap Data ───────────────────────────────────────────────
@@ -94,18 +90,20 @@ public class GetHeatmapHandler : IRequestHandler<GetHeatmapQuery, Result<Heatmap
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IDistributedCache _cache;
+    private readonly IDateTimeProvider _dateTime;
 
-    public GetHeatmapHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
+    public GetHeatmapHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<HeatmapDataDto>> Handle(GetHeatmapQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
-        var year = request.Year ?? DateTime.UtcNow.Year;
+        var userId = _currentUser.GetRequiredUserId();
+        var year = request.Year ?? _dateTime.UtcNow.Year;
         
         var version = await _cache.GetStringAsync($"vocab-v:{userId}", ct) ?? "0";
         var cacheKey = $"analytics-heatmap:{userId}:{year}:v{version}";
@@ -139,17 +137,19 @@ public class GetStreakHandler : IRequestHandler<GetStreakQuery, Result<StreakDto
     private readonly IUnitOfWork _uow;
     private readonly ICurrentUserService _currentUser;
     private readonly IDistributedCache _cache;
+    private readonly IDateTimeProvider _dateTime;
 
-    public GetStreakHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache)
+    public GetStreakHandler(IUnitOfWork uow, ICurrentUserService currentUser, IDistributedCache cache, IDateTimeProvider dateTime)
     {
         _uow = uow;
         _currentUser = currentUser;
         _cache = cache;
+        _dateTime = dateTime;
     }
 
     public async Task<Result<StreakDto>> Handle(GetStreakQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         
         var version = await _cache.GetStringAsync($"vocab-v:{userId}", ct) ?? "0";
         var cacheKey = $"analytics-streak:{userId}:v{version}";
@@ -165,7 +165,7 @@ public class GetStreakHandler : IRequestHandler<GetStreakQuery, Result<StreakDto
         var longestStreak = await _uow.ReviewLogs.GetLongestStreakAsync(userId, ct);
 
         // Determine last active date from heatmap data
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(_dateTime.UtcNow);
         var heatmap = await _uow.ReviewLogs.GetHeatmapDataAsync(
             userId,
             today.AddDays(-365),
@@ -208,7 +208,7 @@ public class GetDueCountHandler : IRequestHandler<GetDueCountQuery, Result<DueCo
 
     public async Task<Result<DueCountDto>> Handle(GetDueCountQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
 
         var version = await _cache.GetStringAsync($"vocab-v:{userId}", ct) ?? "0";
         var cacheKey = $"analytics-due-count:{userId}:v{version}";

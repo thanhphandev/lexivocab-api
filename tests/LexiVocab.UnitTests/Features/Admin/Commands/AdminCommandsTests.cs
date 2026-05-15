@@ -1,5 +1,6 @@
 using FluentAssertions;
 using LexiVocab.Application.Common;
+using LexiVocab.Application.Common.Interfaces;
 using LexiVocab.Application.Features.Admin.Commands;
 using LexiVocab.Domain.Entities;
 using LexiVocab.Domain.Enums;
@@ -12,18 +13,21 @@ namespace LexiVocab.UnitTests.Features.Admin.Commands;
 public class AdminCommandsTests
 {
     private readonly Mock<IUnitOfWork> _mockUow;
+    private readonly Mock<IDateTimeProvider> _mockDateTime;
     private readonly Guid _userId = Guid.NewGuid();
 
     public AdminCommandsTests()
     {
         _mockUow = new Mock<IUnitOfWork>();
+        _mockDateTime = new Mock<IDateTimeProvider>();
+        _mockDateTime.Setup(x => x.UtcNow).Returns(DateTime.UtcNow);
     }
 
     [Fact]
     public async Task AddManualSubscription_WhenValid_ShouldCreateActiveSubscription()
     {
         // Arrange
-        var handler = new AddManualSubscriptionHandler(_mockUow.Object);
+        var handler = new AddManualSubscriptionHandler(_mockUow.Object, _mockDateTime.Object);
         var command = new AddManualSubscriptionCommand(_userId, "Premium", 30);
         
         var user = new User { Id = _userId, FullName = "Test User" };
@@ -52,7 +56,7 @@ public class AdminCommandsTests
     public async Task AddManualSubscription_WhenPlanNotFound_ShouldReturnFailure()
     {
         // Arrange
-        var handler = new AddManualSubscriptionHandler(_mockUow.Object);
+        var handler = new AddManualSubscriptionHandler(_mockUow.Object, _mockDateTime.Object);
         var command = new AddManualSubscriptionCommand(_userId, "NonExistent", 30);
 
         _mockUow.Setup(x => x.Users.GetByIdAsync(_userId, It.IsAny<CancellationToken>()))

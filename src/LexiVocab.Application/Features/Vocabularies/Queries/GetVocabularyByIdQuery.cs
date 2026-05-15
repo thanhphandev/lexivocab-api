@@ -1,6 +1,8 @@
 using LexiVocab.Application.Common;
 using LexiVocab.Application.Common.Interfaces;
+using LexiVocab.Application.Common.Mappings;
 using LexiVocab.Application.DTOs.Vocabulary;
+using LexiVocab.Application.Common.Extensions;
 using LexiVocab.Domain.Interfaces;
 using LexiVocab.Domain.Enums;
 using MediatR;
@@ -26,7 +28,7 @@ public class GetVocabularyByIdHandler : IRequestHandler<GetVocabularyByIdQuery, 
 
     public async Task<Result<VocabularyDto>> Handle(GetVocabularyByIdQuery request, CancellationToken ct)
     {
-        var userId = _currentUser.UserId!.Value;
+        var userId = _currentUser.GetRequiredUserId();
         
         var version = await _cache.GetStringAsync($"vocab-v:{userId}", ct) ?? "0";
         var cacheKey = $"vocab-item:{userId}:{request.Id}:v{version}";
@@ -42,14 +44,7 @@ public class GetVocabularyByIdHandler : IRequestHandler<GetVocabularyByIdQuery, 
         if (entity is null || entity.UserId != userId)
             return Result<VocabularyDto>.NotFound("Vocabulary not found.", ErrorCode.VOCAB_NOT_FOUND);
 
-        var dto = new VocabularyDto(
-            entity.Id, entity.TagId, entity.WordText, entity.CustomMeaning, entity.ContextSentence, entity.SourceUrl,
-            entity.RepetitionCount, entity.EasinessFactor, entity.IntervalDays,
-            entity.NextReviewDate, entity.LastReviewedAt, entity.IsArchived, entity.CreatedAt,
-            entity.MasterVocabulary?.PhoneticUk, entity.MasterVocabulary?.PhoneticUs, 
-            entity.MasterVocabulary?.AudioUrl, entity.MasterVocabulary?.PartOfSpeech,
-            entity.MasterVocabulary?.IsApproved
-        );
+        var dto = entity.MapToDto();
 
         var options = new DistributedCacheEntryOptions { SlidingExpiration = TimeSpan.FromHours(1) };
         await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(dto), options, ct);
