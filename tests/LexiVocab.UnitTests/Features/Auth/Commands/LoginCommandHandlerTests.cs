@@ -25,7 +25,7 @@ public class LoginCommandHandlerTests
         _mockAuthToken = new Mock<IAuthTokenService>();
         _mockHasher = new Mock<IPasswordHasher>();
         _mockDateTime = new Mock<IDateTimeProvider>();
-        _mockDateTime.Setup(d => d.UtcNow).Returns(DateTime.UtcNow);
+        _mockDateTime.Setup(d => d.UtcNow).Returns(new DateTime(2026, 5, 15, 10, 0, 0));
 
         _activeUser = new User
         {

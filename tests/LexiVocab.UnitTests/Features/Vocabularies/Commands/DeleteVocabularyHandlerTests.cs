@@ -62,4 +62,36 @@ public class DeleteVocabularyHandlerTests
             It.IsAny<DistributedCacheEntryOptions>(),
             It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task Handle_WhenNotFound_ShouldReturn404()
+    {
+        // Arrange
+        _mockUow.Setup(x => x.Vocabularies.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserVocabulary?)null);
+
+        // Act
+        var result = await _handler.Handle(new DeleteVocabularyCommand(Guid.NewGuid()), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(404);
+    }
+
+    [Fact]
+    public async Task Handle_WhenOtherUsersVocab_ShouldReturn404()
+    {
+        // Arrange
+        var otherVocab = new UserVocabulary { Id = _vocabId, UserId = Guid.NewGuid() }; // different user
+        _mockUow.Setup(x => x.Vocabularies.GetByIdAsync(_vocabId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(otherVocab);
+
+        // Act
+        var result = await _handler.Handle(new DeleteVocabularyCommand(_vocabId), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(404);
+        _mockUow.Verify(x => x.Vocabularies.Remove(It.IsAny<UserVocabulary>()), Times.Never);
+    }
 }

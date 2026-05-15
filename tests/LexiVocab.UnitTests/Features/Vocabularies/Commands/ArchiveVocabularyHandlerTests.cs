@@ -26,7 +26,7 @@ public class ArchiveVocabularyHandlerTests
         _mockCurrentUser = new Mock<ICurrentUserService>();
         _mockCache = new Mock<IDistributedCache>();
         _mockDateTime = new Mock<IDateTimeProvider>();
-        _mockDateTime.Setup(x => x.UtcNow).Returns(DateTime.UtcNow);
+        _mockDateTime.Setup(x => x.UtcNow).Returns(new DateTime(2026, 5, 15, 10, 0, 0));
 
         _mockCurrentUser.Setup(x => x.UserId).Returns(_userId);
 
@@ -67,5 +67,42 @@ public class ArchiveVocabularyHandlerTests
             It.IsAny<byte[]>(),
             It.IsAny<DistributedCacheEntryOptions>(),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WhenAlreadyArchived_ShouldToggleOff()
+    {
+        // Arrange
+        var existingVocab = new UserVocabulary 
+        { 
+            Id = _vocabId, 
+            UserId = _userId, 
+            IsArchived = true  // already archived
+        };
+        
+        _mockUow.Setup(x => x.Vocabularies.GetByIdAsync(_vocabId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existingVocab);
+
+        // Act
+        var result = await _handler.Handle(new ArchiveVocabularyCommand(_vocabId), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        existingVocab.IsArchived.Should().BeFalse();  // toggled back to active
+    }
+
+    [Fact]
+    public async Task Handle_WhenNotFound_ShouldReturn404()
+    {
+        // Arrange
+        _mockUow.Setup(x => x.Vocabularies.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserVocabulary?)null);
+
+        // Act
+        var result = await _handler.Handle(new ArchiveVocabularyCommand(Guid.NewGuid()), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(404);
     }
 }

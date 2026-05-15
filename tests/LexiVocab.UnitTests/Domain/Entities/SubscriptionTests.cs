@@ -7,6 +7,9 @@ namespace LexiVocab.UnitTests.Entities;
 
 public class SubscriptionTests
 {
+    // Use a fixed reference point to avoid DateTime.UtcNow non-determinism
+    private static readonly DateTime _referenceDate = new(2026, 5, 15, 10, 0, 0, DateTimeKind.Utc);
+
     [Fact]
     public void IsExpired_ShouldReturnFalse_WhenActiveAndNoEndDate()
     {
@@ -31,7 +34,7 @@ public class SubscriptionTests
         var subscription = new Subscription
         {
             Status = SubscriptionStatus.Active,
-            EndDate = DateTime.UtcNow.AddDays(30)
+            EndDate = DateTime.UtcNow.AddDays(30)  // safely in the future — deterministic within test execution window
         };
 
         // Act
@@ -44,11 +47,11 @@ public class SubscriptionTests
     [Fact]
     public void IsExpired_ShouldReturnTrue_WhenEndDateInPast()
     {
-        // Arrange
+        // Arrange — use a date that is always in the past regardless of when the test runs
         var subscription = new Subscription
         {
             Status = SubscriptionStatus.Active,
-            EndDate = DateTime.UtcNow.AddDays(-1)
+            EndDate = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         };
 
         // Act
@@ -64,11 +67,11 @@ public class SubscriptionTests
     [InlineData(SubscriptionStatus.Pending)]
     public void IsExpired_ShouldReturnTrue_WhenStatusIsNotActive(SubscriptionStatus targetStatus)
     {
-        // Arrange
+        // Arrange — end date doesn't matter when status is not Active
         var subscription = new Subscription
         {
             Status = targetStatus,
-            EndDate = DateTime.UtcNow.AddDays(30) // End date doesn't matter if status is not Active
+            EndDate = DateTime.UtcNow.AddDays(30)
         };
 
         // Act

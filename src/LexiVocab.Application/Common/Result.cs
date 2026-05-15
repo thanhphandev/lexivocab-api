@@ -1,5 +1,6 @@
 using LexiVocab.Domain.Enums;
 using LexiVocab.Domain.Models;
+using System.Text.Json.Serialization;
 
 namespace LexiVocab.Application.Common;
 
@@ -28,6 +29,7 @@ public class Result<T> : IResult<Result<T>>
     public ErrorCode ErrorCode { get; }
     public ErrorDetails? Details { get; }
 
+    [JsonConstructor]
     private Result(bool isSuccess, T? data, string? error, int statusCode, ErrorCode errorCode, ErrorDetails? details)
     {
         IsSuccess = isSuccess;
@@ -68,6 +70,7 @@ public class Result : IResult<Result>
     public ErrorCode ErrorCode { get; }
     public ErrorDetails? Details { get; }
 
+    [JsonConstructor]
     private Result(bool isSuccess, string? error, int statusCode, ErrorCode errorCode, ErrorDetails? details)
     {
         IsSuccess = isSuccess;
