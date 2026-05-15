@@ -214,10 +214,20 @@ try
             {
                 var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
                 redisOptions.AbortOnConnectFail = false;
+                
+                var multiplexer = ConnectionMultiplexer.Connect(redisOptions);
+                if (multiplexer.IsConnected)
+                {
+                    Log.Information("✅ DataProtection successfully connected to Redis.");
+                }
+                else
+                {
+                    Log.Warning("⚠️ DataProtection Redis connection is currently unreachable. StackExchange.Redis will keep retrying in the background. (AbortOnConnectFail=false)");
+                }
+
                 builder.Services.AddDataProtection()
-                    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisOptions), "LexiVocab-DataProtection-Keys");
+                    .PersistKeysToStackExchangeRedis(multiplexer, "LexiVocab-DataProtection-Keys");
             }
-            Log.Information("✅ DataProtection keys are being persisted to Redis.");
         }
         catch (Exception ex)
         {
