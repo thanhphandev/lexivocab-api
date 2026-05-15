@@ -34,35 +34,11 @@ public static class DependencyInjection
             throw new InvalidOperationException("Database connection string not found in Configuration or DATABASE_URL environment variable.");
         }
 
-        return ParseDatabaseUrl(connectionString);
+        return ConnectionStringParser.ParseDatabaseUrl(connectionString);
     }
 
     private static string? GetRedisConnectionString(IConfiguration configuration) =>
         configuration.GetConnectionString("Redis") ?? configuration["REDIS_URL"];
-
-    private static string ParseDatabaseUrl(string url)
-    {
-        if (!url.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
-            return url;
-
-        try 
-        {
-            var uri = new Uri(url);
-            var userInfo = uri.UserInfo.Split(':');
-            var user = userInfo[0];
-            var password = userInfo.Length > 1 ? userInfo[1] : "";
-            var host = uri.Host;
-            var port = uri.Port > 0 ? uri.Port : 5432;
-            var database = uri.AbsolutePath.TrimStart('/');
-
-            // Building Npgsql compatible connection string
-            return $"Host={host};Port={port};Database={database};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to parse DATABASE_URL: {url}", ex);
-        }
-    }
 
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,

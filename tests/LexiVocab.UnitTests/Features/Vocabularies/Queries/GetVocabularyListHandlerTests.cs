@@ -56,8 +56,8 @@ public class GetVocabularyListHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Items.Should().HaveCount(1);
-        result.Data.Items[0].WordText.Should().Be("Hello");
+        result.Data!.Items.Should().HaveCount(1);
+        result.Data!.Items[0].WordText.Should().Be("Hello");
         _vocabRepoMock.Verify(x => x.GetByUserIdAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<bool?>(), It.IsAny<string>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -83,8 +83,8 @@ public class GetVocabularyListHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Items.Should().HaveCount(1);
-        result.Data.Items[0].WordText.Should().Be("World");
+        result.Data!.Items.Should().HaveCount(1);
+        result.Data!.Items[0].WordText.Should().Be("World");
         
         _cacheMock.Verify(x => x.SetAsync(
             It.Is<string>(k => k.Contains("vocab-list")),

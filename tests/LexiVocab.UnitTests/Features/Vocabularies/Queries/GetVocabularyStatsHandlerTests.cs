@@ -52,7 +52,7 @@ public class GetVocabularyStatsHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Should().BeEquivalentTo(cachedStats);
+        result.Data!.Should().BeEquivalentTo(cachedStats);
         _vocabRepoMock.Verify(x => x.GetStatsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -76,10 +76,10 @@ public class GetVocabularyStatsHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Total.Should().Be(100);
-        result.Data.Active.Should().Be(80);
-        result.Data.Archived.Should().Be(20);
-        result.Data.DueToday.Should().Be(5);
+        result.Data!.Total.Should().Be(100);
+        result.Data!.Active.Should().Be(80);
+        result.Data!.Archived.Should().Be(20);
+        result.Data!.DueToday.Should().Be(5);
         
         _cacheMock.Verify(x => x.SetAsync(
             It.Is<string>(k => k.Contains("vocab-stats")),

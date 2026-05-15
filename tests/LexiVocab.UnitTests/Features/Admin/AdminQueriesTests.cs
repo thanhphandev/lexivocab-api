@@ -36,8 +36,8 @@ public class AdminQueriesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Should().HaveCount(1);
-        result.Data[0].Name.Should().Be("Gold");
+        result.Data!.Should().HaveCount(1);
+        result.Data![0].Name.Should().Be("Gold");
     }
 
     [Fact]
@@ -57,8 +57,8 @@ public class AdminQueriesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Should().HaveCount(1);
-        result.Data[0].Code.Should().Be("MAX_WORDS");
+        result.Data!.Should().HaveCount(1);
+        result.Data![0].Code.Should().Be("MAX_WORDS");
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class AdminQueriesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Name.Should().Be("Gold");
+        result.Data!.Name.Should().Be("Gold");
     }
 
     [Fact]
@@ -96,6 +96,6 @@ public class AdminQueriesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Code.Should().Be("MAX_WORDS");
+        result.Data!.Code.Should().Be("MAX_WORDS");
     }
 }

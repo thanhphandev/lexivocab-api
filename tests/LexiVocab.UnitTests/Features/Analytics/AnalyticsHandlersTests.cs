@@ -71,9 +71,9 @@ public class AnalyticsHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.CurrentStreak.Should().Be(3);
-        result.Data.Vocabulary.TotalWords.Should().Be(100);
-        result.Data.TotalStudyDays.Should().Be(1);
+        result.Data!.CurrentStreak.Should().Be(3);
+        result.Data!.Vocabulary.TotalWords.Should().Be(100);
+        result.Data!.TotalStudyDays.Should().Be(1);
     }
 
     [Fact]
@@ -95,9 +95,9 @@ public class AnalyticsHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Year.Should().Be(year);
-        result.Data.Entries.Should().HaveCount(1);
-        result.Data.Entries[0].Count.Should().Be(10);
+        result.Data!.Year.Should().Be(year);
+        result.Data!.Entries.Should().HaveCount(1);
+        result.Data!.Entries[0].Count.Should().Be(10);
     }
 
     [Fact]
@@ -123,9 +123,9 @@ public class AnalyticsHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.CurrentStreak.Should().Be(5);
-        result.Data.LongestStreak.Should().Be(15);
-        result.Data.LastActiveDate.Should().NotBeNull();
+        result.Data!.CurrentStreak.Should().Be(5);
+        result.Data!.LongestStreak.Should().Be(15);
+        result.Data!.LastActiveDate.Should().NotBeNull();
     }
 
     [Fact]
@@ -145,6 +145,6 @@ public class AnalyticsHandlersTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.DueCount.Should().Be(12);
+        result.Data!.DueCount.Should().Be(12);
     }
 }

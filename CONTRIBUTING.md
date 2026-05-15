@@ -1,25 +1,38 @@
-# LexiVocab Internal Development Guide
+# LexiVocab Development Guide
 
-This repository contains proprietary software. Access is restricted to authorized developers only.
+Welcome to the LexiVocab project! This guide outlines our shared coding standards and practices to keep our codebase clean, scalable, and easy to work with.
 
-## Security & Confidentiality
+## 🛠 Coding Standards
 
-- **DO NOT** share the source code or configuration files with unauthorized parties.
-- **DO NOT** commit plaintext secrets (API Keys, Connection Strings) to the repository. Use environment variables.
-- Ensure all security hardening measures (Token Hashing, Rate Limiting) remain intact during development.
+We follow modern architectural patterns to ensure the system remains maintainable:
 
-## Coding Standards
+*   **Clean Architecture & CQRS:** Maintain a strict separation between layers. Keep the core logic isolated from external concerns.
+*   **MediatR:** All business logic should reside within **Handlers**. This keeps our controllers thin and our logic decoupled.
+*   **Validation:** Every mutation command must be paired with a **FluentValidation** validator to ensure data integrity.
+*   **Rich Domain Model:** Don't be afraid to move core business logic into **Domain Entities** where it naturally belongs.
+*   **Zero-Reflection:** For performance, use the static virtual members on `IResult<T>` for error responses.
 
-- **Clean Architecture & CQRS**: Maintain strict separation of layers.
-- **MediatR**: All business logic must reside in Handlers.
-- **Validation**: Every mutation command must have a FluentValidation validator.
-- **Rich Domain Model**: Prefer moving core business logic into Domain Entities where appropriate.
-- **Zero-Reflection**: Use the static virtual members on `IResult<T>` for error responses.
+---
 
-## PR Review Checklist
+## 🔐 Security & Best Practices
 
-- [ ] Does it follow Clean Architecture?
-- [ ] Are there unit tests for the core logic?
-- [ ] Is the CancellationToken forwarded?
-- [ ] Are database queries optimized (no N+1)?
-- [ ] Does it pass the CI build?
+Even in an open environment, keeping our app secure is a priority:
+
+*   **Secret Management:** Never hardcode API Keys or Connection Strings. Use **environment variables** or local secret managers.
+*   **Hardening:** Keep security measures like Token Hashing and Rate Limiting active during development to catch issues early.
+
+---
+
+## ✅ PR Review Checklist
+
+Before submitting or approving a Pull Request, please verify:
+
+- [ ] **Architecture:** Does it follow Clean Architecture principles?
+- [ ] **Testing:** Are there unit tests covering the core logic?
+- [ ] **Async Flow:** Is the `CancellationToken` properly forwarded?
+- [ ] **Database:** Are queries optimized? (Watch out for the **N+1** problem).
+- [ ] **CI Status:** Does the build pass all checks?
+
+---
+
+> **Note:** We aim for code that is easy to read and even easier to maintain. When in doubt, follow the existing patterns in the project!

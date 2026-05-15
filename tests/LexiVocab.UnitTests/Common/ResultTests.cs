@@ -16,7 +16,7 @@ public class ResultTests
         result.Data.Should().Be("ok");
         result.StatusCode.Should().Be(200);
         result.Error.Should().BeNull();
-        result.ErrorCode.Should().Be(ErrorCode.UNKNOWN_ERROR);
+        result.ErrorCode.Should().Be(ErrorCode.NONE);
     }
 
     [Fact]

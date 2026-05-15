@@ -54,7 +54,7 @@ public class PaymentsQueriesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Plan.Should().Be("Pro");
+        result.Data!.Plan.Should().Be("Pro");
     }
 
     [Fact]
@@ -77,8 +77,8 @@ public class PaymentsQueriesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Items.Should().HaveCount(1);
-        result.Data.Items[0].Amount.Should().Be(10);
+        result.Data!.Items.Should().HaveCount(1);
+        result.Data!.Items[0].Amount.Should().Be(10);
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class PaymentsQueriesTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Should().HaveCount(1);
-        result.Data[0].NameKey.Should().Be("Free");
+        result.Data!.Should().HaveCount(1);
+        result.Data![0].NameKey.Should().Be("Free");
     }
 }

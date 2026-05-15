@@ -6,6 +6,9 @@ namespace LexiVocab.Domain.Enums;
 /// </summary>
 public enum ErrorCode
 {
+    // ─── No Error (used in success results) ─────────────────
+    NONE,
+
     // ─── Generic Errors ───────────────────────────────────────
     UNKNOWN_ERROR,
     VALIDATION_FAILED,

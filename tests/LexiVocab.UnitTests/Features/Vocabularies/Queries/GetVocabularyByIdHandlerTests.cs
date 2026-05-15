@@ -54,8 +54,8 @@ public class GetVocabularyByIdHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Data.Id.Should().Be(vocabId);
-        result.Data.WordText.Should().Be("Hello");
+        result.Data!.Id.Should().Be(vocabId);
+        result.Data!.WordText.Should().Be("Hello");
         _vocabRepoMock.Verify(x => x.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

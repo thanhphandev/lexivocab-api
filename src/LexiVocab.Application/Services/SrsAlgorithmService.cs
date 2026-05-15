@@ -18,6 +18,10 @@ namespace LexiVocab.Application.Services;
 ///   If rep == 1 → interval = 1
 ///   If rep == 2 → interval = 6
 ///   Else        → interval = previous_interval * EF
+///
+/// Note on Testability: The interval calculation includes a ±5% fuzz factor
+/// using Random.Shared. This means interval assertions for >7 days in unit 
+/// tests must account for this non-determinism (use Math.Abs or ranges).
 /// </summary>
 public class SrsAlgorithmService : ISrsAlgorithm
 {

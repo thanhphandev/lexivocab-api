@@ -40,8 +40,8 @@ public class Result<T> : IResult<Result<T>>
         Details = details;
     }
 
-    public static Result<T> Success(T data) => new(true, data, null, 200, ErrorCode.UNKNOWN_ERROR, null);
-    public static Result<T> Created(T data) => new(true, data, null, 201, ErrorCode.UNKNOWN_ERROR, null);
+    public static Result<T> Success(T data) => new(true, data, null, 200, ErrorCode.NONE, null);
+    public static Result<T> Created(T data) => new(true, data, null, 201, ErrorCode.NONE, null);
     
     public static Result<T> Failure(string error, int statusCode = 400, ErrorCode errorCode = ErrorCode.VALIDATION_FAILED, ErrorDetails? details = null) 
         => new(false, default, error, statusCode, errorCode, details);
@@ -80,7 +80,7 @@ public class Result : IResult<Result>
         Details = details;
     }
 
-    public static Result Success() => new(true, null, 200, ErrorCode.UNKNOWN_ERROR, null);
+    public static Result Success() => new(true, null, 200, ErrorCode.NONE, null);
     
     public static Result Failure(string error, int statusCode = 400, ErrorCode errorCode = ErrorCode.VALIDATION_FAILED, ErrorDetails? details = null) 
         => new(false, error, statusCode, errorCode, details);
