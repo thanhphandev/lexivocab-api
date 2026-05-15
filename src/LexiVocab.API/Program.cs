@@ -212,9 +212,10 @@ try
             // Skip Redis DataProtection in Testing environment
             if (!builder.Environment.IsEnvironment("Testing"))
             {
-                var redisConn = builder.Configuration.GetValue<string>("REDIS_URL") ?? "localhost:6379";
+                var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
+                redisOptions.AbortOnConnectFail = false;
                 builder.Services.AddDataProtection()
-                    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisConn), "LexiVocab-DataProtection-Keys");
+                    .PersistKeysToStackExchangeRedis(ConnectionMultiplexer.Connect(redisOptions), "LexiVocab-DataProtection-Keys");
             }
             Log.Information("✅ DataProtection keys are being persisted to Redis.");
         }
